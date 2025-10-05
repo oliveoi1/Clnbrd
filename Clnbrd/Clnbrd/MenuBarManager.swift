@@ -1,6 +1,7 @@
 import Cocoa
 import os.log
 import IOKit.hid
+import ServiceManagement
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "menubar")
 
@@ -41,6 +42,12 @@ class MenuBarManager {
         autoCleanItem.target = self
         autoCleanItem.state = delegate?.isAutoCleanEnabled() ?? false ? .on : .off
         menu.addItem(autoCleanItem)
+        
+        let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchAtLoginItem.image = NSImage(systemSymbolName: "power.circle", accessibilityDescription: "Launch at login")
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = isLaunchAtLoginEnabled() ? .on : .off
+        menu.addItem(launchAtLoginItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -117,6 +124,70 @@ class MenuBarManager {
     func updateAutoCleanState(_ enabled: Bool) {
         if let menuItem = menu.item(withTitle: "Auto-clean on Copy") {
             menuItem.state = enabled ? .on : .off
+        }
+    }
+    
+    func updateLaunchAtLoginState(_ enabled: Bool) {
+        if let menuItem = menu.item(withTitle: "Launch at Login") {
+            menuItem.state = enabled ? .on : .off
+        }
+    }
+    
+    func isLaunchAtLoginEnabled() -> Bool {
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            // For older macOS versions, check UserDefaults as fallback
+            return UserDefaults.standard.bool(forKey: "LaunchAtLogin")
+        }
+    }
+    
+    @objc func toggleLaunchAtLogin() {
+        SentryManager.shared.trackUserAction("launch_at_login_toggled")
+        
+        if #available(macOS 13.0, *) {
+            let service = SMAppService.mainApp
+            
+            do {
+                if service.status == .enabled {
+                    // Disable launch at login
+                    try service.unregister()
+                    updateLaunchAtLoginState(false)
+                    logger.info("Launch at login disabled")
+                } else {
+                    // Enable launch at login
+                    try service.register()
+                    updateLaunchAtLoginState(true)
+                    logger.info("Launch at login enabled")
+                }
+            } catch {
+                logger.error("Failed to toggle launch at login: \(error.localizedDescription)")
+                
+                // Show alert only if it fails
+                DispatchQueue.main.async {
+                    let alert = NSAlert()
+                    alert.messageText = "Could Not Change Launch Setting"
+                    alert.informativeText = "Please try again or change it manually in System Settings > General > Login Items"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        } else {
+            // Fallback for older macOS - just toggle the preference
+            let currentState = UserDefaults.standard.bool(forKey: "LaunchAtLogin")
+            UserDefaults.standard.set(!currentState, forKey: "LaunchAtLogin")
+            updateLaunchAtLoginState(!currentState)
+            
+            // Show message that manual setup is needed
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Launch at Login"
+                alert.informativeText = "Please add Clnbrd to Login Items manually in System Settings > General > Login Items"
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
         }
     }
     
