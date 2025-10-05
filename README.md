@@ -4,6 +4,12 @@
 
 A lightweight, menu bar utility that removes formatting from clipboard text, making it easy to paste clean text anywhere.
 
+## 📥 Download
+
+**[⬇️ Download Latest Version (Clnbrd 1.3)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3-build31.dmg)**
+
+*Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
+
 ---
 
 ## 🎯 Features
