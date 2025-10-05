@@ -4,6 +4,7 @@ import UserNotifications
 import ApplicationServices
 import os.log
 import Sparkle
+import ServiceManagement
 
 struct CustomRule: Codable {
     let find: String
@@ -1668,29 +1669,60 @@ class SettingsWindow: NSWindowController {
     }
     
     @objc func toggleLaunchAtLogin(_ sender: NSButton) {
-        let alert = NSAlert()
-        alert.messageText = "Launch at Login"
-        alert.informativeText = """
-        To enable Launch at Login:
-        
-        1. Open System Settings
-        2. Go to General → Login Items
-        3. Click the '+' button
-        4. Add Clnbrd
-        
-        Would you like to open System Settings now?
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Cancel")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!)
+        if #available(macOS 13.0, *) {
+            let service = SMAppService.mainApp
+            
+            do {
+                if service.status == .enabled {
+                    // Disable launch at login
+                    try service.unregister()
+                    sender.state = .off
+                    logger.info("Launch at login disabled")
+                } else {
+                    // Enable launch at login
+                    try service.register()
+                    sender.state = .on
+                    logger.info("Launch at login enabled")
+                }
+            } catch {
+                logger.error("Failed to toggle launch at login: \(error.localizedDescription)")
+                
+                // Show alert only if it fails
+                let alert = NSAlert()
+                alert.messageText = "Could Not Change Launch Setting"
+                alert.informativeText = "Please try again or change it manually in System Settings > General > Login Items"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+                
+                // Reset to actual state
+                sender.state = service.status == .enabled ? .on : .off
+            }
+        } else {
+            // Fallback for older macOS
+            let alert = NSAlert()
+            alert.messageText = "Launch at Login"
+            alert.informativeText = """
+            To enable Launch at Login:
+            
+            1. Open System Settings
+            2. Go to General → Login Items
+            3. Click the '+' button
+            4. Add Clnbrd
+            
+            Would you like to open System Settings now?
+            """
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "Open System Settings")
+            alert.addButton(withTitle: "Cancel")
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!)
+            }
+            
+            sender.state = .off
         }
-        
-        // Reset checkbox since we can't programmatically enable it
-        sender.state = .off
     }
     
     @objc func showSetupInstructions() {
@@ -1850,7 +1882,11 @@ class SettingsWindow: NSWindowController {
     }
     
     func isLaunchAtLoginEnabled() -> Bool {
-        return false
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        } else {
+            return UserDefaults.standard.bool(forKey: "LaunchAtLogin")
+        }
     }
     
     @objc func showAnalytics() {
