@@ -1,0 +1,146 @@
+CLNBRD INSTALLATION GUIDE
+========================
+
+Welcome to Clnbrd! This guide will help you install and set up the app properly.
+
+IMPORTANT: macOS SECURITY WARNING
+=================================
+
+When you first try to open Clnbrd, macOS will show a security warning because the app is not signed by Apple. This is normal for apps distributed outside the App Store.
+
+WHAT TO EXPECT:
+- A dialog saying "Clnbrd.app cannot be opened because it is not from an identified developer"
+- Or "Clnbrd.app was blocked from use because it is not from an identified developer"
+
+HOW TO FIX THIS:
+1. Go to System Settings (or System Preferences on older macOS)
+2. Click on "Privacy & Security"
+3. Scroll down to find "Clnbrd.app was blocked"
+4. Click "Open Anyway"
+5. Click "Open" in the confirmation dialog
+6. Clnbrd will now launch normally
+
+ALTERNATIVE METHOD (if the above doesn't work):
+1. Right-click on Clnbrd.app in Finder
+2. Select "Open" from the context menu
+3. Click "Open" in the security dialog
+4. This bypasses the security warning
+
+REQUIRED PERMISSIONS
+===================
+
+After Clnbrd launches, you'll need to grant TWO permissions:
+
+1. ACCESSIBILITY PERMISSION (Required for paste simulation)
+   ─────────────────────────────────────────────────────────
+   • Open System Settings → Privacy & Security → Accessibility
+   • Find "Clnbrd" in the list
+   • Toggle it ON
+   
+   QUICK SHORTCUT:
+   Run this command in Terminal to open directly:
+   open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+
+2. INPUT MONITORING PERMISSION (Required for hotkey detection)
+   ──────────────────────────────────────────────────────────
+   • Open System Settings → Privacy & Security → Input Monitoring
+   • Find "Clnbrd" in the list
+   • Toggle it ON
+   
+   QUICK SHORTCUT:
+   Run this command in Terminal to open directly:
+   open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+
+3. RESTART CLNBRD
+   After granting both permissions, quit and relaunch Clnbrd.
+
+WHY THESE PERMISSIONS ARE NEEDED:
+• Accessibility: Allows Clnbrd to simulate the paste (⌘V) action
+• Input Monitoring: Allows Clnbrd to detect when you press ⌘⌥V
+
+These are standard macOS security requirements for any app that
+monitors keyboard shortcuts. Even Apple's own apps require these!
+
+FEATURES
+========
+
+Clnbrd cleans your clipboard text by removing:
+• Formatting (bold, italic, colors)
+• AI watermarks (invisible characters)
+• URLs, HTML tags, extra punctuation
+• Emojis (optional)
+• Smart quotes, em-dashes, extra spaces
+• Extra line breaks and whitespace
+
+KEYBOARD SHORTCUTS:
+• ⌘⌥V - Paste cleaned text (requires accessibility permission)
+• ⌘C - Clean clipboard manually
+• ⌘, - Open settings
+• ⌘U - Check for updates
+• ⌘Q - Quit application
+
+HOW TO USE:
+• Press ⌘⌥V (Cmd+Option+V) to paste cleaned text
+• Use the menu bar icon for options
+• Enable "Auto-clean on Copy" for automatic cleaning
+• Configure cleaning rules in Settings
+
+SETTINGS & ANALYTICS
+===================
+
+Clnbrd includes optional privacy-focused analytics to help improve the app:
+
+WHAT'S TRACKED (when enabled):
+• Number of cleaning operations
+• Which cleaning methods are used most
+• Error types and frequency
+• App session count
+• Update check success/failure
+
+WHAT'S NOT TRACKED:
+• Clipboard content
+• Personal information
+• File names or paths
+• User identity
+
+PRIVACY CONTROLS:
+• Analytics enabled by default to help improve the app
+• Can be disabled anytime in Settings
+• All data stays local on your device
+• No data is sent anywhere
+• Automatic cleanup of old data (1 year)
+
+TROUBLESHOOTING
+==============
+
+If the hotkey doesn't work:
+1. Make sure Clnbrd has BOTH permissions:
+   • Accessibility ✓
+   • Input Monitoring ✓
+2. Try restarting Clnbrd
+3. Check that no other app is using the same hotkey
+
+QUICK PERMISSION CHECK:
+• Accessibility: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+• Input Monitoring: open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+
+If you get "Permission denied" errors:
+1. Make sure Clnbrd is in your Applications folder
+2. Try moving it there if it's elsewhere
+
+If you need to reset settings:
+1. Open Settings
+2. Click "View Analytics" to see usage data
+3. Click "Reset Analytics" to clear all data
+
+SUPPORT
+=======
+
+If you need help:
+• Email: olivedesignstudios@gmail.com
+• Include your macOS version and any error messages
+• Use "View Analytics" in Settings to copy usage data for support
+
+Enjoy using Clnbrd!
+- Allan Alomes
+

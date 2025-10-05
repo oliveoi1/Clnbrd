@@ -1,0 +1,187 @@
+import Cocoa
+import os.log
+import IOKit.hid
+
+private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "menubar")
+
+class MenuBarManager {
+    var statusItem: NSStatusItem!
+    var menu: NSMenu!
+    var eventMonitor: Any?
+    
+    weak var delegate: MenuBarManagerDelegate?
+    
+    func setupMenuBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem?.isVisible = true
+        
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "doc.plaintext", accessibilityDescription: "Clipboard Cleaner")
+            button.imagePosition = .imageLeft
+        }
+        
+        menu = NSMenu()
+        
+        let pasteItem = NSMenuItem(title: "Paste Cleaned (⌘⌥V)", action: #selector(cleanAndPaste), keyEquivalent: "")
+        pasteItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Paste cleaned text")
+        pasteItem.target = self
+        menu.addItem(pasteItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let cleanItem = NSMenuItem(title: "Clean Clipboard Now", action: #selector(cleanClipboardManually), keyEquivalent: "c")
+        cleanItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: "Clean clipboard")
+        cleanItem.target = self
+        menu.addItem(cleanItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let autoCleanItem = NSMenuItem(title: "Auto-clean on Copy", action: #selector(toggleAutoClean), keyEquivalent: "")
+        autoCleanItem.image = NSImage(systemSymbolName: "arrow.clockwise.circle", accessibilityDescription: "Auto-clean toggle")
+        autoCleanItem.target = self
+        autoCleanItem.state = delegate?.isAutoCleanEnabled() ?? false ? .on : .off
+        menu.addItem(autoCleanItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: "Settings")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        
+        let samplesItem = NSMenuItem(title: "View Samples", action: #selector(showSamples), keyEquivalent: "")
+        samplesItem.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "View samples")
+        samplesItem.target = self
+        menu.addItem(samplesItem)
+        
+        let versionHistoryItem = NSMenuItem(title: "Version History", action: #selector(showVersionHistory), keyEquivalent: "")
+        versionHistoryItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Version history")
+        versionHistoryItem.target = self
+        menu.addItem(versionHistoryItem)
+        
+        let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(checkForUpdatesManually), keyEquivalent: "u")
+        updateItem.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Check for updates")
+        updateItem.target = self
+        menu.addItem(updateItem)
+        
+        let reportItem = NSMenuItem(title: "Report Issue", action: #selector(reportIssue), keyEquivalent: "")
+        reportItem.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Report issue")
+        reportItem.target = self
+        menu.addItem(reportItem)
+        
+        let guideItem = NSMenuItem(title: "Installation Guide", action: #selector(showInstallationGuide), keyEquivalent: "")
+        guideItem.image = NSImage(systemSymbolName: "book", accessibilityDescription: "Installation guide")
+        guideItem.target = self
+        menu.addItem(guideItem)
+        
+        let aboutItem = NSMenuItem(title: "About Clnbrd", action: #selector(openAbout), keyEquivalent: "")
+        aboutItem.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "About")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        
+        statusItem?.menu = menu
+        
+        logger.info("Menu bar setup completed")
+    }
+    
+    func registerHotKey() {
+        logger.info("🔍 Starting hotkey registration...")
+        
+        // Check if we have Input Monitoring permission
+        let hasInputMonitoring = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
+        logger.info("🔍 Input Monitoring permission: \(hasInputMonitoring == kIOHIDAccessTypeGranted ? "GRANTED" : "NOT GRANTED")")
+        
+        // Request Input Monitoring permission if not granted
+        if hasInputMonitoring != kIOHIDAccessTypeGranted {
+            logger.warning("⚠️ Input Monitoring not granted, requesting...")
+            _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        }
+        
+        // Use Cmd+Option+V to avoid conflicts with Chrome's Cmd+Shift+V
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.modifierFlags.contains([.command, .option]) && event.keyCode == 9 {
+                logger.info("🎯 ⌘⌥V detected! Triggering hotkey...")
+                DispatchQueue.main.async {
+                    self?.delegate?.hotkeyTriggered()
+                }
+            }
+        }
+        
+        logger.info("Hotkey registered: ⌘⌥V")
+        logger.info("🔍 Hotkey registration completed - eventMonitor: \(self.eventMonitor != nil)")
+    }
+    
+    func updateAutoCleanState(_ enabled: Bool) {
+        if let menuItem = menu.item(withTitle: "Auto-clean on Copy") {
+            menuItem.state = enabled ? .on : .off
+        }
+    }
+    
+    @objc func cleanAndPaste() {
+        SentryManager.shared.trackUserAction("hotkey_paste_triggered")
+        delegate?.cleanAndPasteRequested()
+    }
+    
+    @objc func cleanClipboardManually() {
+        SentryManager.shared.trackUserAction("manual_clean_triggered")
+        delegate?.cleanClipboardRequested()
+    }
+    
+    @objc func toggleAutoClean() {
+        SentryManager.shared.trackUserAction("auto_clean_toggled")
+        delegate?.toggleAutoCleanRequested()
+    }
+    
+    @objc func openSettings() {
+        SentryManager.shared.trackUserAction("settings_opened")
+        delegate?.openSettingsRequested()
+    }
+    
+    @objc func checkForUpdatesManually() {
+        SentryManager.shared.trackUserAction("manual_update_check")
+        delegate?.checkForUpdatesRequested()
+    }
+    
+    @objc func showInstallationGuide() {
+        SentryManager.shared.trackUserAction("installation_guide_opened")
+        delegate?.showInstallationGuideRequested()
+    }
+    
+    @objc func reportIssue() {
+        SentryManager.shared.trackUserAction("report_issue_opened")
+        delegate?.reportIssueRequested()
+    }
+    
+    @objc func openAbout() {
+        SentryManager.shared.trackUserAction("about_opened")
+        delegate?.openAboutRequested()
+    }
+    
+    @objc func showSamples() {
+        SentryManager.shared.trackUserAction("samples_opened")
+        delegate?.showSamplesRequested()
+    }
+    
+    @objc func showVersionHistory() {
+        SentryManager.shared.trackUserAction("version_history_opened")
+        delegate?.showVersionHistoryRequested()
+    }
+}
+
+protocol MenuBarManagerDelegate: AnyObject {
+    func hotkeyTriggered()
+    func cleanAndPasteRequested()
+    func cleanClipboardRequested()
+    func toggleAutoCleanRequested()
+    func openSettingsRequested()
+    func checkForUpdatesRequested()
+    func reportIssueRequested()
+    func showInstallationGuideRequested()
+    func openAboutRequested()
+    func showSamplesRequested()
+    func showVersionHistoryRequested()
+    func isAutoCleanEnabled() -> Bool
+}

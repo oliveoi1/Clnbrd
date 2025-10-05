@@ -44,7 +44,7 @@ playground.xcworkspace
 Packages/
 Package.pins
 Package.resolved
-*.xcodeproj
+# Note: We DO want to track our Xcode project, so NOT ignoring *.xcodeproj
 
 # CocoaPods
 Pods/
@@ -98,4 +98,11 @@ Distribution/
 BUILD_*.txt
 CURRENT_*.md
 RESTART_*.md
+
+# Backup folders and other projects
+Backups/
+CleanPaste/
+
+# Workspace files
+*.code-workspace
 

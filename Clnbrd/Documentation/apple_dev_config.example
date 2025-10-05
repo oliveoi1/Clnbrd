@@ -1,0 +1,19 @@
+# Apple Developer Configuration
+# Copy this file to .env and fill in your actual values
+# DO NOT commit .env to version control!
+
+# Your Apple ID email
+APPLE_ID="your-apple-id@example.com"
+
+# App-specific password (not your Apple ID password)
+# Generate this at: https://appleid.apple.com/account/manage
+APPLE_PASSWORD="your-app-specific-password"
+
+# Your Team ID (found in Apple Developer Portal)
+TEAM_ID="YOUR_TEAM_ID"
+
+# Instructions:
+# 1. Copy this file: cp apple_dev_config.example .env
+# 2. Edit .env with your actual values
+# 3. Run: source .env before building
+# 4. Never commit .env to git!
