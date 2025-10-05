@@ -6,13 +6,17 @@ struct VersionManager {
     
     // MARK: - Version Information
     
-    /// App version string (e.g., "1.3")
-    static let version: String = "1.3"
+    /// App version string - reads from Info.plist
+    static var version: String {
+        return Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3"
+    }
 
-    /// Build number string (e.g., "3")
-    static let buildNumber: String = "29"
+    /// Build number string - reads from Info.plist
+    static var buildNumber: String {
+        return Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+    }
     
-    /// Full version string (e.g., "1.3 (Build 3)")
+    /// Full version string (e.g., "1.3 (Build 31)")
     static var fullVersion: String {
         return "\(version) (Build \(buildNumber))"
     }
