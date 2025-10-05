@@ -3,6 +3,7 @@ import Carbon
 import UserNotifications
 import ApplicationServices
 import os.log
+import Sparkle
 
 struct CustomRule: Codable {
     let find: String
@@ -158,8 +159,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Managers
     private let clipboardManager = ClipboardManager()
     private let menuBarManager = MenuBarManager()
-    private let updateChecker = UpdateChecker()
     private let preferencesManager = PreferencesManager.shared
+    
+    // Sparkle updater
+    private let updaterController: SPUStandardUpdaterController
+    
+    override init() {
+        // Initialize Sparkle updater
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        super.init()
+    }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize crash reporting first
@@ -181,7 +190,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Setup managers
         menuBarManager.delegate = self
-        updateChecker.delegate = self
         
         // Initialize UI
         menuBarManager.setupMenuBar()
@@ -196,14 +204,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         checkAccessibilityPermissions()
         checkPostUpdatePermissions()
         
-        // Check for updates automatically on launch (with delay to avoid blocking startup)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            self?.checkForUpdates()
-        }
-        
-        // Set up periodic update checking (every 24 hours)
-        setupPeriodicUpdateChecking()
-        
         // Set up notification delegate for handling push notifications
         UNUserNotificationCenter.current().delegate = self
         
@@ -212,10 +212,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             clipboardManager.startClipboardMonitoring()
         }
         
-        // Check for updates after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            self?.updateChecker.checkForUpdates()
-        }
+        // Sparkle will handle update checking automatically based on Info.plist settings
+        logger.info("Sparkle updater initialized - automatic updates enabled")
     }
     
     func checkAccessibilityPermissions() {
@@ -1234,25 +1232,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    func setupPeriodicUpdateChecking() {
-        // Create a timer that checks for updates every 24 hours
-        let timer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
-            self?.checkForUpdates()
-        }
-        
-        // Store the timer so it doesn't get deallocated
-        RunLoop.current.add(timer, forMode: .common)
-        
-        // Also check when the app becomes active (user switches back to it)
-        NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            // Check for updates when app becomes active (but respect rate limiting)
-            self?.checkForUpdates()
-        }
-    }
+    // Sparkle handles periodic update checking automatically based on Info.plist
 }
 
 // MARK: - UNUserNotificationCenterDelegate
@@ -2045,8 +2025,8 @@ extension AppDelegate: MenuBarManagerDelegate {
     }
     
     func checkForUpdatesRequested() {
-        showNotification(title: "Checking for Updates", message: "Looking for the latest version...")
-        updateChecker.checkForUpdates()
+        // Use Sparkle's updater to check for updates
+        updaterController.updater.checkForUpdates()
     }
     
     func reportIssueRequested() {
@@ -2233,24 +2213,7 @@ extension AppDelegate: MenuBarManagerDelegate {
     }
 }
 
-// MARK: - UpdateCheckerDelegate
-
-extension AppDelegate: UpdateCheckerDelegate {
-    func updateAvailable(currentVersion: String, latestVersion: String, downloadUrl: String, releaseNotes: String) {
-        // Use the modern update dialog instead of the deprecated alert
-        showUpdateAvailableDialog(currentVersion: currentVersion, latestVersion: latestVersion, downloadUrl: downloadUrl, releaseNotes: releaseNotes)
-    }
-    
-    func updateCheckCompleted(isUpToDate: Bool) {
-        if isUpToDate {
-            showNotification(title: "Up to Date", message: "You're running the latest version of Clnbrd!")
-        }
-    }
-    
-    func updateCheckFailed(message: String) {
-        showNotification(title: "Update Check Failed", message: message)
-    }
-}
+// Sparkle handles update checking and notifications automatically
 
 extension SettingsWindow: NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {

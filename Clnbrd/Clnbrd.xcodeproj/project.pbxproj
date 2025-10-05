@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EB8F84F22E92EA3800705AFA /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EB8F84F12E92EA3800705AFA /* Sparkle */; };
 		EBE9C75B2E90BD4B00E621A6 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = EBE9C75A2E90BD4B00E621A6 /* Sentry */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBE9C75B2E90BD4B00E621A6 /* Sentry in Frameworks */,
+				EB8F84F22E92EA3800705AFA /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = Clnbrd;
 			packageProductDependencies = (
 				EBE9C75A2E90BD4B00E621A6 /* Sentry */,
+				EB8F84F12E92EA3800705AFA /* Sparkle */,
 			);
 			productName = Clnbrd;
 			productReference = EBAFB7B72E8EC59B00EFF86B /* Clnbrd.app */;
@@ -103,6 +106,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				EBE9C7592E90BC2100E621A6 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+				EB8F84F02E92EA3800705AFA /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EBAFB7B82E8EC59B00EFF86B /* Products */;
@@ -374,6 +378,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		EB8F84F02E92EA3800705AFA /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.0;
+			};
+		};
 		EBE9C7592E90BC2100E621A6 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
@@ -385,6 +397,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		EB8F84F12E92EA3800705AFA /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB8F84F02E92EA3800705AFA /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		EBE9C75A2E90BD4B00E621A6 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = EBE9C7592E90BC2100E621A6 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;

@@ -32,5 +32,17 @@
 	<string>Clnbrd needs input monitoring permissions to paste cleaned text when you use the ⌘⌥V hotkey. This allows the app to simulate keyboard input for pasting.</string>
 	<key>NSUserNotificationAlertStyle</key>
 	<string>alert</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>E94fSkBwZDl/oMFhBQPz0szRlg3kCw5I9yP91GyaVGk=</string>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
 </dict>
 </plist>
