@@ -1,0 +1,29 @@
+Clnbrd Installation Instructions
+================================
+
+Welcome to Clnbrd - Professional Clipboard Cleaning for macOS!
+
+INSTALLATION:
+1. Drag the "Clnbrd.app" icon to the "Applications" folder
+2. Eject this disk image
+3. Launch Clnbrd from your Applications folder
+
+FIRST RUN:
+- Clnbrd will appear in your menu bar
+- Click the Clnbrd icon to access settings and features
+- Grant accessibility permissions when prompted for full functionality
+
+FEATURES:
+- Automatic clipboard cleaning
+- Customizable cleaning rules
+- Hotkey support
+- Menu bar integration
+- Analytics and error reporting
+
+SUPPORT:
+If you encounter any issues, please contact support with:
+- macOS version
+- Error messages (if any)
+- Steps to reproduce the issue
+
+Thank you for using Clnbrd!

@@ -2183,10 +2183,23 @@ extension AppDelegate: MenuBarManagerDelegate {
         copyrightLabel.alignment = .center
         stackView.addArrangedSubview(copyrightLabel)
         
+        // Buttons container
+        let buttonStack = NSStackView()
+        buttonStack.orientation = .horizontal
+        buttonStack.spacing = 12
+        buttonStack.distribution = .fillEqually
+        
+        // Website button
+        let websiteButton = NSButton(title: "Website", target: self, action: #selector(openWebsite))
+        websiteButton.bezelStyle = .rounded
+        buttonStack.addArrangedSubview(websiteButton)
+        
         // Support button
         let supportButton = NSButton(title: "Support", target: self, action: #selector(openSupport))
         supportButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(supportButton)
+        buttonStack.addArrangedSubview(supportButton)
+        
+        stackView.addArrangedSubview(buttonStack)
         
         aboutWindow.contentView = stackView
         aboutWindow.makeKeyAndOrderFront(nil)
@@ -2194,6 +2207,12 @@ extension AppDelegate: MenuBarManagerDelegate {
         
         // Store reference to prevent deallocation
         self.aboutWindow = aboutWindow
+    }
+    
+    @objc func openWebsite() {
+        if let url = URL(string: "https://github.com/oliveoi1/Clnbrd") {
+            NSWorkspace.shared.open(url)
+        }
     }
     
     @objc func openSupport() {
