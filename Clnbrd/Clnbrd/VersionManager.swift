@@ -34,8 +34,8 @@ struct VersionManager {
     
     // MARK: - Configuration
     
-    /// URL for checking updates
-    static let versionCheckURL = "https://naturalpod-downloads.s3.us-west-2.amazonaws.com/clnbrd-version.json"
+    /// URL for checking updates (hosted on GitHub)
+    static let versionCheckURL = "https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/version.json"
     
     // MARK: - Version Comparison
     
