@@ -46,10 +46,14 @@ class UpdateChecker {
                 
                 do {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let latestVersion = json["version"] as? String,
-                       let downloadUrl = json["download_url"] as? String,
-                       let releaseNotes = json["release_notes"] as? String {
+                       let tagName = json["tag_name"] as? String,
+                       let releaseNotes = json["body"] as? String,
+                       let assets = json["assets"] as? [[String: Any]],
+                       let firstAsset = assets.first,
+                       let downloadUrl = firstAsset["browser_download_url"] as? String {
                         
+                        // Strip "v" prefix from tag name (v1.3 -> 1.3)
+                        let latestVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
                         let currentVersion = VersionManager.version
                         let skippedVersion = UserDefaults.standard.string(forKey: "SkippedVersion")
                         
@@ -69,7 +73,7 @@ class UpdateChecker {
                             self.delegate?.updateCheckCompleted(isUpToDate: true)
                         }
                     } else {
-                        logger.error("Missing required fields in JSON")
+                        logger.error("Missing required fields in GitHub API response")
                         self.delegate?.updateCheckFailed(message: "Invalid version information received.")
                     }
                     } catch {

@@ -34,8 +34,8 @@ struct VersionManager {
     
     // MARK: - Configuration
     
-    /// URL for checking updates (hosted on GitHub)
-    static let versionCheckURL = "https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/version.json"
+    /// URL for checking updates (GitHub Releases API)
+    static let versionCheckURL = "https://api.github.com/repos/oliveoi1/Clnbrd/releases/latest"
     
     // MARK: - Version Comparison
     
