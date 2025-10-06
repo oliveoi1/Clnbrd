@@ -86,7 +86,7 @@ class CleaningRuleConfigurations {
             case .removeZeroWidthChars: return "Removes invisible Unicode characters"
             case .normalizeLineBreaks: return "Standardizes line endings"
             case .removeTrailingSpaces: return "Removes spaces at end of lines"
-            case .convertSmartQuotes: return "Converts " " ' ' to regular quotes"
+            case .convertSmartQuotes: return "Converts smart quotes to regular quotes"
             case .removeEmojis: return "Strips all emoji characters"
             case .removeExtraLineBreaks: return "Removes blank lines"
             case .removeLeadingTrailingWhitespace: return "Trims start and end whitespace"
