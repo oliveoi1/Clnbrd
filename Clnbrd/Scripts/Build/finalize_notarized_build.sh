@@ -143,7 +143,7 @@ echo -e "${GREEN}✅ Version JSON created!${NC}"
 
 # Update appcast.xml
 echo -e "${YELLOW}📡 Updating appcast.xml...${NC}"
-APPCAST_FILE="../../appcast.xml"
+APPCAST_FILE="../appcast.xml"
 DMG_FILE_SIZE=$(stat -f%z "${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg")
 PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
 
@@ -253,7 +253,7 @@ echo -e "${YELLOW}Distribution Files Created:${NC}"
 echo -e "  • DMG: ${DMG_SIZE} - ${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg"
 echo -e "  • ZIP: ${ZIP_SIZE} - ${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}-Notarized.zip"
 echo -e "  • JSON: ${BUILD_DIR}/Upload/clnbrd-version.json"
-echo -e "  • Appcast: ../../appcast.xml (updated)"
+echo -e "  • Appcast: ../appcast.xml (updated)"
 echo ""
 echo -e "${YELLOW}Next Steps:${NC}"
 echo -e "  1. 📡 Review & commit appcast.xml changes"
