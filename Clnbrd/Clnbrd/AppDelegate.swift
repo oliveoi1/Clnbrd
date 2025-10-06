@@ -201,7 +201,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("🔍 ClipboardManager initialized: true")
         
         // TEST: URL Tracking Cleaner
-        testURLCleaning()
+        // testURLCleaning() // Tests passed! Commented out for production
         
         // Check permissions and first launch
         checkFirstLaunch()
