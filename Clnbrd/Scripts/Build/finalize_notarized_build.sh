@@ -141,6 +141,72 @@ EOF
 
 echo -e "${GREEN}✅ Version JSON created!${NC}"
 
+# Update appcast.xml
+echo -e "${YELLOW}📡 Updating appcast.xml...${NC}"
+APPCAST_FILE="../../appcast.xml"
+DMG_FILE_SIZE=$(stat -f%z "${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg")
+PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
+
+# Create new item entry
+NEW_ITEM=$(cat <<APPCAST_ITEM
+        <item>
+            <title>Version ${VERSION} (Build ${BUILD_NUMBER}) - ✅ Fully Notarized by Apple</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v${VERSION}-build${BUILD_NUMBER}</link>
+            <sparkle:version>${BUILD_NUMBER}</sparkle:version>
+            <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>🎉 Build ${BUILD_NUMBER} - Fully Notarized by Apple!</h2>
+                <ul>
+                    <li>✅ <strong>Fully Notarized by Apple</strong> - No security warnings!</li>
+                    <li>🔐 Code Signed with Developer ID - Verified and secure</li>
+                    <li>🎯 ⌘⌥V Hotkey - Paste cleaned text instantly</li>
+                    <li>🤖 Auto-clean on Copy - Automatically strip formatting</li>
+                    <li>📋 Menu Bar Integration - Quick access from your Mac</li>
+                    <li>🧹 Format Removal - Strips all formatting, styles, and metadata</li>
+                    <li>🚀 Performance Monitoring - Built-in memory and CPU optimization</li>
+                    <li>🔄 Error Recovery - Automatic recovery from clipboard issues</li>
+                    <li>📊 Privacy-focused Analytics - Track usage patterns</li>
+                    <li>⚡ Auto-updates - Seamless future updates</li>
+                </ul>
+                <p><strong>This is a fully notarized release approved by Apple's security team!</strong></p>
+            ]]></description>
+            <pubDate>${PUB_DATE}</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v${VERSION}-build${BUILD_NUMBER}/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg" 
+                sparkle:version="${BUILD_NUMBER}" 
+                sparkle:shortVersionString="${VERSION}" 
+                length="${DMG_FILE_SIZE}"
+                type="application/octet-stream"
+            />
+        </item>
+        
+APPCAST_ITEM
+)
+
+# Insert new item after the opening <channel> tag
+if [ -f "${APPCAST_FILE}" ]; then
+    # Create backup
+    cp "${APPCAST_FILE}" "${APPCAST_FILE}.bak"
+    
+    # Use awk to insert the new item after <language>en</language>
+    awk -v new_item="$NEW_ITEM" '
+    /<language>en<\/language>/ {
+        print
+        print ""
+        print new_item
+        next
+    }
+    { print }
+    ' "${APPCAST_FILE}.bak" > "${APPCAST_FILE}"
+    
+    echo -e "${GREEN}✅ Appcast updated with Build ${BUILD_NUMBER}!${NC}"
+    echo -e "${BLUE}   File: ${APPCAST_FILE}${NC}"
+    echo -e "${YELLOW}   ⚠️  Note: EdDSA signature not included (see ROADMAP.md)${NC}"
+else
+    echo -e "${RED}❌ Warning: appcast.xml not found at ${APPCAST_FILE}${NC}"
+    echo -e "${YELLOW}   Skipping appcast update...${NC}"
+fi
+
 # Create GitHub release instructions
 cat > "${BUILD_DIR}/GITHUB_RELEASE_INSTRUCTIONS.txt" <<EOF
 GitHub Release Instructions for Build ${BUILD_NUMBER}
@@ -150,6 +216,7 @@ Files to Upload:
 1. DMG: Distribution/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg
 2. ZIP: Distribution/Upload/Clnbrd-Build${BUILD_NUMBER}-Notarized.zip
 3. JSON: Distribution/Upload/clnbrd-version.json
+4. Appcast: appcast.xml (auto-updated)
 
 Command to create release:
 --------------------------
@@ -161,7 +228,8 @@ gh release create v${VERSION}-build${BUILD_NUMBER} \\
   --latest \\
   Clnbrd/Distribution/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg \\
   Clnbrd/Distribution/Upload/Clnbrd-Build${BUILD_NUMBER}-Notarized.zip \\
-  Clnbrd/Distribution/Upload/clnbrd-version.json
+  Clnbrd/Distribution/Upload/clnbrd-version.json \\
+  appcast.xml
 
 Or to update existing release:
 ------------------------------
@@ -169,6 +237,7 @@ gh release upload v${VERSION}-build${BUILD_NUMBER} \\
   Clnbrd/Distribution/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg \\
   Clnbrd/Distribution/Upload/Clnbrd-Build${BUILD_NUMBER}-Notarized.zip \\
   Clnbrd/Distribution/Upload/clnbrd-version.json \\
+  appcast.xml \\
   --clobber
 EOF
 
@@ -184,9 +253,11 @@ echo -e "${YELLOW}Distribution Files Created:${NC}"
 echo -e "  • DMG: ${DMG_SIZE} - ${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg"
 echo -e "  • ZIP: ${ZIP_SIZE} - ${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}-Notarized.zip"
 echo -e "  • JSON: ${BUILD_DIR}/Upload/clnbrd-version.json"
+echo -e "  • Appcast: ../../appcast.xml (updated)"
 echo ""
-echo -e "${YELLOW}Next Step:${NC}"
-echo -e "  📤 Upload to GitHub using instructions in:"
+echo -e "${YELLOW}Next Steps:${NC}"
+echo -e "  1. 📡 Review & commit appcast.xml changes"
+echo -e "  2. 📤 Upload to GitHub using instructions in:"
 echo -e "     ${BUILD_DIR}/GITHUB_RELEASE_INSTRUCTIONS.txt"
 echo ""
 
