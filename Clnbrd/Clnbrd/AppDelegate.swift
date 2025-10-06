@@ -200,6 +200,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("🔍 App initialized - MenuBarManager delegate: \(self.menuBarManager.delegate != nil)")
         logger.info("🔍 ClipboardManager initialized: true")
         
+        // TEST: URL Tracking Cleaner
+        testURLCleaning()
+        
         // Check permissions and first launch
         checkFirstLaunch()
         checkAccessibilityPermissions()
@@ -2263,6 +2266,99 @@ extension AppDelegate: MenuBarManagerDelegate {
     
     func showSamplesRequested() {
         showSamples()
+    }
+    
+    // MARK: - URL Tracking Cleaner Test
+    
+    func testURLCleaning() {
+        print("\n" + String(repeating: "=", count: 60))
+        print("🧪 URL TRACKING CLEANER TEST")
+        print(String(repeating: "=", count: 60) + "\n")
+        
+        let tests = [
+            (
+                name: "YouTube",
+                url: "https://youtu.be/dQw4w9WgXcQ?si=ABC123tracking",
+                expected: "https://youtu.be/dQw4w9WgXcQ"
+            ),
+            (
+                name: "Amazon",
+                url: "https://www.amazon.com/product/B08N5WRWNW/ref=sr_1_1?crid=ABC&sr=8-1",
+                expected: "https://www.amazon.com/product/B08N5WRWNW"
+            ),
+            (
+                name: "Spotify",
+                url: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp?si=abc123",
+                expected: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp"
+            ),
+            (
+                name: "Google",
+                url: "https://www.google.com/search?q=test&gs_lcrp=abc&ved=123",
+                expected: "https://www.google.com/search?q=test"
+            ),
+            (
+                name: "Instagram",
+                url: "https://www.instagram.com/p/ABC123/?igsh=xyz789",
+                expected: "https://www.instagram.com/p/ABC123/"
+            ),
+            (
+                name: "Twitter",
+                url: "https://x.com/user/status/123?s=20&t=abc123",
+                expected: "https://x.com/user/status/123"
+            ),
+            (
+                name: "UTM Tracking",
+                url: "https://example.com/?utm_source=twitter&utm_campaign=spring&fbclid=123",
+                expected: "https://example.com/"
+            )
+        ]
+        
+        var passed = 0
+        var failed = 0
+        
+        for test in tests {
+            let result = URLTrackingCleaner.cleanURL(test.url)
+            let success = result == test.expected
+            
+            if success {
+                print("✅ \(test.name)")
+                print("   Input:  \(test.url)")
+                print("   Output: \(result)")
+                passed += 1
+            } else {
+                print("❌ \(test.name) FAILED")
+                print("   Input:    \(test.url)")
+                print("   Expected: \(test.expected)")
+                print("   Got:      \(result)")
+                failed += 1
+            }
+            print("")
+        }
+        
+        // Test cleaning multiple URLs in text
+        let textWithURLs = """
+        Check out: https://youtu.be/dQw4w9WgXcQ?si=tracking
+        And buy: https://www.amazon.com/product/B08N5WRWNW/ref=sr_1_1?crid=ABC
+        """
+        
+        let cleanedText = URLTrackingCleaner.cleanURLsInText(textWithURLs)
+        let hasTracking = cleanedText.contains("?si=") || cleanedText.contains("/ref=")
+        
+        if !hasTracking {
+            print("✅ Multiple URLs in Text")
+            print("   Cleaned successfully!")
+            passed += 1
+        } else {
+            print("❌ Multiple URLs in Text FAILED")
+            print("   Still contains tracking")
+            failed += 1
+        }
+        
+        print("\n" + String(repeating: "=", count: 60))
+        print("RESULTS: \(passed) passed, \(failed) failed")
+        print(String(repeating: "=", count: 60) + "\n")
+        
+        logger.info("URL Tracking Cleaner tests completed: \(passed) passed, \(failed) failed")
     }
     
     func showVersionHistoryRequested() {
