@@ -142,7 +142,7 @@ open Clnbrd/Clnbrd.xcodeproj
 
 ## 📋 Version History
 
-### v1.3 (Build 33) - Current
+### v1.3 (35) (Build 35) - Current
 - Apple Developer ID properly configured
 - App ID registered: com.allanray.Clnbrd
 - Team ID verified: 58Y8VPZ7JG
