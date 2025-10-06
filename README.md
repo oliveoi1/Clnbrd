@@ -6,25 +6,15 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 
 ## 📥 Download
 
-**[⬇️ Download Latest Version (Clnbrd 1.3)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3-build31.dmg)**
+**[⬇️ Download Latest Version (Clnbrd 1.3 Build 33)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3-Build-33-Notarized.dmg)**
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
-### ⚠️ Important: macOS Security Notice
+### ✅ Fully Notarized by Apple
 
-Since this app is not yet notarized by Apple, you'll need to bypass Gatekeeper:
+This app is **officially notarized by Apple** and will install without any security warnings. Just download, open the DMG, and drag to Applications!
 
-1. **Download the DMG** and try to open it
-2. If macOS blocks it with **"cannot be opened because it is from an unidentified developer"**:
-   - **Right-click** (or Control-click) on the DMG file
-   - Select **"Open"** from the menu
-   - Click **"Open"** in the dialog that appears
-3. Alternatively, if already moved to Applications:
-   - Go to **System Settings → Privacy & Security**
-   - Scroll down to find **"Clnbrd was blocked..."**
-   - Click **"Open Anyway"**
-
-**Note:** This security prompt will be removed in future notarized releases.
+**No bypassing Gatekeeper required** - it's signed with a Developer ID and approved by Apple's notarization service.
 
 ---
 
@@ -142,13 +132,15 @@ open Clnbrd/Clnbrd.xcodeproj
 
 ## 📋 Version History
 
-### v1.3 (Build 33) - Current
+### v1.3 (Build 33) - Current ✅ Notarized
+- **✅ Fully Notarized by Apple** - Approved October 6, 2025
 - Apple Developer ID properly configured
 - App ID registered: com.allanray.Clnbrd
 - Team ID verified: 58Y8VPZ7JG
 - All certificates valid and installed
 - Code signing with Developer ID Application
-- Submitted for notarization (in progress)
+- Stapled notarization ticket for offline verification
+- Passes Gatekeeper without warnings
 - Enhanced error recovery
 - Performance monitoring
 - Sentry integration
