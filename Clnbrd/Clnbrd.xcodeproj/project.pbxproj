@@ -15,12 +15,25 @@
 		EBAFB7B72E8EC59B00EFF86B /* Clnbrd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Clnbrd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+	EBAFB7E02E8EC60000EFF86B /* Exceptions for "Clnbrd" folder in "Copy Bundle Resources" phase from "Clnbrd" target */ = {
+		isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+		membershipExceptions = (
+			Info.plist,
+		);
+		target = EBAFB7B62E8EC59B00EFF86B /* Clnbrd */;
+	};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EBAFB7B92E8EC59B00EFF86B /* Clnbrd */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Clnbrd;
-			sourceTree = "<group>";
-		};
+	EBAFB7B92E8EC59B00EFF86B /* Clnbrd */ = {
+		isa = PBXFileSystemSynchronizedRootGroup;
+		exceptions = (
+			EBAFB7E02E8EC60000EFF86B /* Exceptions for "Clnbrd" folder in "Copy Bundle Resources" phase from "Clnbrd" target */,
+		);
+		path = Clnbrd;
+		sourceTree = "<group>";
+	};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
