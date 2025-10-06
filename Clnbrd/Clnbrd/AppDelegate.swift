@@ -1458,7 +1458,7 @@ class SettingsWindow: NSWindowController {
         NSLayoutConstraint.activate([spacer1.heightAnchor.constraint(equalToConstant: 10)])
         
         // NEW: Granular Rule Configuration Section
-        // TODO: Uncomment after adding EnhancedSettingsUI.swift to Xcode project
+        // TODO: Fix runtime crash in setupGranularRulesSection
         // setupGranularRulesSection(in: stackView)
         
         let spacer1b = NSView()
