@@ -2,7 +2,7 @@
 
 **Clean clipboard text tool for macOS**
 
-A lightweight, menu bar utility that removes formatting from clipboard text, making it easy to paste clean text anywhere.
+A lightweight, menu bar utility that removes formatting from clipboard text (including hidden Chat GPT watermarks), making it easy to paste clean text anywhere.
 
 ## 📥 Download
 
