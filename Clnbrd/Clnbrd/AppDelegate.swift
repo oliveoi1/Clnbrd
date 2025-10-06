@@ -159,7 +159,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // Managers
     private let clipboardManager = ClipboardManager()
-    private let menuBarManager = MenuBarManager()
+    let menuBarManager = MenuBarManager()  // Internal access for SettingsWindow
     private let preferencesManager = PreferencesManager.shared
     
     // Sparkle updater
@@ -1677,13 +1677,17 @@ class SettingsWindow: NSWindowController {
                     // Disable launch at login
                     try service.unregister()
                     sender.state = .off
-                    menuBarManager.updateLaunchAtLoginState(false)
+                    if let appDelegate = NSApp.delegate as? AppDelegate {
+                        appDelegate.menuBarManager.updateLaunchAtLoginState(false)
+                    }
                     logger.info("Launch at login disabled")
                 } else {
                     // Enable launch at login
                     try service.register()
                     sender.state = .on
-                    menuBarManager.updateLaunchAtLoginState(true)
+                    if let appDelegate = NSApp.delegate as? AppDelegate {
+                        appDelegate.menuBarManager.updateLaunchAtLoginState(true)
+                    }
                     logger.info("Launch at login enabled")
                 }
             } catch {
