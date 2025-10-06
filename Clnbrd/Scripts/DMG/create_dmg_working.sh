@@ -9,7 +9,7 @@ set -e
 APP_NAME="Clnbrd"
 APP_VERSION="1.3"
 DMG_NAME="Clnbrd-${APP_VERSION}"
-DMG_FINAL_NAME="${DMG_NAME}.dmg"
+DMG_FINAL_NAME="${DMG_NAME}"
 VOLUME_NAME="Clnbrd Installer"
 APP_PATH="../.././Distribution/App/Clnbrd.app"
 
