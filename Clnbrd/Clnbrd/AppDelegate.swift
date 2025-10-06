@@ -1372,6 +1372,11 @@ class CleaningRules {
             cleaned = lines.map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
         }
         
+        // Clean tracking from URLs FIRST (before potentially removing them)
+        if cleanURLTracking {
+            cleaned = URLTrackingCleaner.cleanURLsInText(cleaned)
+        }
+        
         if removeUrls {
             // Remove URLs (http, https, ftp, www)
             cleaned = cleaned.replacingOccurrences(of: "https?://[^\\s]+", with: "", options: .regularExpression)
@@ -1391,11 +1396,6 @@ class CleaningRules {
             cleaned = cleaned.replacingOccurrences(of: "([.!?]){2,}", with: "$1", options: .regularExpression)
             cleaned = cleaned.replacingOccurrences(of: "([,;:]){2,}", with: "$1", options: .regularExpression)
             cleaned = cleaned.replacingOccurrences(of: "([-]){3,}", with: "---", options: .regularExpression)
-        }
-        
-        // Clean tracking from URLs
-        if cleanURLTracking {
-            cleaned = URLTrackingCleaner.cleanURLsInText(cleaned)
         }
         
         return cleaned
