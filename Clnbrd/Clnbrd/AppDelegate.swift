@@ -1403,7 +1403,7 @@ class SettingsWindow: NSWindowController {
         self.cleaningRules = cleaningRules
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 550),
+            contentRect: NSRect(x: 0, y: 0, width: 650, height: 800),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -1411,7 +1411,7 @@ class SettingsWindow: NSWindowController {
         window.title = "Clnbrd Settings"
         window.center()
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 500, height: 400)
+        window.minSize = NSSize(width: 600, height: 600)
         
         super.init(window: window)
         
@@ -1456,6 +1456,14 @@ class SettingsWindow: NSWindowController {
         spacer1.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(spacer1)
         NSLayoutConstraint.activate([spacer1.heightAnchor.constraint(equalToConstant: 10)])
+        
+        // NEW: Granular Rule Configuration Section
+        setupGranularRulesSection(in: stackView)
+        
+        let spacer1b = NSView()
+        spacer1b.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(spacer1b)
+        NSLayoutConstraint.activate([spacer1b.heightAnchor.constraint(equalToConstant: 10)])
         
         let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
         launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
