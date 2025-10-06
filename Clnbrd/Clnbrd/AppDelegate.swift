@@ -1283,6 +1283,9 @@ class CleaningRules {
     var removeHtmlTags = true
     var removeExtraPunctuation = true
     
+    // URL Cleaning
+    var cleanURLTracking = true
+    
     var customRules: [CustomRule] = []
     
     func apply(to text: String) -> String {
@@ -1390,6 +1393,11 @@ class CleaningRules {
             cleaned = cleaned.replacingOccurrences(of: "([-]){3,}", with: "---", options: .regularExpression)
         }
         
+        // Clean tracking from URLs
+        if cleanURLTracking {
+            cleaned = URLTrackingCleaner.cleanURLsInText(cleaned)
+        }
+        
         return cleaned
     }
 }
@@ -1456,6 +1464,16 @@ class SettingsWindow: NSWindowController {
         spacer1.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(spacer1)
         NSLayoutConstraint.activate([spacer1.heightAnchor.constraint(equalToConstant: 10)])
+        
+        // Add section header for URL cleaning
+        stackView.addArrangedSubview(createSectionHeader("🔗 URL Cleaning"))
+        
+        stackView.addArrangedSubview(createCheckbox(title: "Clean tracking from URLs (UTM, fbclid, affiliate links)", tooltip: "Removes tracking parameters from YouTube, Amazon, Instagram, Twitter, etc.", isOn: cleaningRules.cleanURLTracking, tag: 12))
+        
+        let spacer1a = NSView()
+        spacer1a.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(spacer1a)
+        NSLayoutConstraint.activate([spacer1a.heightAnchor.constraint(equalToConstant: 10)])
         
         // NEW: Granular Rule Configuration Section
         // TODO: Fix runtime crash in setupGranularRulesSection
@@ -1673,6 +1691,7 @@ class SettingsWindow: NSWindowController {
         case 9: cleaningRules.removeUrls = (sender.state == .on)
         case 10: cleaningRules.removeHtmlTags = (sender.state == .on)
         case 11: cleaningRules.removeExtraPunctuation = (sender.state == .on)
+        case 12: cleaningRules.cleanURLTracking = (sender.state == .on)
         default: break
         }
         

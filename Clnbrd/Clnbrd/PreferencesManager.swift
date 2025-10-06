@@ -24,6 +24,7 @@ class PreferencesManager {
         UserDefaults.standard.set(rules.removeUrls, forKey: "RemoveUrls")
         UserDefaults.standard.set(rules.removeHtmlTags, forKey: "RemoveHtmlTags")
         UserDefaults.standard.set(rules.removeExtraPunctuation, forKey: "RemoveExtraPunctuation")
+        UserDefaults.standard.set(rules.cleanURLTracking, forKey: "CleanURLTracking")
         
         // Save custom rules
         let customRulesData = try? JSONEncoder().encode(rules.customRules)
@@ -48,6 +49,7 @@ class PreferencesManager {
         rules.removeUrls = UserDefaults.standard.object(forKey: "RemoveUrls") as? Bool ?? true
         rules.removeHtmlTags = UserDefaults.standard.object(forKey: "RemoveHtmlTags") as? Bool ?? true
         rules.removeExtraPunctuation = UserDefaults.standard.object(forKey: "RemoveExtraPunctuation") as? Bool ?? true
+        rules.cleanURLTracking = UserDefaults.standard.object(forKey: "CleanURLTracking") as? Bool ?? true
         
         // Load custom rules
         if let customRulesData = UserDefaults.standard.data(forKey: "CustomRules"),
