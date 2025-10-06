@@ -1223,7 +1223,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func showMenuBarUpdateNotification(latestVersion: String) {
         // Update menu bar to show update available
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async {
             // This will be handled by MenuBarManager
             NotificationCenter.default.post(
                 name: NSNotification.Name("UpdateAvailable"),

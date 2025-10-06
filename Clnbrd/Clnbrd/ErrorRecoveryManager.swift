@@ -75,15 +75,10 @@ class ErrorRecoveryManager {
     
     private func attemptClipboardRecovery() -> Bool {
         // Try to reinitialize clipboard access
-        do {
-            // Attempt to read from clipboard to test access
-            let pasteboard = NSPasteboard.general
-            _ = pasteboard.string(forType: .string)
-            return true
-        } catch {
-            logger.error("Clipboard recovery failed: \(error.localizedDescription)")
-            return false
-        }
+        // Attempt to read from clipboard to test access
+        let pasteboard = NSPasteboard.general
+        _ = pasteboard.string(forType: .string)
+        return true
     }
     
     // MARK: - User-Facing Error Messages

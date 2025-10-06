@@ -22,6 +22,8 @@
 	<string>33</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.5</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
