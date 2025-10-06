@@ -10,6 +10,22 @@ A lightweight, menu bar utility that removes formatting from clipboard text, mak
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
+### ⚠️ Important: macOS Security Notice
+
+Since this app is not yet notarized by Apple, you'll need to bypass Gatekeeper:
+
+1. **Download the DMG** and try to open it
+2. If macOS blocks it with **"cannot be opened because it is from an unidentified developer"**:
+   - **Right-click** (or Control-click) on the DMG file
+   - Select **"Open"** from the menu
+   - Click **"Open"** in the dialog that appears
+3. Alternatively, if already moved to Applications:
+   - Go to **System Settings → Privacy & Security**
+   - Scroll down to find **"Clnbrd was blocked..."**
+   - Click **"Open Anyway"**
+
+**Note:** This security prompt will be removed in future notarized releases.
+
 ---
 
 ## 🎯 Features
