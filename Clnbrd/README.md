@@ -1,8 +1,8 @@
 # Clnbrd - Professional Clipboard Cleaning for macOS
 
-[![Version](https://img.shields.io/badge/version-1.3-blue.svg)](https://github.com/yourusername/clnbrd)
-[![Build](https://img.shields.io/badge/build-28-green.svg)](https://github.com/yourusername/clnbrd)
-[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://github.com/yourusername/clnbrd)
+[![Version](https://img.shields.io/badge/version-1.3-blue.svg)](https://github.com/oliveoi1/Clnbrd)
+[![Build](https://img.shields.io/badge/build-33-green.svg)](https://github.com/oliveoi1/Clnbrd)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://github.com/oliveoi1/Clnbrd)
 
 ## 📍 Project Location
 ```
@@ -29,7 +29,7 @@
 ### For Testing
 ```bash
 # Mount the DMG
-open Distribution/DMG/Clnbrd-1.3-Build-28.dmg
+open Distribution/DMG/Clnbrd-1.3 (33)-Build-33.dmg
 
 # Or run directly from Xcode
 # Cmd+R in Xcode
@@ -56,8 +56,8 @@ See [Documentation/PROJECT_STRUCTURE.md](Documentation/PROJECT_STRUCTURE.md) for
 
 ## 🚀 Current Status
 
-- **Version**: 1.3 (Build 28)
-- **Status**: ✅ Ready for Testing
+- **Version**: 1.3 (33) (Build 33)
+- **Status**: ⏳ Awaiting Notarization
 - **Features Complete**:
   - ✅ Clipboard cleaning with ⌘⌥V hotkey
   - ✅ Menu bar integration
@@ -143,11 +143,11 @@ xcrun notarytool submit Clnbrd.zip --keychain-profile "Clnbrd-Notarization" --wa
 ## 📦 Distribution
 
 ### Current Build
-- **DMG**: `Distribution/DMG/Clnbrd-1.3-Build-28.dmg`
-- **Size**: ~2.8 MB
-- **Contents**: App, Installation Guide, Release Notes
+- **DMG**: `Distribution/Upload/Clnbrd-Build33.zip`
+- **Size**: ~2.7 MB
+- **Contents**: Signed App Bundle
 - **Signed**: ✅ Developer ID
-- **Notarized**: ⏸️ Pending testing
+- **Notarized**: ⏳ In Progress (awaiting Apple response)
 
 ### DMG Contents
 - Clnbrd.app (signed)
@@ -169,13 +169,13 @@ xcrun notarytool submit Clnbrd.zip --keychain-profile "Clnbrd-Notarization" --wa
 
 See [RELEASE_NOTES.txt](Distribution/RELEASE_NOTES.txt) for complete changelog.
 
-### Recent Updates (Build 28)
-- ✅ Fixed clipboard restoration (preserves all data types)
-- ✅ Added build number to System Info
-- ✅ Updated Setup Instructions with Input Monitoring
-- ✅ Fixed Report Issue email
-- ✅ Added Release Notes to DMG
-- ✅ Improved clipboard restoration timing (0.8s delay)
+### Recent Updates (Build 33)
+- ✅ Apple Developer ID properly configured
+- ✅ App ID registered: com.allanray.Clnbrd
+- ✅ Team ID verified: 58Y8VPZ7JG
+- ✅ All certificates valid and installed
+- ✅ Code signing with Developer ID Application
+- ✅ Submitted for notarization
 
 ## 🤝 Support
 
@@ -188,6 +188,6 @@ Proprietary - Allan Alomes © 2025
 
 ---
 
-**Last Updated**: October 4, 2025  
-**Current Build**: 1.3 (28)  
-**Project Status**: ✅ Ready for Testing
+**Last Updated**: October 06, 2025  
+**Current Build**: 1.3 (33) (33)  
+**Project Status**: ⏳ Awaiting Notarization

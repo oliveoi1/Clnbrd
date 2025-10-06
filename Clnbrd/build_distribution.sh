@@ -33,6 +33,11 @@ echo ""
 VERSION=$(plutil -extract CFBundleShortVersionString raw Clnbrd/Info.plist)
 BUILD_NUMBER=$(plutil -extract CFBundleVersion raw Clnbrd/Info.plist)
 
+# Update README with new version
+echo -e "${YELLOW}📝 Updating README.md...${NC}"
+./Scripts/Build/update_readme_version.sh
+echo ""
+
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║              Clnbrd Professional Build System              ║${NC}"
 echo -e "${PURPLE}║                Organized Distribution Creator               ║${NC}"
