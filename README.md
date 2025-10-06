@@ -2,7 +2,7 @@
 
 **Clean clipboard text tool for macOS**
 
-A lightweight, menu bar utility that removes formatting from clipboard text (including hidden Chat GPT watermarks), making it easy to paste clean text anywhere.
+A lightweight, menu bar utility that removes formatting from clipboard text, making it easy to paste clean text anywhere.
 
 ## 📥 Download
 
@@ -142,9 +142,13 @@ open Clnbrd/Clnbrd.xcodeproj
 
 ## 📋 Version History
 
-### v1.3 (Build 25) - Current
-- Official Apple Developer ID code signing
-- Professional notarization
+### v1.3 (Build 33) - Current
+- Apple Developer ID properly configured
+- App ID registered: com.allanray.Clnbrd
+- Team ID verified: 58Y8VPZ7JG
+- All certificates valid and installed
+- Code signing with Developer ID Application
+- Submitted for notarization (in progress)
 - Enhanced error recovery
 - Performance monitoring
 - Sentry integration

@@ -29,7 +29,7 @@
 ### For Testing
 ```bash
 # Mount the DMG
-open Distribution/DMG/Clnbrd-1.3 (33)-Build-33.dmg
+open Distribution/DMG/Clnbrd-1.3-Build-33.dmg
 
 # Or run directly from Xcode
 # Cmd+R in Xcode
@@ -56,7 +56,7 @@ See [Documentation/PROJECT_STRUCTURE.md](Documentation/PROJECT_STRUCTURE.md) for
 
 ## 🚀 Current Status
 
-- **Version**: 1.3 (33) (Build 33)
+- **Version**: 1.3 (Build 33)
 - **Status**: ⏳ Awaiting Notarization
 - **Features Complete**:
   - ✅ Clipboard cleaning with ⌘⌥V hotkey
@@ -188,6 +188,6 @@ Proprietary - Allan Alomes © 2025
 
 ---
 
-**Last Updated**: October 06, 2025  
-**Current Build**: 1.3 (33) (33)  
+**Last Updated**: October 6, 2025  
+**Current Build**: 1.3 (33)  
 **Project Status**: ⏳ Awaiting Notarization
