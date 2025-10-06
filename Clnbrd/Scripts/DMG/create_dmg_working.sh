@@ -56,34 +56,86 @@ ln -s /Applications "${TEMP_DIR}/Applications"
 echo -e "${YELLOW}📝 Creating installation instructions...${NC}"
 cat > "${TEMP_DIR}/Install Instructions.txt" << 'EOF'
 Clnbrd Installation Instructions
-================================
+=================================
 
 Welcome to Clnbrd - Professional Clipboard Cleaning for macOS!
 
-INSTALLATION:
-1. Drag the "Clnbrd.app" icon to the "Applications" folder
+📦 INSTALLATION STEPS:
+
+1. Drag "Clnbrd.app" to the "Applications" folder
 2. Eject this disk image
 3. Launch Clnbrd from your Applications folder
 
-FIRST RUN:
-- Clnbrd will appear in your menu bar
-- Click the Clnbrd icon to access settings and features
-- Grant accessibility permissions when prompted for full functionality
+⚠️ SECURITY NOTICE (If app won't open):
 
-FEATURES:
-- Automatic clipboard cleaning
-- Customizable cleaning rules
-- Hotkey support
-- Menu bar integration
-- Analytics and error reporting
+If macOS blocks the app with "cannot be opened because it is from an 
+unidentified developer":
 
-SUPPORT:
-If you encounter any issues, please contact support with:
-- macOS version
-- Error messages (if any)
-- Steps to reproduce the issue
+METHOD 1 - Right-Click to Open:
+   a) Right-click (or Control-click) on Clnbrd.app in Applications
+   b) Select "Open" from the menu
+   c) Click "Open" in the security dialog
+   d) This only needs to be done once!
 
-Thank you for using Clnbrd!
+METHOD 2 - System Settings:
+   a) Go to System Settings → Privacy & Security
+   b) Scroll down to find "Clnbrd was blocked from use..."
+   c) Click "Open Anyway"
+   d) Confirm by clicking "Open" again
+
+⚙️ REQUIRED PERMISSIONS:
+
+After launching Clnbrd, you'll need to grant two permissions:
+
+1. ACCESSIBILITY PERMISSION:
+   • Click "Open System Settings" when prompted
+   • Or manually: System Settings → Privacy & Security → Accessibility
+   • Toggle ON the switch next to "Clnbrd"
+   • Required for: Monitoring the ⌘⌥V hotkey
+
+2. INPUT MONITORING PERMISSION:
+   • Click "Open System Settings" when prompted
+   • Or manually: System Settings → Privacy & Security → Input Monitoring
+   • Toggle ON the switch next to "Clnbrd"
+   • Required for: Pasting cleaned text automatically
+
+⚡ QUICK START:
+
+1. After granting permissions, Clnbrd appears in your menu bar
+2. Copy some formatted text from anywhere
+3. Press ⌘⌥V (Command + Option + V) to paste cleaned text
+4. Click the menu bar icon for settings and features
+
+📋 FEATURES:
+
+• ⌘⌥V Hotkey - Paste cleaned text instantly
+• Auto-clean on Copy - Automatic formatting removal
+• Customizable Rules - Choose what to remove
+• Menu Bar Access - Always available
+• Launch at Login - Optional automatic startup
+
+🆘 TROUBLESHOOTING:
+
+Problem: Hotkey (⌘⌥V) doesn't work
+Solution: Ensure both Accessibility AND Input Monitoring are enabled
+
+Problem: App won't open
+Solution: Use Method 1 (right-click → Open) above
+
+Problem: Permissions keep resetting
+Solution: Restart Clnbrd after enabling permissions
+
+📧 SUPPORT:
+
+Website: https://github.com/oliveoi1/Clnbrd
+Email: olivedesignstudios@gmail.com
+
+Please include when reporting issues:
+• macOS version
+• Error messages (if any)
+• Steps to reproduce
+
+Thank you for using Clnbrd! 🎉
 EOF
 
 # Copy Release Notes to DMG
