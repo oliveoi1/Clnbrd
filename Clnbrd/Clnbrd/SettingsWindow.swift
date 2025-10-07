@@ -39,30 +39,41 @@ class SettingsWindow: NSWindowController {
         let mainContainer = NSView()
         mainContainer.translatesAutoresizingMaskIntoConstraints = false
         
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        
         let stackView = NSStackView()
         stackView.orientation = .vertical
         stackView.alignment = .leading
-        stackView.spacing = 12
+        stackView.spacing = 8  // Increased from 12 for better breathing room
         stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         
         // Add section header for cleaning rules
-        stackView.addArrangedSubview(createSectionHeader("Text Cleaning Rules"))
+        stackView.addArrangedSubview(createSectionHeader("📝 Basic Text Cleaning"))
+        stackView.addArrangedSubview(createSpacer(height: 4))
         
-        stackView.addArrangedSubview(createCheckbox(title: "Remove zero-width and invisible characters (AI watermarks)", tooltip: "Removes invisible characters that can cause formatting issues and AI watermarks", isOn: cleaningRules.removeZeroWidthChars, tag: 0))
-        stackView.addArrangedSubview(createCheckbox(title: "Replace em-dashes (—) with comma+space", tooltip: "Replaces em-dashes with commas for better compatibility across applications", isOn: cleaningRules.removeEmdashes, tag: 1))
-        stackView.addArrangedSubview(createCheckbox(title: "Normalize multiple spaces to single space", tooltip: "Converts multiple consecutive spaces to single spaces", isOn: cleaningRules.normalizeSpaces, tag: 2))
-        stackView.addArrangedSubview(createCheckbox(title: "Convert smart quotes to straight quotes", tooltip: "Converts curly quotes to standard straight quotes", isOn: cleaningRules.convertSmartQuotes, tag: 3))
-        stackView.addArrangedSubview(createCheckbox(title: "Normalize line breaks", tooltip: "Converts all line break types to standard line breaks", isOn: cleaningRules.normalizeLineBreaks, tag: 4))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove trailing spaces from lines", tooltip: "Removes spaces at the end of each line", isOn: cleaningRules.removeTrailingSpaces, tag: 5))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove emojis", tooltip: "Removes all emoji characters from clipboard text", isOn: cleaningRules.removeEmojis, tag: 6))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove zero-width and invisible characters (AI watermarks)", tooltip: "Removes invisible AI watermarks and hidden Unicode.\n\nExample:\n  Before: \"Hello\u{200B}World\" (has invisible space)\n  After:  \"HelloWorld\"", isOn: cleaningRules.removeZeroWidthChars, tag: 0))
+        stackView.addArrangedSubview(createCheckbox(title: "Replace em-dashes (—) with comma+space", tooltip: "Replaces em-dashes with commas.\n\nExample:\n  Before: \"Hello—world\"\n  After:  \"Hello, world\"", isOn: cleaningRules.removeEmdashes, tag: 1))
+        stackView.addArrangedSubview(createCheckbox(title: "Normalize multiple spaces to single space", tooltip: "Converts multiple consecutive spaces to one.\n\nExample:\n  Before: \"Hello    world\"\n  After:  \"Hello world\"", isOn: cleaningRules.normalizeSpaces, tag: 2))
+        stackView.addArrangedSubview(createCheckbox(title: "Convert smart quotes to straight quotes", tooltip: "Converts curly quotes to standard quotes.\n\nExample:\n  Before: \"Hello "world"\"\n  After:  \"Hello \\\"world\\\"\"", isOn: cleaningRules.convertSmartQuotes, tag: 3))
+        stackView.addArrangedSubview(createCheckbox(title: "Normalize line breaks", tooltip: "Converts all line break types to standard.\n\nExample:\n  Before: \"Line1\\r\\nLine2\" (Windows)\n  After:  \"Line1\\nLine2\" (Unix)", isOn: cleaningRules.normalizeLineBreaks, tag: 4))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove trailing spaces from lines", tooltip: "Removes spaces at the end of each line.\n\nExample:\n  Before: \"Hello world   \\n\"\n  After:  \"Hello world\\n\"", isOn: cleaningRules.removeTrailingSpaces, tag: 5))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove emojis", tooltip: "Removes all emoji characters.\n\nExample:\n  Before: \"Hello 🌎 world! 🎉\"\n  After:  \"Hello  world! \"", isOn: cleaningRules.removeEmojis, tag: 6))
         
-        // New high-priority cleaning rules
-        stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: "Removes excessive line breaks, keeping maximum of 2 consecutive breaks", isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove leading/trailing whitespace", tooltip: "Removes spaces and tabs at the beginning and end of text", isOn: cleaningRules.removeLeadingTrailingWhitespace, tag: 8))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: "Strips UTM tags and platform tracking (YouTube ?si=, Amazon /ref=, etc.)", isOn: cleaningRules.removeUrlTracking, tag: 9))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: "Strips URL protocols but keeps domain visible (https://example.com → example.com)", isOn: cleaningRules.removeUrls, tag: 10))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", isOn: cleaningRules.removeHtmlTags, tag: 11))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: "Removes excessive punctuation marks like multiple periods or exclamation points", isOn: cleaningRules.removeExtraPunctuation, tag: 12))
+        stackView.addArrangedSubview(createSpacer(height: 12))
+        stackView.addArrangedSubview(createSectionHeader("🧹 Advanced Cleaning"))
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        
+        stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: "Limits consecutive line breaks to 2 maximum.\n\nExample:\n  Before: \"Para1\\n\\n\\n\\n\\nPara2\"\n  After:  \"Para1\\n\\nPara2\"", isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove leading/trailing whitespace", tooltip: "Trims spaces/tabs from start and end.\n\nExample:\n  Before: \"   Hello world   \"\n  After:  \"Hello world\"", isOn: cleaningRules.removeLeadingTrailingWhitespace, tag: 8))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: "Strips tracking from URLs (150+ params!).\n\nExamples:\n  Before: \"youtu.be/VIDEO?si=xyz123\"\n  After:  \"youtu.be/VIDEO\"\n\n  Before: \"amazon.com/product?tag=aff\"\n  After:  \"amazon.com/product\"\n\nRemoves: UTM, fbclid, gclid, igshid, etc.", isOn: cleaningRules.removeUrlTracking, tag: 9))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: "Strips protocols but keeps domain visible.\n\nExample:\n  Before: \"https://example.com\"\n  After:  \"example.com\"\n\nPerfect for Excel/Sheets paste values!", isOn: cleaningRules.removeUrls, tag: 10))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: "Removes HTML markup.\n\nExample:\n  Before: \"<b>Hello</b> &nbsp; world!\"\n  After:  \"Hello  world!\"", isOn: cleaningRules.removeHtmlTags, tag: 11))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: "Removes excessive punctuation.\n\nExample:\n  Before: \"What!?!?!? Really???\"\n  After:  \"What!? Really?\"", isOn: cleaningRules.removeExtraPunctuation, tag: 12))
         
         let spacer1 = NSView()
         spacer1.translatesAutoresizingMaskIntoConstraints = false
@@ -93,13 +104,11 @@ class SettingsWindow: NSWindowController {
         testSystemInfoButton.bezelStyle = .rounded
         stackView.addArrangedSubview(testSystemInfoButton)
         
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        stackView.addArrangedSubview(spacer)
-        NSLayoutConstraint.activate([spacer.heightAnchor.constraint(equalToConstant: 20)])
+        stackView.addArrangedSubview(createSpacer(height: 20))
         
         // Add section header for custom rules
-        stackView.addArrangedSubview(createSectionHeader("Custom Find & Replace Rules"))
+        stackView.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
+        stackView.addArrangedSubview(createSpacer(height: 4))
         
         let helpLabel = NSTextField(labelWithString: "Add your own text replacements (applied before built-in rules):")
         helpLabel.font = NSFont.systemFont(ofSize: 11)
@@ -124,13 +133,17 @@ class SettingsWindow: NSWindowController {
         addButton.bezelStyle = .rounded
         stackView.addArrangedSubview(addButton)
         
-        mainContainer.addSubview(stackView)
+        // Configure scroll view
+        scrollView.documentView = stackView
+        mainContainer.addSubview(scrollView)
         
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: mainContainer.topAnchor, constant: 20),
-            stackView.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor, constant: 20),
-            stackView.trailingAnchor.constraint(lessThanOrEqualTo: mainContainer.trailingAnchor, constant: -20),
-            stackView.bottomAnchor.constraint(lessThanOrEqualTo: mainContainer.bottomAnchor, constant: -20)
+            scrollView.topAnchor.constraint(equalTo: mainContainer.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor),
+            
+            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
         ])
         
         window.contentView = mainContainer
@@ -156,6 +169,15 @@ class SettingsWindow: NSWindowController {
         ])
         
         return container
+    }
+    
+    func createSpacer(height: CGFloat) -> NSView {
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            spacer.heightAnchor.constraint(equalToConstant: height)
+        ])
+        return spacer
     }
     
     func createCheckbox(title: String, tooltip: String, isOn: Bool, tag: Int) -> NSButton {
