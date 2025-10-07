@@ -2071,6 +2071,28 @@ extension AppDelegate: MenuBarManagerDelegate {
         updaterController.updater.checkForUpdates()
     }
     
+    func testSentryRequested() {
+        // Trigger test error for Sentry
+        SentryManager.shared.testCrashReporting()
+        
+        // Show confirmation to user
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Test Error Sent"
+            alert.informativeText = "A test error has been sent to Sentry.\n\nCheck your Sentry dashboard at:\nsentry.io/organizations/clnbrd/issues/\n\nIt should appear within a few seconds."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: "Open Sentry Dashboard")
+            
+            let response = alert.runModal()
+            if response == .alertSecondButtonReturn {
+                if let url = URL(string: "https://sentry.io/organizations/clnbrd/issues/") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
+    }
+    
     func reportIssueRequested() {
         // Get analytics data for the support email
         let analyticsData = AnalyticsManager.shared.getAnalyticsSummary()

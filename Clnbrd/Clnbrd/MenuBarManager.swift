@@ -76,6 +76,14 @@ class MenuBarManager {
         reportItem.target = self
         menu.addItem(reportItem)
         
+        // Debug: Test Sentry (only visible when holding Option key)
+        let testSentryItem = NSMenuItem(title: "Test Crash Reporting", action: #selector(testSentry), keyEquivalent: "")
+        testSentryItem.image = NSImage(systemSymbolName: "ladybug", accessibilityDescription: "Test Sentry")
+        testSentryItem.target = self
+        testSentryItem.isAlternate = true  // Only shows when Option key is held
+        testSentryItem.keyEquivalentModifierMask = [.option]
+        menu.addItem(testSentryItem)
+        
         let guideItem = NSMenuItem(title: "Installation Guide", action: #selector(showInstallationGuide), keyEquivalent: "")
         guideItem.image = NSImage(systemSymbolName: "book", accessibilityDescription: "Installation guide")
         guideItem.target = self
@@ -226,6 +234,11 @@ class MenuBarManager {
         delegate?.reportIssueRequested()
     }
     
+    @objc func testSentry() {
+        SentryManager.shared.trackUserAction("sentry_test_triggered")
+        delegate?.testSentryRequested()
+    }
+    
     @objc func openAbout() {
         SentryManager.shared.trackUserAction("about_opened")
         delegate?.openAboutRequested()
@@ -250,6 +263,7 @@ protocol MenuBarManagerDelegate: AnyObject {
     func openSettingsRequested()
     func checkForUpdatesRequested()
     func reportIssueRequested()
+    func testSentryRequested()
     func showInstallationGuideRequested()
     func openAboutRequested()
     func showSamplesRequested()
