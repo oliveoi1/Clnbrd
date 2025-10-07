@@ -212,30 +212,100 @@ class CleaningRules {
             
             // Universal tracking parameters (all platforms)
             let universalTracking = [
+                // UTM Parameters (Google Analytics)
                 "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-                "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic"
+                "utm_name", "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
+                
+                // Social Media Click IDs
+                "fbclid", "igshid", "ig_rid", "twclid", "li_source", "li_fat_id",
+                "ttclid", "snapchatclid", "pnclid",
+                
+                // Search Engine Click IDs
+                "gclid", "gclsrc", "dclid", "gbraid", "wbraid", "msclkid", "yclid",
+                
+                // Email Marketing
+                "mc_cid", "mc_eid", "_hsenc", "_hsmi", "vero_id", "vero_conv",
+                "nr_email_referer", "ck_subscriber_id",
+                
+                // Affiliate & Referral
+                "ref", "referrer", "reference", "refer", "source", "affiliate_id",
+                "aff_id", "aff_sub", "aff_sub2", "partner", "pcid", "wickedid",
+                
+                // Session & Analytics
+                "_ga", "_gl", "_ke", "sessionid", "sid", "ssid", "session_id",
+                
+                // Mobile App Tracking
+                "gf_campaign", "af_dp", "af_source", "af_c_id", "af_adset", "af_ad",
+                "af_siteid", "pid", "c",
+                
+                // Marketing Automation
+                "mbid", "trk_contact", "trk_msg", "trk_module", "trk_sid",
+                "mkt_tok", "elqTrackId", "elqTrack", "assetType", "assetId",
+                "recipientId", "campaignId",
+                
+                // Ad Networks
+                "zanpid", "kclickid", "adgroupid", "adid", "campaignid", "guccounter",
+                "soc_src", "soc_trk",
+                
+                // Adobe/Omniture
+                "s_cid", "s_kwcid", "s_tnt", "sc_campaign", "sc_channel", "sc_content",
+                "sc_geo", "sc_outcome",
+                
+                // Matomo/Piwik
+                "mtm_campaign", "mtm_keyword", "mtm_source", "mtm_medium", "mtm_content",
+                "mtm_cid", "mtm_group", "mtm_placement", "pk_campaign", "pk_kwd",
+                "pk_keyword", "pk_source", "pk_medium", "pk_content", "pk_cid",
+                
+                // Yahoo/Verizon Media
+                "ylid", "yclid", "_openstat",
+                
+                // Misc Common Trackers
+                "ncid", "vgo_ee", "ml_subscriber", "ml_subscriber_hash",
+                "oft_id", "oft_k", "oft_lk", "oft_d", "oft_c", "oft_ck", "oft_ids", "oft_sk",
+                "oly_anon_id", "oly_enc_id", "rb_clickid", "hmb_campaign", "hmb_medium",
+                "hmb_source", "mbsy", "mbsy_source", "redirect_log_mongo_id",
+                "redirect_mongo_id", "sb_referer_host", "mkwid", "trackingId",
+                
+                // WeChat/Chinese Platforms
+                "srcid", "isappinstalled", "nsukey",
+                
+                // Reddit
+                "share_id", "share", "trc_click_source",
+                
+                // Mobile & App
+                "_branch_match_id", "_branch_referrer",
+                
+                // Newsletter & Content
+                "goal", "token", "subscriber",
+                
+                // General Tracking Patterns
+                "click_id", "clickid", "tracking_id", "trackid", "tracker",
+                "cid", "eid", "mid", "tid", "vid", "uid"
             ]
             
-            // Platform-specific tracking parameters
+            // Platform-specific tracking parameters (in addition to universal tracking)
             let platformTracking: [String: [String]] = [
-                "youtube.com": ["si", "feature", "app", "source_ve_path", "gclid"],
-                "youtu.be": ["si", "feature", "app", "gclid"],
+                "youtube.com": ["si", "feature", "app", "source_ve_path"],
+                "youtu.be": ["si", "feature", "app"],
                 "open.spotify.com": ["si", "context", "nd"],
                 "spotify.com": ["si", "context", "nd"],
-                "amazon.com": ["crid", "dib", "dib_tag", "keywords", "qid", "sprefix", "sr",
-                               "pd_rd_w", "pf_rd_s", "pf_rd_p", "pf_rd_t", "pf_rd_i",
-                               "pf_rd_m", "pf_rd_r", "pd_rd_wg", "pd_rd_r", "linkCode",
-                               "tag", "linkId", "geniuslink", "ref", "ref_", "content-id",
-                               "psc", "th"],
+                "amazon.com": ["_encoding", "keywords", "qid", "sprefix", "sr", "th", "psc",
+                               "crid", "dib", "dib_tag",
+                               "pf_rd_r", "pf_rd_p", "pf_rd_m", "pf_rd_s", "pf_rd_t", "pf_rd_i",
+                               "pd_rd_r", "pd_rd_w", "pd_rd_wg"],
                 "google.com": ["gs_lcrp", "gs_lp", "sca_esv", "ei", "iflsig", "sclient",
-                               "rlz", "bih", "biw", "dpr", "ved", "sa", "fbs", "source",
-                               "sourceid", "gclid", "gclsrc"],
-                "instagram.com": ["igsh", "igshid", "img_index"],
+                               "rlz", "bih", "biw", "dpr", "ved", "sa", "fbs"],
+                "instagram.com": ["igsh", "igshid", "ig_rid", "img_index"],
                 "x.com": ["s", "t", "ref_src", "ref_url"],
                 "twitter.com": ["s", "t", "ref_src", "ref_url"],
-                "walmart.com": ["from", "sid", "athbdg", "athancid", "athcpid", "athena"],
-                "facebook.com": ["fbclid", "mibextid"],
-                "tiktok.com": ["_r", "_t", "is_from_webapp", "sender_device"]
+                "walmart.com": ["athbdg", "athancid", "athcpid", "athena"],
+                "facebook.com": ["mibextid"],
+                "tiktok.com": ["_r", "_t", "is_from_webapp", "sender_device"],
+                "reddit.com": ["share_id", "trc_click_source"],
+                "linkedin.com": ["li_source", "li_fat_id"],
+                "wechat.com": ["srcid", "isappinstalled", "nsukey", "from"],
+                "pinterest.com": ["pnclid"],
+                "snapchat.com": ["snapchatclid"]
             ]
             
             // Get platform-specific tracking params
