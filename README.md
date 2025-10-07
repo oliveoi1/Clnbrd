@@ -37,20 +37,22 @@ This app is **officially notarized by Apple** and will install without any secur
 ## 💼 Perfect For
 
 ### Spreadsheet Users (Excel, Google Sheets, Numbers)
-**Beyond Excel's ⌘⇧V shortcut** - Clnbrd works in ALL apps (Google Sheets, Numbers, Airtable, Notion, etc.), strips more than just formulas (removes hidden AI watermarks, zero-width characters, hyperlinks, and metadata), and uses one consistent hotkey everywhere: ⌘⌥V.
+**Deeper cleaning than ⌘⇧V** - While Excel and Google Sheets have paste-values shortcuts (⌘⇧V), Clnbrd goes much further: removes hyperlinks, AI watermarks, hidden Unicode characters, and works consistently across ALL apps with one hotkey (⌘⌥V).
 
-**Why Clnbrd vs Excel's built-in ⌘⇧V:**
-- ✅ **Works everywhere** (Google Sheets, Numbers, web apps, email, Slack)
-- ✅ **Deeper cleaning** (removes AI watermarks, hidden Unicode, metadata)
-- ✅ **Strips hyperlinks** (Excel's ⌘⇧V keeps hyperlinks!)
-- ✅ **One hotkey for everything** (no need to remember different shortcuts per app)
+**Why use Clnbrd when ⌘⇧V exists?**
+- ✅ **Removes hyperlinks** (⌘⇧V keeps hyperlinks - try pasting an email list!)
+- ✅ **Strips AI watermarks** (hidden ChatGPT/Claude tracking markers)
+- ✅ **Cleans hidden Unicode** (zero-width chars, variation selectors, etc.)
+- ✅ **Works in ALL apps** (Slack, Notion, email clients, CMSs - not just spreadsheets)
+- ✅ **One consistent hotkey** (⌘⌥V everywhere vs remembering different shortcuts)
+- ✅ **Actually plain text** (not "plain text with hyperlinks and hidden formatting")
 
 **Common scenarios:**
-- Copying data from web pages into spreadsheets (removes ALL formatting, not just formulas)
-- Pasting email addresses, phone numbers, or lists **without hyperlinks** (Excel's ⌘⇧V doesn't do this!)
-- Moving data between workbooks without breaking formulas
-- Importing CSV/text data without formatting issues
-- Working in Google Sheets (no native paste-values-only shortcut on Mac!)
+- **Email/phone lists with hyperlinks** - ⌘⇧V keeps annoying clickable links, Clnbrd removes them!
+- **AI-generated content** - Remove ChatGPT watermarks before analysis
+- **Web-scraped data** - Strip ALL hidden formatting, not just visible formatting
+- **Cross-app workflows** - One hotkey works in Excel, Sheets, Notion, Slack, email, etc.
+- **Truly clean data** - No hidden characters breaking your formulas or analysis
 
 ### Content Writers & Editors
 - Clean AI-generated text (removes ChatGPT watermarks)
