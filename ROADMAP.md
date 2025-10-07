@@ -67,14 +67,31 @@
 
 ## 🚀 Medium Term (Next 3-6 Builds)
 
-### Features
-- [ ] **URL Tracking Cleaner Enhancement**
+### Features & Code Architecture
+- [ ] **Code Refactoring: Separate CleaningRules & SettingsWindow**
+  - Extract `CleaningRules` class → `CleaningRules.swift` (~150 lines)
+  - Extract `SettingsWindow` class → `SettingsWindow.swift` (~950 lines)
+  - Extract `CustomRule` struct into `CleaningRules.swift`
+  - Reduce `AppDelegate.swift` from 2,324 → ~1,200 lines (48% reduction!)
+  - **Status:** Not Started (planned with URL tracking UI)
+  - **Effort:** 1 hour
+  - **Impact:** Better maintainability, cleaner architecture
+  - **Rationale:** 
+    - AppDelegate is too large (2,324 lines)
+    - Follows existing pattern (ClipboardManager, MenuBarManager, etc.)
+    - Makes future feature additions easier
+    - Cleaner git history per feature
+
+- [ ] **URL Tracking Cleaner UI Integration**
+  - Re-integrate `EnhancedSettingsUI.swift` (previously crashed)
   - Add granular per-rule configuration UI
-  - `EnhancedSettingsUI.swift` integration
-  - Finish implementation from feature branch
-  - **Status:** Partially complete (see feature/url-tracking-removal branch)
-  - **Effort:** 4 hours
-  - **Impact:** Better user control
+  - Per-rule controls: hotkey / auto-clean / disabled
+  - Fix UI crash issues from previous attempt
+  - Test all settings interactions
+  - **Status:** Partially complete (needs refactoring above)
+  - **Effort:** 3 hours
+  - **Impact:** Better user control over cleaning rules
+  - **Dependencies:** Must complete refactoring first
 
 - [ ] **Custom Cleaning Rules**
   - UI for adding/editing custom regex patterns
