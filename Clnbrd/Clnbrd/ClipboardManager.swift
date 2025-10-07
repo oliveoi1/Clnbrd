@@ -127,9 +127,7 @@ class ClipboardManager {
         logger.info("🔍 Original text length: \(originalText.count)")
         
         // Helper function to execute paste sequence
-        let executePasteSequence = { [weak self] (cleanedText: String) in
-            guard let self = self else { return }
-            
+        let executePasteSequence = { (cleanedText: String) in
             pasteboard.clearContents()
             pasteboard.setString(cleanedText, forType: .string)
             logger.info("🔍 Clipboard updated with cleaned text")
