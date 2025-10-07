@@ -101,11 +101,11 @@ class CleaningRules {
             cleaned = lines.map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
         }
         
-        // Remove URLs
+        // Remove URL protocols (strip https://, http://, ftp://, www. but keep domain visible)
         if removeUrls {
-            cleaned = cleaned.replacingOccurrences(of: "https?://[^\\s]+", with: "", options: .regularExpression)
-            cleaned = cleaned.replacingOccurrences(of: "ftp://[^\\s]+", with: "", options: .regularExpression)
-            cleaned = cleaned.replacingOccurrences(of: "www\\.[^\\s]+", with: "", options: .regularExpression)
+            cleaned = cleaned.replacingOccurrences(of: "https?://", with: "", options: .regularExpression)
+            cleaned = cleaned.replacingOccurrences(of: "ftp://", with: "", options: .regularExpression)
+            cleaned = cleaned.replacingOccurrences(of: "www\\.", with: "", options: .regularExpression)
         }
         
         // Remove HTML tags and entities

@@ -59,7 +59,7 @@ class SettingsWindow: NSWindowController {
         // New high-priority cleaning rules
         stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: "Removes excessive line breaks, keeping maximum of 2 consecutive breaks", isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
         stackView.addArrangedSubview(createCheckbox(title: "Remove leading/trailing whitespace", tooltip: "Removes spaces and tabs at the beginning and end of text", isOn: cleaningRules.removeLeadingTrailingWhitespace, tag: 8))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URLs (http, https, www)", tooltip: "Removes web URLs and links from text", isOn: cleaningRules.removeUrls, tag: 9))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: "Strips URL protocols but keeps domain visible (https://example.com → example.com)", isOn: cleaningRules.removeUrls, tag: 9))
         stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", isOn: cleaningRules.removeHtmlTags, tag: 10))
         stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: "Removes excessive punctuation marks like multiple periods or exclamation points", isOn: cleaningRules.removeExtraPunctuation, tag: 11))
         
