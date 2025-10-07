@@ -21,14 +21,41 @@ This app is **officially notarized by Apple** and will install without any secur
 ## 🎯 Features
 
 - **⌘⌥V Hotkey** - Paste cleaned text with a simple keyboard shortcut
+- **📊 Excel/Google Sheets "Paste Values Only"** - Automatically pastes as plain values (no formulas, formatting, or links) - perfect for spreadsheets!
 - **Auto-clean on Copy** - Automatically remove formatting when you copy
 - **Menu Bar Integration** - Quick access from your Mac's menu bar
 - **Format Removal** - Strips all formatting, links, styles, and metadata
+- **🤖 AI Watermark Removal** - Removes hidden ChatGPT and AI-generated text markers
 - **Performance Monitoring** - Built-in memory and CPU optimization
 - **Error Recovery** - Automatic recovery from clipboard issues
 - **Analytics** - Track usage patterns (privacy-focused)
 - **Auto-updates** - Check for new versions automatically
 - **Sentry Integration** - Crash reporting and error tracking
+
+---
+
+## 💼 Perfect For
+
+### Spreadsheet Users (Excel, Google Sheets, Numbers)
+No more struggling with "Paste Values Only"! Clnbrd automatically strips formulas, formatting, and links - just paste clean values with ⌘⌥V.
+
+**Common scenarios:**
+- Copying data from web pages into spreadsheets
+- Pasting email addresses, phone numbers, or lists without hyperlinks
+- Moving data between workbooks without breaking formulas
+- Importing CSV/text data without formatting issues
+
+### Content Writers & Editors
+- Clean AI-generated text (removes ChatGPT watermarks)
+- Strip Word/Google Docs formatting when pasting to CMS
+- Remove hidden formatting that breaks markdown
+- Clean copy from PDFs, emails, or websites
+
+### Developers & Technical Users
+- Paste code snippets without syntax highlighting
+- Clean terminal output for documentation
+- Remove formatting from Stack Overflow answers
+- Strip metadata from logs and error messages
 
 ---
 
