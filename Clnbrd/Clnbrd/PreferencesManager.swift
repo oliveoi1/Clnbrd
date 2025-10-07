@@ -21,6 +21,7 @@ class PreferencesManager {
         UserDefaults.standard.set(rules.removeEmojis, forKey: "RemoveEmojis")
         UserDefaults.standard.set(rules.removeExtraLineBreaks, forKey: "RemoveExtraLineBreaks")
         UserDefaults.standard.set(rules.removeLeadingTrailingWhitespace, forKey: "RemoveLeadingTrailingWhitespace")
+        UserDefaults.standard.set(rules.removeUrlTracking, forKey: "RemoveUrlTracking")
         UserDefaults.standard.set(rules.removeUrls, forKey: "RemoveUrls")
         UserDefaults.standard.set(rules.removeHtmlTags, forKey: "RemoveHtmlTags")
         UserDefaults.standard.set(rules.removeExtraPunctuation, forKey: "RemoveExtraPunctuation")
@@ -45,6 +46,7 @@ class PreferencesManager {
         rules.removeEmojis = UserDefaults.standard.object(forKey: "RemoveEmojis") as? Bool ?? false
         rules.removeExtraLineBreaks = UserDefaults.standard.object(forKey: "RemoveExtraLineBreaks") as? Bool ?? true
         rules.removeLeadingTrailingWhitespace = UserDefaults.standard.object(forKey: "RemoveLeadingTrailingWhitespace") as? Bool ?? true
+        rules.removeUrlTracking = UserDefaults.standard.object(forKey: "RemoveUrlTracking") as? Bool ?? true
         rules.removeUrls = UserDefaults.standard.object(forKey: "RemoveUrls") as? Bool ?? true
         rules.removeHtmlTags = UserDefaults.standard.object(forKey: "RemoveHtmlTags") as? Bool ?? true
         rules.removeExtraPunctuation = UserDefaults.standard.object(forKey: "RemoveExtraPunctuation") as? Bool ?? true

@@ -25,6 +25,9 @@ class CleaningRules {
     var removeHtmlTags = true
     var removeExtraPunctuation = true
     
+    // URL tracking removal
+    var removeUrlTracking = true
+    
     // Custom user-defined rules
     var customRules: [CustomRule] = []
     
@@ -101,6 +104,11 @@ class CleaningRules {
             cleaned = lines.map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
         }
         
+        // Remove URL tracking parameters (before removing protocols)
+        if removeUrlTracking {
+            cleaned = removeURLTracking(from: cleaned)
+        }
+        
         // Remove URL protocols (strip https://, http://, ftp://, www. but keep domain visible)
         if removeUrls {
             cleaned = cleaned.replacingOccurrences(of: "https?://", with: "", options: .regularExpression)
@@ -154,6 +162,116 @@ class CleaningRules {
         cleaned = cleaned.replacingOccurrences(of: "\u{00AD}", with: "") // Soft Hyphen
         
         return cleaned
+    }
+    
+    /// Remove tracking parameters from URLs (UTM, platform-specific tracking)
+    /// - Parameter text: Text containing URLs
+    /// - Returns: Text with cleaned URLs (tracking parameters removed)
+    private func removeURLTracking(from text: String) -> String {
+        // Find all URLs in the text using a comprehensive regex
+        let urlPattern = "(https?://[^\\s]+|www\\.[^\\s]+)"
+        guard let regex = try? NSRegularExpression(pattern: urlPattern, options: []) else {
+            return text
+        }
+        
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
+        
+        var cleaned = text
+        
+        // Process matches in reverse to maintain string indices
+        for match in matches.reversed() {
+            let urlString = nsText.substring(with: match.range)
+            if let cleanedURL = cleanURL(urlString) {
+                cleaned = (cleaned as NSString).replacingCharacters(in: match.range, with: cleanedURL)
+            }
+        }
+        
+        return cleaned
+    }
+    
+    /// Clean a single URL by removing tracking parameters
+    /// - Parameter urlString: The URL string to clean
+    /// - Returns: Cleaned URL string, or nil if URL cannot be parsed
+    private func cleanURL(_ urlString: String) -> String? {
+        // Ensure URL has a scheme
+        var fullURL = urlString
+        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+            fullURL = "https://" + urlString
+        }
+        
+        guard var components = URLComponents(string: fullURL) else {
+            return nil
+        }
+        
+        let host = components.host?.lowercased() ?? ""
+        
+        // Remove tracking query parameters based on platform
+        if let queryItems = components.queryItems {
+            var filteredItems = queryItems
+            
+            // Universal tracking parameters (all platforms)
+            let universalTracking = [
+                "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+                "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic"
+            ]
+            
+            // Platform-specific tracking parameters
+            let platformTracking: [String: [String]] = [
+                "youtube.com": ["si", "feature", "app", "source_ve_path", "gclid"],
+                "youtu.be": ["si", "feature", "app", "gclid"],
+                "open.spotify.com": ["si", "context", "nd"],
+                "spotify.com": ["si", "context", "nd"],
+                "amazon.com": ["crid", "dib", "dib_tag", "keywords", "qid", "sprefix", "sr",
+                               "pd_rd_w", "pf_rd_s", "pf_rd_p", "pf_rd_t", "pf_rd_i",
+                               "pf_rd_m", "pf_rd_r", "pd_rd_wg", "pd_rd_r", "linkCode",
+                               "tag", "linkId", "geniuslink", "ref", "ref_", "content-id",
+                               "psc", "th"],
+                "google.com": ["gs_lcrp", "gs_lp", "sca_esv", "ei", "iflsig", "sclient",
+                               "rlz", "bih", "biw", "dpr", "ved", "sa", "fbs", "source",
+                               "sourceid", "gclid", "gclsrc"],
+                "instagram.com": ["igsh", "igshid", "img_index"],
+                "x.com": ["s", "t", "ref_src", "ref_url"],
+                "twitter.com": ["s", "t", "ref_src", "ref_url"],
+                "walmart.com": ["from", "sid", "athbdg", "athancid", "athcpid", "athena"],
+                "facebook.com": ["fbclid", "mibextid"],
+                "tiktok.com": ["_r", "_t", "is_from_webapp", "sender_device"]
+            ]
+            
+            // Get platform-specific tracking params
+            var trackingParams = Set(universalTracking)
+            for (domain, params) in platformTracking {
+                if host.contains(domain) {
+                    trackingParams.formUnion(params)
+                }
+            }
+            
+            // Filter out tracking parameters
+            filteredItems = filteredItems.filter { item in
+                !trackingParams.contains(item.name.lowercased())
+            }
+            
+            // Update query items (or remove if empty)
+            components.queryItems = filteredItems.isEmpty ? nil : filteredItems
+        }
+        
+        // Remove Amazon /ref= path segments
+        if host.contains("amazon.com") && components.path.contains("/ref=") {
+            if let refRange = components.path.range(of: "/ref=") {
+                components.path = String(components.path[..<refRange.lowerBound])
+            }
+        }
+        
+        // Return cleaned URL (remove scheme if original didn't have it)
+        guard let cleanedURL = components.string else {
+            return urlString
+        }
+        
+        if urlString.hasPrefix("www.") {
+            return cleanedURL.replacingOccurrences(of: "https://", with: "")
+        }
+        
+        return cleanedURL
     }
 }
 

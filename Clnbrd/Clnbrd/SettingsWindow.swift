@@ -59,9 +59,10 @@ class SettingsWindow: NSWindowController {
         // New high-priority cleaning rules
         stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: "Removes excessive line breaks, keeping maximum of 2 consecutive breaks", isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
         stackView.addArrangedSubview(createCheckbox(title: "Remove leading/trailing whitespace", tooltip: "Removes spaces and tabs at the beginning and end of text", isOn: cleaningRules.removeLeadingTrailingWhitespace, tag: 8))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: "Strips URL protocols but keeps domain visible (https://example.com → example.com)", isOn: cleaningRules.removeUrls, tag: 9))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", isOn: cleaningRules.removeHtmlTags, tag: 10))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: "Removes excessive punctuation marks like multiple periods or exclamation points", isOn: cleaningRules.removeExtraPunctuation, tag: 11))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: "Strips UTM tags and platform tracking (YouTube ?si=, Amazon /ref=, etc.)", isOn: cleaningRules.removeUrlTracking, tag: 9))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: "Strips URL protocols but keeps domain visible (https://example.com → example.com)", isOn: cleaningRules.removeUrls, tag: 10))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", isOn: cleaningRules.removeHtmlTags, tag: 11))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: "Removes excessive punctuation marks like multiple periods or exclamation points", isOn: cleaningRules.removeExtraPunctuation, tag: 12))
         
         let spacer1 = NSView()
         spacer1.translatesAutoresizingMaskIntoConstraints = false
@@ -276,9 +277,10 @@ class SettingsWindow: NSWindowController {
         case 6: cleaningRules.removeEmojis = (sender.state == .on)
         case 7: cleaningRules.removeExtraLineBreaks = (sender.state == .on)
         case 8: cleaningRules.removeLeadingTrailingWhitespace = (sender.state == .on)
-        case 9: cleaningRules.removeUrls = (sender.state == .on)
-        case 10: cleaningRules.removeHtmlTags = (sender.state == .on)
-        case 11: cleaningRules.removeExtraPunctuation = (sender.state == .on)
+        case 9: cleaningRules.removeUrlTracking = (sender.state == .on)
+        case 10: cleaningRules.removeUrls = (sender.state == .on)
+        case 11: cleaningRules.removeHtmlTags = (sender.state == .on)
+        case 12: cleaningRules.removeExtraPunctuation = (sender.state == .on)
         default: break
         }
         
