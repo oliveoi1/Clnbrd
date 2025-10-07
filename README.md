@@ -37,13 +37,20 @@ This app is **officially notarized by Apple** and will install without any secur
 ## 💼 Perfect For
 
 ### Spreadsheet Users (Excel, Google Sheets, Numbers)
-No more struggling with "Paste Values Only"! Clnbrd automatically strips formulas, formatting, and links - just paste clean values with ⌘⌥V.
+**Beyond Excel's ⌘⇧V shortcut** - Clnbrd works in ALL apps (Google Sheets, Numbers, Airtable, Notion, etc.), strips more than just formulas (removes hidden AI watermarks, zero-width characters, hyperlinks, and metadata), and uses one consistent hotkey everywhere: ⌘⌥V.
+
+**Why Clnbrd vs Excel's built-in ⌘⇧V:**
+- ✅ **Works everywhere** (Google Sheets, Numbers, web apps, email, Slack)
+- ✅ **Deeper cleaning** (removes AI watermarks, hidden Unicode, metadata)
+- ✅ **Strips hyperlinks** (Excel's ⌘⇧V keeps hyperlinks!)
+- ✅ **One hotkey for everything** (no need to remember different shortcuts per app)
 
 **Common scenarios:**
-- Copying data from web pages into spreadsheets
-- Pasting email addresses, phone numbers, or lists without hyperlinks
+- Copying data from web pages into spreadsheets (removes ALL formatting, not just formulas)
+- Pasting email addresses, phone numbers, or lists **without hyperlinks** (Excel's ⌘⇧V doesn't do this!)
 - Moving data between workbooks without breaking formulas
 - Importing CSV/text data without formatting issues
+- Working in Google Sheets (no native paste-values-only shortcut on Mac!)
 
 ### Content Writers & Editors
 - Clean AI-generated text (removes ChatGPT watermarks)
