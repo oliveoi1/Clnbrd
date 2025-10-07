@@ -21,6 +21,19 @@
 
 ## 📋 Short Term (Next 1-2 Builds)
 
+### Performance & Stability
+- [ ] **Fix App Hang for Large Text Processing** (High Priority - Build 34)
+  - Move `CleaningRules.apply()` to background thread for large text (> 50,000 chars)
+  - Add threshold detection to prevent main thread blocking
+  - Implement async processing with completion handlers
+  - Add Sentry tracking for processing time
+  - Test with very large clipboard content (100,000+ chars)
+  - **Status:** Not Started
+  - **Effort:** 30 minutes
+  - **Impact:** Eliminates UI freezes and Sentry "App Hang" errors
+  - **Issue:** Detected in Sentry - main thread blocks 2+ seconds on large text
+  - **Priority:** HIGH (affects user experience)
+
 ### Build Automation Improvements
 - [ ] **Automate EdDSA Signature Generation**
   - Integrate `sign_update` into `finalize_notarized_build.sh`
