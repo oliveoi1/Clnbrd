@@ -1,6 +1,6 @@
 # Clnbrd
 
-**Clean clipboard text tool for macOS**
+**Clean clipboard text and paste with hotkey tool for macOS**
 
 A lightweight, menu bar utility that removes formatting from clipboard text (including hidden Chat GPT and AI Watermarks), making it easy to paste clean text anywhere.
 
