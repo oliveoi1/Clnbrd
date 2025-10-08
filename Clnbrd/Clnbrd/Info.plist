@@ -58,7 +58,7 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast-v2.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>E94fSkBwZDl/oMFhBQPz0szRlg3kCw5I9yP91GyaVGk=</string>
 	<key>SUScheduledCheckInterval</key>
