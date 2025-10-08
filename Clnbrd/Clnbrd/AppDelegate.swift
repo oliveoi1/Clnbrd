@@ -593,7 +593,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ("📝 REMOVE EMOJIS", "Removes all emoji characters from clipboard text", "BEFORE:  Hello 😀 world 🌍 test 🎉\nAFTER:   Hello  world  test "),
             ("📝 REMOVE EXTRA LINE BREAKS (3+ → 2)", "Removes excessive line breaks, keeping maximum of 2 consecutive breaks", "BEFORE:  Line one\n\n\n\nLine two\n\n\n\n\nLine three\nAFTER:   Line one\n\n\nLine two\n\n\nLine three"),
             ("📝 REMOVE LEADING/TRAILING WHITESPACE", "Removes spaces and tabs at the beginning and end of text", "BEFORE:     Text with leading and trailing spaces    \nAFTER:   Text with leading and trailing spaces"),
-            ("📝 REMOVE URLs (HTTP, HTTPS, WWW)", "Removes web URLs and links from text", "BEFORE:  Check out https://example.com and www.test.com\nAFTER:   Check out  and "),
+            ("📝 REMOVE URL TRACKING PARAMETERS", "Strips tracking from URLs (150+ params!)", "BEFORE:  https://youtu.be/VIDEO?si=xyz123\nAFTER:   https://youtu.be/VIDEO"),
+            ("📝 REMOVE URL PROTOCOLS", "Strips protocols but keeps domain visible", "BEFORE:  Check out https://example.com and www.test.com\nAFTER:   Check out example.com and test.com"),
             ("📝 REMOVE HTML TAGS AND ENTITIES", "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", "BEFORE:  <b>Bold text</b> and <i>italic</i> with &nbsp; entities\nAFTER:   Bold text and italic with  entities"),
             ("📝 REMOVE EXTRA PUNCTUATION MARKS", "Removes excessive punctuation marks like multiple periods or exclamation points", "BEFORE:  Hello!!! How are you??? Great...\nAFTER:   Hello! How are you? Great.")
         ]
