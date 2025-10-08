@@ -107,7 +107,7 @@ echo -e "${GREEN}✅ Extended attributes cleaned!${NC}"
 
 # ===== SIGN SPARKLE FRAMEWORK COMPONENTS =====
 echo -e "${YELLOW}🔏 Signing Sparkle framework components...${NC}"
-cd "${BUILD_DIR}/App/Clnbrd.app/Contents/Frameworks/Sparkle.framework/Versions/B"
+cd "${BUILD_DIR}/App/Clnbrd.app/Contents/Frameworks/Sparkle.framework/Versions/Current"
 
 # Sign nested executables first (deepest to shallowest)
 codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp XPCServices/Downloader.xpc
@@ -120,9 +120,21 @@ echo -e "${GREEN}✅ Sparkle components signed!${NC}"
 
 # ===== SIGN FRAMEWORKS AND MAIN APP =====
 echo -e "${YELLOW}🔏 Signing frameworks and main app...${NC}"
-codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "${BUILD_DIR}/App/Clnbrd.app/Contents/Frameworks/Sparkle.framework"
-codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "${BUILD_DIR}/App/Clnbrd.app/Contents/Frameworks/Sentry.framework"
-codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "${BUILD_DIR}/App/Clnbrd.app"
+# Move app to /tmp to avoid file provider issues (iCloud, etc.)
+rm -rf /tmp/Clnbrd.app
+cp -R "${BUILD_DIR}/App/Clnbrd.app" /tmp/
+xattr -cr /tmp/Clnbrd.app
+
+# Sign frameworks
+codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app/Contents/Frameworks/Sparkle.framework"
+codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app/Contents/Frameworks/Sentry.framework"
+
+# Sign main app
+codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app"
+
+# Move signed app back
+rm -rf "${BUILD_DIR}/App/Clnbrd.app"
+mv /tmp/Clnbrd.app "${BUILD_DIR}/App/"
 
 echo -e "${GREEN}✅ App fully signed with hardened runtime!${NC}"
 
