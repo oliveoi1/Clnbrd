@@ -381,6 +381,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func showVersionHistoryRequested() {
         dialogManager.showVersionHistory()
     }
+    
+    func shareAppRequested() {
+        showShareAppDialog()
+    }
     func showSamplesRequested() {
         dialogManager.showSamples()
     }
@@ -681,6 +685,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc func openSupport() {
         reportIssueRequested()
+    }
+    
+    private func showShareAppDialog() {
+        let shareText = """
+        🎉 Check out Clnbrd - The Ultimate Clipboard Cleaner for Mac!
+        
+        ✨ Features:
+        • 🧹 Automatically strips formatting from copied text
+        • ⚡ Instant paste with ⌘⌥V hotkey
+        • 🤖 Auto-clean on copy (optional)
+        • 📋 Menu bar integration
+        • 🔐 Fully notarized by Apple
+        • 🚀 Lightweight and privacy-focused
+        
+        Perfect for writers, developers, and anyone who copies text from websites, PDFs, or documents!
+        
+        Download: https://github.com/oliveoi1/Clnbrd/releases/latest
+        
+        #Clnbrd #MacApp #Productivity #ClipboardCleaner
+        """
+        
+        let sharingService = NSSharingService(named: .composeMessage)
+        sharingService?.perform(withItems: [shareText])
     }
 }
 

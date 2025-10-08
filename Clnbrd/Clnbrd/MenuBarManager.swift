@@ -76,6 +76,13 @@ class MenuBarManager {
         reportItem.target = self
         menu.addItem(reportItem)
         
+        menu.addItem(NSMenuItem.separator())
+        
+        let shareAppItem = NSMenuItem(title: "Share Clnbrd", action: #selector(shareApp), keyEquivalent: "")
+        shareAppItem.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share app")
+        shareAppItem.target = self
+        menu.addItem(shareAppItem)
+        
         // Debug: Test Sentry (only visible when holding Option key)
         let testSentryItem = NSMenuItem(title: "Test Crash Reporting", action: #selector(testSentry), keyEquivalent: "")
         testSentryItem.image = NSImage(systemSymbolName: "ladybug", accessibilityDescription: "Test Sentry")
@@ -253,6 +260,11 @@ class MenuBarManager {
         SentryManager.shared.trackUserAction("version_history_opened")
         delegate?.showVersionHistoryRequested()
     }
+    
+    @objc func shareApp() {
+        SentryManager.shared.trackUserAction("share_app_triggered")
+        delegate?.shareAppRequested()
+    }
 }
 
 protocol MenuBarManagerDelegate: AnyObject {
@@ -268,5 +280,6 @@ protocol MenuBarManagerDelegate: AnyObject {
     func openAboutRequested()
     func showSamplesRequested()
     func showVersionHistoryRequested()
+    func shareAppRequested()
     func isAutoCleanEnabled() -> Bool
 }

@@ -145,6 +145,12 @@ class SettingsWindow: NSWindowController {
         analyticsToggle.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
         stackView.addArrangedSubview(analyticsToggle)
         
+        let shareAppButton = NSButton(title: "Share Clnbrd", target: self, action: #selector(shareApp))
+        shareAppButton.bezelStyle = .rounded
+        shareAppButton.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share app")
+        shareAppButton.imagePosition = .imageLeft
+        stackView.addArrangedSubview(shareAppButton)
+        
         let testSystemInfoButton = NSButton(title: "Test System Info", target: self, action: #selector(testSystemInformation))
         testSystemInfoButton.bezelStyle = .rounded
         stackView.addArrangedSubview(testSystemInfoButton)
@@ -803,6 +809,29 @@ class SettingsWindow: NSWindowController {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+    
+    @objc func shareApp() {
+        let shareText = """
+        🎉 Check out Clnbrd - The Ultimate Clipboard Cleaner for Mac!
+        
+        ✨ Features:
+        • 🧹 Automatically strips formatting from copied text
+        • ⚡ Instant paste with ⌘⌥V hotkey
+        • 🤖 Auto-clean on copy (optional)
+        • 📋 Menu bar integration
+        • 🔐 Fully notarized by Apple
+        • 🚀 Lightweight and privacy-focused
+        
+        Perfect for writers, developers, and anyone who copies text from websites, PDFs, or documents!
+        
+        Download: https://github.com/oliveoi1/Clnbrd/releases/latest
+        
+        #Clnbrd #MacApp #Productivity #ClipboardCleaner
+        """
+        
+        let sharingService = NSSharingService(named: .composeMessage)
+        sharingService?.perform(withItems: [shareText])
     }
     
     func emailSupportWithAnalytics(_ analyticsData: String) {
