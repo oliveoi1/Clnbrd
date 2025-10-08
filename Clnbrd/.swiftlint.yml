@@ -1,13 +1,28 @@
+# SwiftLint Configuration for Clnbrd
+# macOS clipboard cleaning utility
+
+disabled_rules:
+  - trailing_whitespace
+  - todo
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - explicit_init
+  - first_where
+  - sorted_first_last
+  - contains_over_first_not_nil
+  - last_where
+  - reduce_into
+  - redundant_nil_coalescing
+  - unused_optional_binding
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
 included:
-  - Clnbrd
+  - Clnbrd/Clnbrd
 
 excluded:
-  - Clnbrd/Documentation
-  - DerivedData
-  - .build
   - Carthage
-  - Pods
-
-# You can add or adjust rules below as needed
-opt_in_rules: []
-disabled_rules: []
+  - Clnbrd/Clnbrd/Documentation
+  - Documentation

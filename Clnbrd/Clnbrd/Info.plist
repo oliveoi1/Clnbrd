@@ -46,5 +46,43 @@
 	<true/>
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Clnbrd Profile</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.allanray.clnbrd.profile</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>clnbrd-profile</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>clnbrd-profile</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>Clnbrd Profile</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.allanray.clnbrd.profile</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
