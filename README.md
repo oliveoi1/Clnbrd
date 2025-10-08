@@ -6,7 +6,7 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 
 ## 📥 Download
 
-**[⬇️ Download Latest Version (Clnbrd 1.3 Build 33)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3-Build-33-Notarized.dmg)**
+**[⬇️ Download Latest Version (Clnbrd 1.3 Build 43)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3.43.-Build-43-Notarized.dmg)**
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
@@ -168,7 +168,7 @@ open Clnbrd/Clnbrd.xcodeproj
 
 ## 📋 Version History
 
-### v1.3 (35) (Build 35) - Current ✅ Notarized
+### v1.3 (Build 33) - Current ✅ Notarized
 - **✅ Fully Notarized by Apple** - Approved October 6, 2025
 - Apple Developer ID properly configured
 - App ID registered: com.allanray.Clnbrd
