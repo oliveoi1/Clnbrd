@@ -55,13 +55,18 @@
   - **Status:** ✅ Complete
   - **Impact:** Reliable automated builds
 
-- [ ] **Automate EdDSA Signature Generation**
+- [x] **Automate EdDSA Signature Generation** ✅
   - Integrate `sign_update` into `finalize_notarized_build.sh`
   - Store Sparkle private key securely
   - Auto-update `appcast-v2.xml` with signature
-  - **Status:** Not Started
-  - **Effort:** 2 hours
-  - **Impact:** Fully automated releases
+  - **Status:** ✅ **COMPLETED** - Automated EdDSA signature generation implemented
+  - **Effort:** 1.5 hours (completed)
+  - **Impact:** Enhanced security for all future releases
+  - **Implementation:** 
+    - Created `generate_eddsa_signature.sh` script
+    - Integrated into `finalize_notarized_build.sh`
+    - Automatic signature inclusion in appcast generation
+    - Graceful fallback if tools unavailable
 
 - [ ] **Automatic Appcast Update**
   - Script to update `appcast-v2.xml` automatically
