@@ -168,7 +168,7 @@ open Clnbrd/Clnbrd.xcodeproj
 
 ## 📋 Version History
 
-### v1.3 (Build 33) - Current ✅ Notarized
+### v1.3 (35) (Build 35) - Current ✅ Notarized
 - **✅ Fully Notarized by Apple** - Approved October 6, 2025
 - Apple Developer ID properly configured
 - App ID registered: com.allanray.Clnbrd

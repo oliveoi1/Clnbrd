@@ -4,10 +4,27 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>Clnbrd</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>clnbrd-profile</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>Clnbrd Profile</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.allanray.clnbrd.profile</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>Clnbrd</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Clnbrd 1.3 (Build 33), Copyright © 2025 Allan Alomes</string>
+	<string>Clnbrd 1.3 (Build 36), Copyright © 2025 Allan Alomes</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
@@ -17,13 +34,13 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.3 (33)</string>
+	<string>1.3 (36)</string>
 	<key>CFBundleVersion</key>
-	<string>33</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>15.5</string>
+	<string>36</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.5</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
@@ -34,18 +51,18 @@
 	<string>Clnbrd needs input monitoring permissions to paste cleaned text when you use the ⌘⌥V hotkey. This allows the app to simulate keyboard input for pasting.</string>
 	<key>NSUserNotificationAlertStyle</key>
 	<string>alert</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUScheduledCheckInterval</key>
-	<integer>86400</integer>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>E94fSkBwZDl/oMFhBQPz0szRlg3kCw5I9yP91GyaVGk=</string>
 	<key>SUAllowsAutomaticUpdates</key>
 	<true/>
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>E94fSkBwZDl/oMFhBQPz0szRlg3kCw5I9yP91GyaVGk=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -65,23 +82,6 @@
 					<string>clnbrd-profile</string>
 				</array>
 			</dict>
-		</dict>
-	</array>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>clnbrd-profile</string>
-			</array>
-			<key>CFBundleTypeName</key>
-			<string>Clnbrd Profile</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.allanray.clnbrd.profile</string>
-			</array>
 		</dict>
 	</array>
 </dict>

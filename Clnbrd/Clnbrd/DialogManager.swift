@@ -242,7 +242,7 @@ class DialogManager {
     }
 
     private func createVersionEntry(_ title: String, date: String, features: [String], attributes: ([NSAttributedString.Key: Any], [NSAttributedString.Key: Any], [NSAttributedString.Key: Any])) -> NSMutableAttributedString {
-        let (bodyAttributes, dateAttributes, featureAttributes) = attributes
+        let (_, dateAttributes, featureAttributes) = attributes
         let entry = NSMutableAttributedString()
 
         // Version title

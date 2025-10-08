@@ -285,55 +285,18 @@ class SettingsWindow: NSWindowController {
         profileLabel.font = NSFont.boldSystemFont(ofSize: 13)
         profileLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        // Profile dropdown
+        // Profile dropdown with all management options
         profileDropdown = NSPopUpButton(frame: .zero, pullsDown: false)
         profileDropdown.translatesAutoresizingMaskIntoConstraints = false
         profileDropdown.target = self
         profileDropdown.action = #selector(profileChanged(_:))
-        refreshProfileDropdown()
         
-        // Rename button
-        let renameButton = NSButton(title: "Rename", target: self, action: #selector(renameProfile))
-        renameButton.bezelStyle = .rounded
-        renameButton.translatesAutoresizingMaskIntoConstraints = false
-        
-        // New profile button
-        let newButton = NSButton(title: "+ New", target: self, action: #selector(createNewProfile))
-        newButton.bezelStyle = .rounded
-        newButton.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Delete button
-        let deleteButton = NSButton(title: "Delete", target: self, action: #selector(deleteCurrentProfile))
-        deleteButton.bezelStyle = .rounded
-        deleteButton.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Export button
-        let exportButton = NSButton(title: "Export...", target: self, action: #selector(exportProfile))
-        exportButton.bezelStyle = .rounded
-        exportButton.translatesAutoresizingMaskIntoConstraints = false
-        exportButton.toolTip = "Save profile to file"
-        
-        // Share button (using native macOS share icon)
-        let shareButton = NSButton(image: NSImage(named: NSImage.shareTemplateName)!, target: self, action: #selector(shareProfile))
-        shareButton.bezelStyle = .rounded
-        shareButton.translatesAutoresizingMaskIntoConstraints = false
-        shareButton.toolTip = "Share via AirDrop, Messages, or Mail"
-        
-        // Import button
-        let importButton = NSButton(title: "Import...", target: self, action: #selector(importProfile))
-        importButton.bezelStyle = .rounded
-        importButton.translatesAutoresizingMaskIntoConstraints = false
-        importButton.toolTip = "Import profile from file"
+        // Set up the profile dropdown menu with all options
+        setupProfileDropdownMenu()
         
         // Add all subviews
         container.addSubview(profileLabel)
         container.addSubview(profileDropdown)
-        container.addSubview(renameButton)
-        container.addSubview(newButton)
-        container.addSubview(deleteButton)
-        container.addSubview(exportButton)
-        container.addSubview(shareButton)
-        container.addSubview(importButton)
         
         // Layout
         NSLayoutConstraint.activate([
@@ -342,32 +305,69 @@ class SettingsWindow: NSWindowController {
             
             profileDropdown.leadingAnchor.constraint(equalTo: profileLabel.trailingAnchor, constant: 8),
             profileDropdown.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            profileDropdown.widthAnchor.constraint(equalToConstant: 150),
-            
-            renameButton.leadingAnchor.constraint(equalTo: profileDropdown.trailingAnchor, constant: 12),
-            renameButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            
-            newButton.leadingAnchor.constraint(equalTo: renameButton.trailingAnchor, constant: 8),
-            newButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            
-            deleteButton.leadingAnchor.constraint(equalTo: newButton.trailingAnchor, constant: 8),
-            deleteButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            
-            exportButton.leadingAnchor.constraint(equalTo: deleteButton.trailingAnchor, constant: 12),
-            exportButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            
-            shareButton.leadingAnchor.constraint(equalTo: exportButton.trailingAnchor, constant: 4),
-            shareButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            shareButton.widthAnchor.constraint(equalToConstant: 32),
-            
-            importButton.leadingAnchor.constraint(equalTo: shareButton.trailingAnchor, constant: 8),
-            importButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            importButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            profileDropdown.widthAnchor.constraint(equalToConstant: 200),
+            profileDropdown.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             
             container.heightAnchor.constraint(equalToConstant: 30)
         ])
         
         return container
+    }
+    
+    private func setupProfileDropdownMenu() {
+        // Clear existing items
+        profileDropdown.removeAllItems()
+        
+        // Add profile names
+        let profiles = ProfileManager.shared.getAllProfiles()
+        let activeProfile = ProfileManager.shared.getActiveProfile()
+        currentProfileId = activeProfile.id
+        
+        for profile in profiles {
+            profileDropdown.addItem(withTitle: profile.name)
+            if let item = profileDropdown.item(withTitle: profile.name) {
+                item.representedObject = profile.id
+            }
+        }
+        
+        // Add separator
+        profileDropdown.menu?.addItem(NSMenuItem.separator())
+        
+        // Add management options
+        let renameItem = NSMenuItem(title: "Rename Profile...", action: #selector(renameProfile), keyEquivalent: "")
+        renameItem.target = self
+        profileDropdown.menu?.addItem(renameItem)
+        
+        let createItem = NSMenuItem(title: "Create New Profile...", action: #selector(createNewProfile), keyEquivalent: "")
+        createItem.target = self
+        profileDropdown.menu?.addItem(createItem)
+        
+        let removeItem = NSMenuItem(title: "Remove Profile...", action: #selector(deleteCurrentProfile), keyEquivalent: "")
+        removeItem.target = self
+        profileDropdown.menu?.addItem(removeItem)
+        
+        // Add another separator
+        profileDropdown.menu?.addItem(NSMenuItem.separator())
+        
+        // Add export/import options
+        let exportItem = NSMenuItem(title: "Export Profile...", action: #selector(exportProfile), keyEquivalent: "")
+        exportItem.target = self
+        profileDropdown.menu?.addItem(exportItem)
+        
+        let shareItem = NSMenuItem(title: "Share Profile...", action: #selector(shareProfile), keyEquivalent: "")
+        shareItem.target = self
+        profileDropdown.menu?.addItem(shareItem)
+        
+        let importItem = NSMenuItem(title: "Import Profile...", action: #selector(importProfile), keyEquivalent: "")
+        importItem.target = self
+        profileDropdown.menu?.addItem(importItem)
+        
+        // Select the active profile
+        if let index = profiles.firstIndex(where: { $0.id == activeProfile.id }) {
+            profileDropdown.selectItem(at: index)
+        }
+        
+        logger.info("🔧 Set up profile dropdown with \(self.profileDropdown.numberOfItems) total items")
     }
     
     func createSpacer(height: CGFloat) -> NSView {
@@ -881,30 +881,25 @@ class SettingsWindow: NSWindowController {
     // MARK: - Profile Management
     
     func refreshProfileDropdown() {
-        profileDropdown?.removeAllItems()
-        
-        let profiles = ProfileManager.shared.getAllProfiles()
-        let activeProfile = ProfileManager.shared.getActiveProfile()
-        currentProfileId = activeProfile.id
-        
-        for profile in profiles {
-            profileDropdown?.addItem(withTitle: profile.name)
-            if let item = profileDropdown?.item(withTitle: profile.name) {
-                item.representedObject = profile.id
-            }
-        }
-        
-        // Select the active profile
-        if let index = profiles.firstIndex(where: { $0.id == activeProfile.id }) {
-            profileDropdown?.selectItem(at: index)
-        }
+        setupProfileDropdownMenu()
     }
     
     @objc func profileChanged(_ sender: NSPopUpButton) {
-        guard let selectedItem = sender.selectedItem,
-              let profileId = selectedItem.representedObject as? UUID else {
+        guard let selectedItem = sender.selectedItem else { return }
+        
+        // Check if a management option was selected (no representedObject)
+        if selectedItem.representedObject == nil {
+            // This is a management option, execute its action
+            if let action = selectedItem.action {
+                NSApp.sendAction(action, to: selectedItem.target, from: selectedItem)
+            }
+            // Reset selection to current profile
+            refreshProfileDropdown()
             return
         }
+        
+        // This is a profile selection
+        guard let profileId = selectedItem.representedObject as? UUID else { return }
         
         // Save current profile's rules first
         if let currentId = currentProfileId {
@@ -1109,7 +1104,7 @@ class SettingsWindow: NSWindowController {
         }
     }
     
-    @objc func shareProfile(_ sender: NSButton) {
+    @objc func shareProfile(_ sender: Any) {
         guard let profileId = currentProfileId else { return }
         
         // Save current changes first
@@ -1133,7 +1128,19 @@ class SettingsWindow: NSWindowController {
             
             // Show native macOS share sheet
             let sharingPicker = NSSharingServicePicker(items: [fileURL])
-            sharingPicker.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+            
+            // Handle different sender types
+            if let button = sender as? NSButton {
+                sharingPicker.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            } else if sender is NSMenuItem {
+                // For menu items, show relative to the profile dropdown
+                sharingPicker.show(relativeTo: profileDropdown.bounds, of: profileDropdown, preferredEdge: .minY)
+            } else {
+                // Fallback: show relative to the window
+                if let window = self.window {
+                    sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 100, height: 100), of: window.contentView!, preferredEdge: .minY)
+                }
+            }
         } catch {
             let alert = NSAlert()
             alert.messageText = "Share Failed"

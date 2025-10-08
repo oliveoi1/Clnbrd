@@ -150,7 +150,7 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
 
         if let type = userInfo["type"] as? String,
-           let version = userInfo["version"] as? String {
+           userInfo["version"] is String {
             switch type {
             case "update":
                 // Handle update notification activation
