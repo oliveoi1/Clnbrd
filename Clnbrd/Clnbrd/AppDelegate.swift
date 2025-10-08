@@ -475,7 +475,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Copy Info & Open Email")
         alert.addButton(withTitle: "Copy Info Only")
-        alert.addButton(withTitle: "Cancel")
+        // alert.addButton(withTitle: "Cancel")
 
         let response = alert.runModal()
         handleIssueReportResponse(response, supportInfo: supportInfo)
@@ -706,15 +706,71 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         #Clnbrd #MacApp #Productivity #ClipboardCleaner
         """
         
-        // Create a sharing picker with all available services
+        // Show alert with sharing options
+        let alert = NSAlert()
+        alert.messageText = "Share Clnbrd"
+        alert.informativeText = "Choose how you'd like to share Clnbrd with friends:"
+        alert.alertStyle = .informational
+        
+        alert.addButton(withTitle: "📧 Email")
+        alert.addButton(withTitle: "💬 Messages")
+        alert.addButton(withTitle: "📋 Copy Link")
+        // alert.addButton(withTitle: "🔗 More Options...")
+        // alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        
+        switch response {
+        case .alertFirstButtonReturn: // Email
+            shareViaEmail(shareText)
+        case .alertSecondButtonReturn: // Messages
+            shareViaMessages(shareText)
+        case .alertThirdButtonReturn: // Copy Link
+            copyToClipboard(shareText)
+        // case NSApplication.ModalResponse.alertFirstButtonReturn + 3: // More Options
+            showFullSharingPicker(shareText)
+        default:
+            break
+        }
+    }
+    
+    private func shareViaEmail(_ shareText: String) {
+        let subject = "Check out Clnbrd - The Ultimate Clipboard Cleaner for Mac!"
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = shareText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        
+        if let url = URL(string: "mailto:?subject=\(encodedSubject)&body=\(encodedBody)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    private func shareViaMessages(_ shareText: String) {
+        if let sharingService = NSSharingService(named: .composeMessage) {
+            sharingService.perform(withItems: [shareText])
+        }
+    }
+    
+    private func copyToClipboard(_ shareText: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(shareText, forType: .string)
+        
+        // Show confirmation
+        let alert = NSAlert()
+        alert.messageText = "Copied to Clipboard"
+        alert.informativeText = "The share text has been copied to your clipboard. You can now paste it anywhere!"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+    
+    private func showFullSharingPicker(_ shareText: String) {
         let sharingPicker = NSSharingServicePicker(items: [shareText])
         
-        // Show the picker relative to the menu bar button
         if let statusItem = menuBarManager.statusItem,
            let button = statusItem.button {
             sharingPicker.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         } else {
-            // Fallback: show in center of screen
             sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 1, height: 1), of: NSApp.keyWindow?.contentView ?? NSView(), preferredEdge: .minY)
         }
     }
