@@ -830,8 +830,33 @@ class SettingsWindow: NSWindowController {
         #Clnbrd #MacApp #Productivity #ClipboardCleaner
         """
         
-        let sharingService = NSSharingService(named: .composeMessage)
-        sharingService?.perform(withItems: [shareText])
+        // Create a sharing picker with all available services
+        let sharingPicker = NSSharingServicePicker(items: [shareText])
+        
+        // Show the picker relative to the share button
+        if let shareButton = findShareButton() {
+            sharingPicker.show(relativeTo: shareButton.bounds, of: shareButton, preferredEdge: .minY)
+        } else {
+            // Fallback: show relative to window
+            sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 1, height: 1), of: window?.contentView ?? NSView(), preferredEdge: .minY)
+        }
+    }
+    
+    private func findShareButton() -> NSButton? {
+        // Find the share button in the view hierarchy
+        guard let contentView = window?.contentView else { return nil }
+        
+        for subview in contentView.subviews {
+            if let stackView = subview as? NSStackView {
+                for arrangedSubview in stackView.arrangedSubviews {
+                    if let button = arrangedSubview as? NSButton,
+                       button.title == "Share Clnbrd" {
+                        return button
+                    }
+                }
+            }
+        }
+        return nil
     }
     
     func emailSupportWithAnalytics(_ analyticsData: String) {

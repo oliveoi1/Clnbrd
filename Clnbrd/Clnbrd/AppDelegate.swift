@@ -706,8 +706,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         #Clnbrd #MacApp #Productivity #ClipboardCleaner
         """
         
-        let sharingService = NSSharingService(named: .composeMessage)
-        sharingService?.perform(withItems: [shareText])
+        // Create a sharing picker with all available services
+        let sharingPicker = NSSharingServicePicker(items: [shareText])
+        
+        // Show the picker relative to the menu bar button
+        if let statusItem = menuBarManager.statusItem,
+           let button = statusItem.button {
+            sharingPicker.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        } else {
+            // Fallback: show in center of screen
+            sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 1, height: 1), of: NSApp.keyWindow?.contentView ?? NSView(), preferredEdge: .minY)
+        }
     }
 }
 
