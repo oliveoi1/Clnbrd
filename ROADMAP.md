@@ -1,7 +1,33 @@
 # Clnbrd Development Roadmap
 
 **Last Updated:** October 8, 2025  
-**Current Version:** 1.3 (Build 34 - In Development) 🚧
+**Current Version:** 1.3 (Build 44 - Latest Release) ✅
+
+---
+
+## 🎉 Recent Accomplishments (Build 43-44)
+
+### ✅ Completed in Latest Release
+- [x] **Fixed Sparkle Update System** (Build 44)
+  - Resolved "Update Error!" dialog issue
+  - Created appcast-v2.xml to bypass GitHub cache
+  - Updated Info.plist to use new appcast URL
+  - **Status:** ✅ Complete
+  - **Impact:** Users can now receive updates properly
+
+- [x] **Enhanced Profile Management UI** (Build 43)
+  - Consolidated all profile options into single dropdown menu
+  - Improved settings interface organization
+  - Better user experience for profile management
+  - **Status:** ✅ Complete
+  - **Impact:** Cleaner, more intuitive interface
+
+- [x] **Code Signing & Notarization Fixes** (Build 43)
+  - Fixed "resource fork" signing errors
+  - Implemented /tmp directory signing approach
+  - Successfully notarized with Apple (ID: d763a4df-2ca5-4450-b6e7-9a874f996223)
+  - **Status:** ✅ Complete
+  - **Impact:** Reliable build and distribution process
 
 ---
 
@@ -10,8 +36,8 @@
 ### Security & Distribution
 - [ ] **Add EdDSA Signature to Appcast** (High Priority)
   - Locate Sparkle's `sign_update` tool
-  - Generate signature for Build 33 DMG
-  - Update `appcast.xml` with `sparkle:edSignature`
+  - Generate signature for Build 43 DMG
+  - Update `appcast-v2.xml` with `sparkle:edSignature`
   - Add signature generation to build automation
   - **Status:** Pending
   - **Effort:** 30 minutes
@@ -22,16 +48,22 @@
 ## 📋 Short Term (Next 1-2 Builds)
 
 ### Build Automation Improvements
+- [x] **Fixed Code Signing Process** (Build 43)
+  - Implemented /tmp directory signing to avoid file provider issues
+  - Updated build_distribution.sh with robust signing approach
+  - **Status:** ✅ Complete
+  - **Impact:** Reliable automated builds
+
 - [ ] **Automate EdDSA Signature Generation**
   - Integrate `sign_update` into `finalize_notarized_build.sh`
   - Store Sparkle private key securely
-  - Auto-update `appcast.xml` with signature
+  - Auto-update `appcast-v2.xml` with signature
   - **Status:** Not Started
   - **Effort:** 2 hours
   - **Impact:** Fully automated releases
 
 - [ ] **Automatic Appcast Update**
-  - Script to update `appcast.xml` automatically
+  - Script to update `appcast-v2.xml` automatically
   - Extract version, file size, date from build
   - Generate release notes from git commits
   - **Status:** Not Started
