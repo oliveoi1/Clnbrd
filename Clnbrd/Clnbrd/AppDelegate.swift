@@ -144,6 +144,10 @@ class SystemInfoUtility {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    // MARK: - Managers
+
+    private var notificationManager: NotificationManager!
+    private var dialogManager: DialogManager!
     var settingsWindowController: SettingsWindow?
     var autoCleanEnabled = false
     private var aboutWindow: NSWindow?
@@ -171,17 +175,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         SentryManager.shared.initialize()
         SentryManager.shared.trackUserAction("app_launched")
         
-        // Request notification permissions
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if granted {
-                logger.info("Notification permissions granted")
-            } else {
-                logger.warning("Notification permissions denied: \(error?.localizedDescription ?? "Unknown error")")
-            }
-        }
+        // Initialize managers
+        notificationManager = NotificationManager(appDelegate: self)
+        dialogManager = DialogManager(appDelegate: self)
         
         // Load preferences
-        clipboardManager.cleaningRules = preferencesManager.loadCleaningRules()
+        let activeProfile = ProfileManager.shared.getActiveProfile()
+        clipboardManager.cleaningRules = activeProfile.rules
         autoCleanEnabled = preferencesManager.loadAutoCleanEnabled()
         
         // Setup managers
@@ -200,8 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         checkAccessibilityPermissions()
         checkPostUpdatePermissions()
         
-        // Set up notification delegate for handling push notifications
-        UNUserNotificationCenter.current().delegate = self
+        // Notification manager handles delegate setup
         
         // Start auto-clean if enabled
         if autoCleanEnabled {
@@ -220,9 +219,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let currentVersion = VersionManager.version
         
         // Debug logging
-        print("🔍 Accessibility check: trusted=\(trusted), version=\(currentVersion)")
-        print("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
-        print("🔍 App path: \(Bundle.main.bundlePath)")
+        logger.info("🔍 Accessibility check: trusted=\(trusted), version=\(currentVersion)")
+        logger.info("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+        logger.info("🔍 App path: \(Bundle.main.bundlePath)")
         logger.info("🔍 Accessibility permission status: \(trusted ? "GRANTED" : "NOT GRANTED")")
         
         // Check if we've already shown the permission dialog in this session
@@ -238,9 +237,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 if isPostUpdate {
-                    self?.showPostUpdateAccessibilityWarning()
+                    self?.dialogManager.showPostUpdateAccessibilityWarning()
                 } else {
-                    self?.showAccessibilityWarning()
+                    self?.dialogManager.showAccessibilityWarning()
                 }
             }
         } else if trusted {
@@ -303,7 +302,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             // Show a brief post-update message
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.showPostUpdateMessage()
+                self?.dialogManager.showPostUpdateMessage()
             }
         }
         
@@ -372,939 +371,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             preferencesManager.saveFirstLaunchCompleted()
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.showWelcomeDialog()
+                self?.dialogManager.showWelcomeDialog()
             }
         }
     }
-    
-    func showWelcomeDialog() {
-        let alert = NSAlert()
-        alert.messageText = "Welcome to Clnbrd!"
-        alert.informativeText = """
-        Clnbrd cleans your clipboard text by removing:
-        • Formatting (bold, italic, colors)
-        • AI watermarks (invisible characters)
-        • URLs, HTML tags, extra punctuation
-        • Emojis (optional)
-        • Smart quotes, em-dashes, extra spaces
-        • Extra line breaks and whitespace
-        
-        HOW TO USE:
-        • Press ⌘⌥V (Cmd+Option+V) to paste cleaned text
-        • Or use the menu bar icon for options
-        
-        IMPORTANT SETUP:
-        For the ⌘⌥V hotkey to work, you need to:
-        1. Open System Settings
-        2. Go to Privacy & Security → Accessibility
-        3. Add Clnbrd and enable it
-        
-        Would you like to open System Settings now?
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "View Installation Guide")
-        alert.addButton(withTitle: "I'll Do It Later")
-        
-        let response = alert.runModal()
-        switch response {
-        case .alertFirstButtonReturn:
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-        case .alertSecondButtonReturn:
-            showInstallationGuide()
-        default:
-            break
-        }
+    func isAutoCleanEnabled() -> Bool {
+        return autoCleanEnabled
     }
-    
-    @objc func showInstallationGuide() {
-        let alert = NSAlert()
-        alert.messageText = "Installation & Permissions Guide"
-        alert.informativeText = """
-        REQUIRED PERMISSIONS FOR HOTKEY (⌘⌥V):
-        
-        Clnbrd needs TWO permissions to work:
-        
-        1️⃣ ACCESSIBILITY
-           • Required to simulate paste (⌘V) action
-           • Click "Open Accessibility" below
-        
-        2️⃣ INPUT MONITORING  
-           • Required to detect ⌘⌥V hotkey
-           • Click "Open Input Monitoring" below
-        
-        After granting both permissions:
-        • Quit Clnbrd (⌘Q)
-        • Relaunch from Applications folder
-        • Test the ⌘⌥V hotkey!
-        
-        These permissions are required by macOS for ANY app that monitors keyboard shortcuts.
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open Accessibility")
-        alert.addButton(withTitle: "Open Input Monitoring")
-        alert.addButton(withTitle: "OK")
-        
-        let response = alert.runModal()
-        switch response {
-        case .alertFirstButtonReturn:
-            // Open Accessibility Settings
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        case .alertSecondButtonReturn:
-            // Open Input Monitoring Settings
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
-                NSWorkspace.shared.open(url)
-            }
-        default:
-            break
-        }
+    func showVersionHistoryRequested() {
+        dialogManager.showVersionHistory()
     }
-    
-    func openInstallationGuideFile() {
-        if let bundlePath = Bundle.main.bundlePath as NSString? {
-            let appPath = bundlePath.deletingLastPathComponent
-            let guidePath = "\(appPath)/INSTALLATION_GUIDE.txt"
-            let guideURL = URL(fileURLWithPath: guidePath)
-            
-            if FileManager.default.fileExists(atPath: guidePath) {
-                NSWorkspace.shared.open(guideURL)
-            } else {
-                // Fallback: show the guide content in a dialog
-                showInstallationGuideContent()
-            }
-        }
+    func showSamplesRequested() {
+        dialogManager.showSamples()
     }
-    
-    func showInstallationGuideContent() {
-        let alert = NSAlert()
-        alert.messageText = "Installation Guide"
-        alert.informativeText = """
-        CLNBRD INSTALLATION GUIDE
-        
-        IMPORTANT: macOS SECURITY WARNING
-        When you first try to open Clnbrd, macOS will show a security warning because the app is not signed by Apple.
-        
-        WHAT TO EXPECT:
-        - "Clnbrd.app cannot be opened because it is not from an identified developer"
-        - Or "Clnbrd.app was blocked from use because it is not from an identified developer"
-        
-        HOW TO FIX THIS:
-        1. Go to System Settings → Privacy & Security
-        2. Scroll down to find "Clnbrd.app was blocked"
-        3. Click "Open Anyway"
-        4. Click "Open" in the confirmation dialog
-        
-        ALTERNATIVE METHOD:
-        1. Right-click on Clnbrd.app in Finder
-        2. Select "Open" from the context menu
-        3. Click "Open" in the security dialog
-        
-        REQUIRED PERMISSIONS:
-        After Clnbrd launches, grant accessibility permissions:
-        1. System Settings → Privacy & Security → Accessibility
-        2. Find "Clnbrd" in the list
-        3. Toggle it ON
-        4. Restart Clnbrd
-        
-        This permission is required for the ⌘⌥V hotkey to work.
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+    func showInstallationGuideRequested() {
+        dialogManager.showInstallationGuide()
     }
-    
-    @objc func showSamples() {
-        let samplesWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 350, height: 250),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        
-        samplesWindow.title = "Clnbrd Cleaning Rules - Before & After Examples"
-        samplesWindow.center()
-        samplesWindow.setFrameAutosaveName("SamplesWindow")
-        
-        // Prevent the window from quitting the app when closed
-        samplesWindow.isReleasedWhenClosed = false
-        
-        // Create a styled text view with rich formatting
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.backgroundColor = NSColor.textBackgroundColor
-        textView.font = NSFont.systemFont(ofSize: 13)
-        
-        // Create attributed string with rich formatting
-        let attributedString = NSMutableAttributedString()
-        
-        // Title
-        let titleFont = NSFont.boldSystemFont(ofSize: 18)
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: titleFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        attributedString.append(NSAttributedString(string: "Clnbrd Cleaning Rules\n", attributes: titleAttributes))
-        
-        // Subtitle
-        let subtitleFont = NSFont.systemFont(ofSize: 14)
-        let subtitleAttributes: [NSAttributedString.Key: Any] = [
-            .font: subtitleFont,
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        attributedString.append(NSAttributedString(string: "Before & After Examples\n\n", attributes: subtitleAttributes))
-        
-        // Description
-        let bodyFont = NSFont.systemFont(ofSize: 13)
-        let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: bodyFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        attributedString.append(NSAttributedString(string: "Here are visual examples of how each cleaning rule transforms your text:\n\n", attributes: bodyAttributes))
-        
-        // Rule formatting
-        let ruleTitleFont = NSFont.boldSystemFont(ofSize: 14)
-        let ruleTitleAttributes: [NSAttributedString.Key: Any] = [
-            .font: ruleTitleFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        
-        let beforeAfterFont = NSFont.systemFont(ofSize: 12)
-        let beforeAfterAttributes: [NSAttributedString.Key: Any] = [
-            .font: beforeAfterFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        
-        let separatorAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 11),
-            .foregroundColor: NSColor.separatorColor
-        ]
-        
-        // Add each rule in the exact order shown in settings
-        let rules = [
-            ("📝 REMOVE ZERO-WIDTH AND INVISIBLE CHARACTERS (AI WATERMARKS)", "Removes invisible zero-width characters that can cause formatting issues", "BEFORE:  Hello[invisible]world[invisible]test\nAFTER:   Helloworldtest"),
-            ("📝 REPLACE EM-DASHES (—) WITH COMMA+SPACE", "Converts em dashes (—) to comma and space", "BEFORE:  Hello—world—this is a test—with em dashes\nAFTER:   Hello, world, this is a test, with em dashes"),
-            ("📝 NORMALIZE MULTIPLE SPACES TO SINGLE SPACE", "Converts multiple consecutive spaces to single spaces", "BEFORE:  Hello    world   test    with    multiple    spaces\nAFTER:   Hello world test with multiple spaces"),
-            ("📝 CONVERT SMART QUOTES TO STRAIGHT QUOTES", "Converts curly quotes to standard straight quotes", "BEFORE:  \"Hello\" and 'world' with smart quotes\nAFTER:   \"Hello\" and 'world' with smart quotes"),
-            ("📝 NORMALIZE LINE BREAKS", "Converts all line break types to standard line breaks", "BEFORE:  Line one\\r\\nLine two\\r\\nLine three\nAFTER:   Line one\n         Line two\n         Line three"),
-            ("📝 REMOVE TRAILING SPACES FROM LINES", "Removes spaces at the end of each line", "BEFORE:  Line with trailing spaces   \n         Another line with spaces  \nAFTER:   Line with trailing spaces\n         Another line with spaces"),
-            ("📝 REMOVE EMOJIS", "Removes all emoji characters from clipboard text", "BEFORE:  Hello 😀 world 🌍 test 🎉\nAFTER:   Hello  world  test "),
-            ("📝 REMOVE EXTRA LINE BREAKS (3+ → 2)", "Removes excessive line breaks, keeping maximum of 2 consecutive breaks", "BEFORE:  Line one\n\n\n\nLine two\n\n\n\n\nLine three\nAFTER:   Line one\n\n\nLine two\n\n\nLine three"),
-            ("📝 REMOVE LEADING/TRAILING WHITESPACE", "Removes spaces and tabs at the beginning and end of text", "BEFORE:     Text with leading and trailing spaces    \nAFTER:   Text with leading and trailing spaces"),
-            ("📝 REMOVE URL TRACKING PARAMETERS", "Strips tracking from URLs (150+ params!)", "BEFORE:  https://youtu.be/VIDEO?si=xyz123\nAFTER:   https://youtu.be/VIDEO"),
-            ("📝 REMOVE URL PROTOCOLS", "Strips protocols but keeps domain visible", "BEFORE:  Check out https://example.com and www.test.com\nAFTER:   Check out example.com and test.com"),
-            ("📝 REMOVE HTML TAGS AND ENTITIES", "Removes HTML formatting tags like <b>, <i>, &nbsp;, etc.", "BEFORE:  <b>Bold text</b> and <i>italic</i> with &nbsp; entities\nAFTER:   Bold text and italic with  entities"),
-            ("📝 REMOVE EXTRA PUNCTUATION MARKS", "Removes excessive punctuation marks like multiple periods or exclamation points", "BEFORE:  Hello!!! How are you??? Great...\nAFTER:   Hello! How are you? Great.")
-        ]
-        
-        for (index, rule) in rules.enumerated() {
-            // Rule title
-            attributedString.append(NSAttributedString(string: "\(rule.0)\n", attributes: ruleTitleAttributes))
-            
-            // Rule description
-            attributedString.append(NSAttributedString(string: "\(rule.1)\n\n", attributes: bodyAttributes))
-            
-            // Before/After examples
-            attributedString.append(NSAttributedString(string: "\(rule.2)\n\n", attributes: beforeAfterAttributes))
-            
-            // Separator (except for last rule)
-            if index < rules.count - 1 {
-                attributedString.append(NSAttributedString(string: "────────────────────────────────────────────────────────────────────────────────\n\n", attributes: separatorAttributes))
-            }
-        }
-        
-        // Tip section
-        let tipFont = NSFont.systemFont(ofSize: 12)
-        let tipAttributes: [NSAttributedString.Key: Any] = [
-            .font: tipFont,
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .obliqueness: 0.2  // Makes text appear italic
-        ]
-        attributedString.append(NSAttributedString(string: "💡 TIP: You can enable/disable individual rules in Settings → Cleaning Rules\n\n", attributes: tipAttributes))
-        attributedString.append(NSAttributedString(string: "These examples show how Clnbrd automatically cleans and normalizes text copied from various sources like web pages, documents, and other applications.", attributes: bodyAttributes))
-        
-        textView.textStorage?.setAttributedString(attributedString)
-        
-        // Force the text view to size itself properly
-        textView.sizeToFit()
-        
-        // Configure text view for proper sizing
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: 300, height: CGFloat.greatestFiniteMagnitude)
-        
-        // Debug: Print text view content length
-        print("DEBUG: Text view content length: \(attributedString.length) characters")
-        
-        // Create a scroll view
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = false
-        scrollView.scrollerStyle = .legacy
-        
-        // Add the text view to the scroll view
-        scrollView.documentView = textView
-        
-        // Set up constraints for the text view with more left margin
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor, constant: 15),
-            textView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor, constant: 25),
-            textView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor, constant: -15),
-            textView.widthAnchor.constraint(greaterThanOrEqualToConstant: 300),
-            textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 2000)
-        ])
-        
-        samplesWindow.contentView = scrollView
-        samplesWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+    func reportIssueRequested() {
+        let supportInfo = gatherSupportInfo()
+        showIssueReportDialog(with: supportInfo)
     }
-    
-    @objc func showVersionHistory() {
-        let versionWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        
-        versionWindow.title = "Clnbrd Version History"
-        versionWindow.center()
-        versionWindow.setFrameAutosaveName("VersionHistoryWindow")
-        
-        // Prevent the window from quitting the app when closed
-        versionWindow.isReleasedWhenClosed = false
-        
-        // Create a styled text view with rich formatting
-        let textView = NSTextView()
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.backgroundColor = NSColor.textBackgroundColor
-        textView.font = NSFont.systemFont(ofSize: 13)
-        
-        // Create attributed string with rich formatting
-        let attributedString = NSMutableAttributedString()
-        
-        // Title
-        let titleFont = NSFont.boldSystemFont(ofSize: 18)
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: titleFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        attributedString.append(NSAttributedString(string: "Clnbrd Version History\n", attributes: titleAttributes))
-        
-        // Subtitle
-        let subtitleFont = NSFont.systemFont(ofSize: 14)
-        let subtitleAttributes: [NSAttributedString.Key: Any] = [
-            .font: subtitleFont,
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        attributedString.append(NSAttributedString(string: "Complete changelog of all releases\n\n", attributes: subtitleAttributes))
-        
-        // Version entries
-        let versionFont = NSFont.boldSystemFont(ofSize: 14)
-        let versionAttributes: [NSAttributedString.Key: Any] = [
-            .font: versionFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        
-        let bodyFont = NSFont.systemFont(ofSize: 12)
-        let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: bodyFont,
-            .foregroundColor: NSColor.labelColor
-        ]
-        
-        let dateFont = NSFont.systemFont(ofSize: 11)
-        let dateAttributes: [NSAttributedString.Key: Any] = [
-            .font: dateFont,
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        
-        // Current Version (dynamically read)
-        attributedString.append(NSAttributedString(string: "\(VersionManager.displayVersion) (Build \(VersionManager.buildNumber))\n", attributes: versionAttributes))
-        attributedString.append(NSAttributedString(string: "Released: October 3, 2024\n", attributes: dateAttributes))
-        attributedString.append(NSAttributedString(string: "• Added professional crash reporting with Sentry\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Added 'Report Issue' menu for user support\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Fixed notification permissions for update messages\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Improved error handling and user feedback\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Enhanced analytics tracking\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Resolved all build warnings and issues\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Added comprehensive user support system\n\n", attributes: bodyAttributes))
-        
-        // Version 1.2
-        attributedString.append(NSAttributedString(string: "Version 1.2 (Build 2)\n", attributes: versionAttributes))
-        attributedString.append(NSAttributedString(string: "Released: September 2024\n", attributes: dateAttributes))
-        attributedString.append(NSAttributedString(string: "• Enhanced system information collection\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Improved post-update permission handling\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Professional DMG installer with drag-to-Applications interface\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Push notification system for updates\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Better error handling and user experience\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Organized project structure and proper versioning\n\n", attributes: bodyAttributes))
-        
-        // Version 1.1
-        attributedString.append(NSAttributedString(string: "Version 1.1 (Build 1)\n", attributes: versionAttributes))
-        attributedString.append(NSAttributedString(string: "Released: August 2024\n", attributes: dateAttributes))
-        attributedString.append(NSAttributedString(string: "• Added 'View Samples' feature to preview cleaning rules\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Improved menu organization and user interface\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Enhanced clipboard management\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Better accessibility permission handling\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Fixed various UI and performance issues\n\n", attributes: bodyAttributes))
-        
-        // Version 1.0
-        attributedString.append(NSAttributedString(string: "Version 1.0 (Initial Release)\n", attributes: versionAttributes))
-        attributedString.append(NSAttributedString(string: "Released: July 2024\n", attributes: dateAttributes))
-        attributedString.append(NSAttributedString(string: "• Initial release of Clnbrd\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Smart text cleaning with 12 customizable rules\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• ⌘⌥V hotkey for instant text cleaning\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Auto-clean on copy functionality\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Menu bar integration\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Settings window for rule customization\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Update checking system\n", attributes: bodyAttributes))
-        attributedString.append(NSAttributedString(string: "• Analytics and usage tracking\n", attributes: bodyAttributes))
-        
-        // Footer
-        attributedString.append(NSAttributedString(string: "\n\n", attributes: bodyAttributes))
-        let footerFont = NSFont.systemFont(ofSize: 11)
-        let footerAttributes: [NSAttributedString.Key: Any] = [
-            .font: footerFont,
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-        attributedString.append(NSAttributedString(string: "For the latest updates and support, visit our website or contact us at olivedesignstudios@gmail.com", attributes: footerAttributes))
-        
-        textView.textStorage?.setAttributedString(attributedString)
-        textView.sizeToFit()
-        
-        // Set up scroll view
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = false
-        scrollView.scrollerStyle = .legacy
-        scrollView.documentView = textView
-        
-        // Set up constraints
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor, constant: 15),
-            textView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor, constant: 15),
-            textView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor, constant: -15),
-            textView.widthAnchor.constraint(greaterThanOrEqualToConstant: 450),
-            textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 1000)
-        ])
-        
-        versionWindow.contentView = scrollView
-        versionWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-    
-    @objc func showTestSampleDialog() {
-        let testWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        
-        testWindow.title = "Test Cleaning Rules"
-        testWindow.center()
-        
-        let stackView = NSStackView()
-        stackView.orientation = .vertical
-        stackView.alignment = .leading
-        stackView.distribution = .fill
-        stackView.spacing = 15
-        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Test Cleaning Rules on Your Text")
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 16)
-        titleLabel.textColor = .labelColor
-        stackView.addArrangedSubview(titleLabel)
-        
-        // Description
-        let descriptionLabel = NSTextField(labelWithString: "Enter text below to see how Clnbrd's cleaning rules transform it:")
-        descriptionLabel.font = NSFont.systemFont(ofSize: 14)
-        descriptionLabel.textColor = .secondaryLabelColor
-        stackView.addArrangedSubview(descriptionLabel)
-        
-        // Input text field
-        let inputLabel = NSTextField(labelWithString: "Input Text:")
-        inputLabel.font = NSFont.boldSystemFont(ofSize: 12)
-        inputLabel.textColor = .labelColor
-        stackView.addArrangedSubview(inputLabel)
-        
-        let inputTextField = NSTextField()
-        inputTextField.font = NSFont.systemFont(ofSize: 12)
-        inputTextField.isEditable = true
-        inputTextField.isBordered = true
-        inputTextField.placeholderString = "Enter text to test cleaning rules..."
-        inputTextField.stringValue = "Hello—world    test\u{200B}with\u{00A0}smart\u{201C}quotes\u{201D}"
-        stackView.addArrangedSubview(inputTextField)
-        
-        // Test button
-        let testButton = NSButton(title: "Test Cleaning Rules", target: self, action: #selector(testCleaningRules))
-        testButton.bezelStyle = .rounded
-        testButton.tag = 1 // Store reference to input field
-        stackView.addArrangedSubview(testButton)
-        
-        // Output section
-        let outputLabel = NSTextField(labelWithString: "Cleaned Result:")
-        outputLabel.font = NSFont.boldSystemFont(ofSize: 12)
-        outputLabel.textColor = .labelColor
-        stackView.addArrangedSubview(outputLabel)
-        
-        let outputTextField = NSTextField()
-        outputTextField.font = NSFont.systemFont(ofSize: 12)
-        outputTextField.isEditable = false
-        outputTextField.isBordered = true
-        outputTextField.backgroundColor = NSColor.controlBackgroundColor
-        outputTextField.tag = 2 // Store reference to output field
-        stackView.addArrangedSubview(outputTextField)
-        
-        // Copy button
-        let copyButton = NSButton(title: "Copy Result", target: self, action: #selector(copyTestResult))
-        copyButton.bezelStyle = .rounded
-        copyButton.tag = 3 // Store reference to output field
-        stackView.addArrangedSubview(copyButton)
-        
-        // Store references for the test function
-        testWindow.contentView = stackView
-        testWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        
-        // Store references to the text fields
-        objc_setAssociatedObject(testButton, "inputField", inputTextField, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        objc_setAssociatedObject(testButton, "outputField", outputTextField, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        objc_setAssociatedObject(copyButton, "outputField", outputTextField, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-    }
-    
-    @objc func testCleaningRules(_ sender: NSButton) {
-        guard let inputField = objc_getAssociatedObject(sender, "inputField") as? NSTextField,
-              let outputField = objc_getAssociatedObject(sender, "outputField") as? NSTextField else {
-            return
-        }
-        
-        let inputText = inputField.stringValue
-        let cleanedText = clipboardManager.cleaningRules.apply(to: inputText)
-        outputField.stringValue = cleanedText
-    }
-    
-    @objc func copyTestResult(_ sender: NSButton) {
-        guard let outputField = objc_getAssociatedObject(sender, "outputField") as? NSTextField else {
-            return
-        }
-        
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(outputField.stringValue, forType: .string)
-        
-        showNotification(title: "Copied!", message: "Cleaned text copied to clipboard")
-    }
-    
-    
-    @objc func cleanAndPaste() {
-        cleanAndPasteClipboard()
-    }
-    
-    @objc func cleanClipboardManually() {
-        cleanClipboard()
-        showNotification(title: "Clipboard Cleaned", message: "Text has been cleaned and formatting removed")
-    }
-    
-    @objc func toggleAutoClean() {
-        autoCleanEnabled.toggle()
-        
-        // Update the menu bar manager
-        menuBarManager.updateAutoCleanState(autoCleanEnabled)
-        
-        if autoCleanEnabled {
-            startClipboardMonitoring()
-            showNotification(title: "Auto-clean Enabled", message: "Clipboard will be automatically cleaned when you copy")
-        } else {
-            stopClipboardMonitoring()
-            showNotification(title: "Auto-clean Disabled", message: "Use Cmd+Shift+V or menu to clean clipboard")
-        }
-    }
-    
-    func startClipboardMonitoring() {
-        lastClipboardChangeCount = NSPasteboard.general.changeCount
-        
-        clipboardMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            
-            let currentChangeCount = NSPasteboard.general.changeCount
-            
-            if currentChangeCount != self.lastClipboardChangeCount {
-                self.lastClipboardChangeCount = currentChangeCount
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    self?.cleanClipboard()
-                }
-            }
-        }
-    }
-    
-    func stopClipboardMonitoring() {
-        clipboardMonitorTimer?.invalidate()
-        clipboardMonitorTimer = nil
-    }
-    
-    @objc func openSettings() {
-        if settingsWindowController == nil {
-            settingsWindowController = SettingsWindow(cleaningRules: clipboardManager.cleaningRules)
-        }
-        
-        settingsWindowController?.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-    
-    @objc func checkForUpdatesManually() {
-        showNotification(title: "Checking for Updates", message: "Looking for the latest version...")
-        checkForUpdates()
-    }
-    
-    func cleanClipboard() {
-        let pasteboard = NSPasteboard.general
-        
-        var text: String?
-        
-        text = pasteboard.string(forType: .string)
-        
-        if text == nil, let rtfData = pasteboard.data(forType: .rtf) {
-            text = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string
-        }
-        
-        if text == nil, let htmlData = pasteboard.data(forType: .html) {
-            text = NSAttributedString(html: htmlData, documentAttributes: nil)?.string
-        }
-        
-        guard let originalText = text else { return }
-        
-        let cleanedText = clipboardManager.cleaningRules.apply(to: originalText)
-        
-        pasteboard.clearContents()
-        pasteboard.setString(cleanedText, forType: .string)
-        pasteboard.setData(Data(), forType: .rtf)
-        pasteboard.setData(Data(), forType: .html)
-    }
-    
-    func cleanAndPasteClipboard() {
-        let pasteboard = NSPasteboard.general
-        
-        // Get original text
-        var text: String?
-        text = pasteboard.string(forType: .string)
-        
-        if text == nil, let rtfData = pasteboard.data(forType: .rtf) {
-            text = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string
-        }
-        
-        if text == nil, let htmlData = pasteboard.data(forType: .html) {
-            text = NSAttributedString(html: htmlData, documentAttributes: nil)?.string
-        }
-        
-        guard let originalText = text else { return }
-        
-        // Temporarily clean and paste
-        let cleanedText = clipboardManager.cleaningRules.apply(to: originalText)
-        
-        pasteboard.clearContents()
-        pasteboard.setString(cleanedText, forType: .string)
-        
-        // Paste the cleaned text
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            let source = CGEventSource(stateID: .combinedSessionState)
-            
-            let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
-            let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-            
-            vDown?.flags = .maskCommand
-            vUp?.flags = .maskCommand
-            
-            vDown?.post(tap: .cghidEventTap)
-            vUp?.post(tap: .cghidEventTap)
-            
-            // Restore original clipboard after paste completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                pasteboard.clearContents()
-                pasteboard.setString(originalText, forType: .string)
-            }
-        }
-    }
-    
-    func showNotification(title: String, message: String) {
-        // Check notification authorization status
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async { [weak self] in
-                if settings.authorizationStatus == .authorized {
-                    // Show notification
-                    let content = UNMutableNotificationContent()
-                    content.title = title
-                    content.body = message
-                    
-                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-                    UNUserNotificationCenter.current().add(request)
-                } else {
-                    // Fallback to alert dialog
-                    self?.showAlert(title: title, message: message)
-                }
-            }
-        }
-    }
-    
-    func showAlert(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-    }
-    
-    func checkForUpdates() {
-        // Replace this URL with your actual Amazon S3 bucket URL
-        guard let url = URL(string: VersionManager.versionCheckURL) else {
-            return
-        }
-        
-        // Check if we should skip this update check (rate limiting)
-        let lastCheckTime = UserDefaults.standard.double(forKey: "LastUpdateCheck")
-        let currentTime = Date().timeIntervalSince1970
-        let timeSinceLastCheck = currentTime - lastCheckTime
-        
-        // Only check for updates every 6 hours to avoid spam
-        if timeSinceLastCheck < 21600 { // 6 hours in seconds
-            print("⏰ Skipping update check - too soon since last check")
-            return
-        }
-        
-        // Update last check time
-        UserDefaults.standard.set(currentTime, forKey: "LastUpdateCheck")
-        
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            guard let self = self else { return }
-            
-            DispatchQueue.main.async {
-                if let error = error {
-                    logger.error("Version check failed: \(error.localizedDescription)")
-                    print("❌ Version check failed: \(error.localizedDescription)")
-                    self.showNotification(title: "Update Check Failed", message: "Could not check for updates. Please try again later.")
-                    return
-                }
-                
-                guard let data = data else {
-                    logger.error("No version data received")
-                    print("❌ No version data received")
-                    self.showNotification(title: "Update Check Failed", message: "No version information received.")
-                    return
-                }
-                
-                logger.info("Received version data: \(data.count) bytes")
-                print("✅ Received data: \(data.count) bytes")
-                
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let latestVersion = json["version"] as? String,
-                       let downloadUrl = json["download_url"] as? String,
-                       let releaseNotes = json["release_notes"] as? String {
-                        
-                        let currentVersion = VersionManager.version
-                        let skippedVersion = UserDefaults.standard.string(forKey: "SkippedVersion")
-                        
-                        // Check if this version was skipped
-                        if skippedVersion == latestVersion {
-                            print("Version \(latestVersion) was skipped by user")
-                            return
-                        }
-                        
-                        if VersionManager.isVersionNewer(latestVersion, than: currentVersion) {
-                            self.showUpdateAvailableDialog(
-                                currentVersion: currentVersion,
-                                latestVersion: latestVersion,
-                                downloadUrl: downloadUrl,
-                                releaseNotes: releaseNotes
-                            )
-                        } else {
-                            self.showNotification(title: "Up to Date", message: "You're running the latest version of Clnbrd!")
-                        }
-                    }
-                } catch {
-                    print("Failed to parse version data: \(error.localizedDescription)")
-                    self.showNotification(title: "Update Check Failed", message: "Invalid version information received.")
-                }
-            }
-        }
-        
-        task.resume()
-    }
-    
-    func showUpdateAvailableDialog(currentVersion: String, latestVersion: String, downloadUrl: String, releaseNotes: String) {
-        // Show push-style notification first
-        showUpdateNotification(currentVersion: currentVersion, latestVersion: latestVersion, releaseNotes: releaseNotes)
-        
-        // Then show the detailed dialog
-        let alert = NSAlert()
-        alert.messageText = "Update Available"
-        alert.informativeText = """
-        A new version of Clnbrd is available!
-        
-        Current Version: \(currentVersion)
-        Latest Version: \(latestVersion)
-        
-        What's New:
-        \(releaseNotes)
-        
-        Would you like to download the update?
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Download Update")
-        alert.addButton(withTitle: "View Version History")
-        alert.addButton(withTitle: "Remind Me Later")
-        alert.addButton(withTitle: "Skip This Version")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: downloadUrl) {
-                NSWorkspace.shared.open(url)
-            }
-        } else if response == .alertSecondButtonReturn {
-            showVersionHistory()
-        } else if response == .alertThirdButtonReturn {
-            // Remind me later - do nothing
-        } else if response.rawValue == 1003 { // Fourth button (Skip This Version)
-            // Skip this version - store it to avoid showing again
-            UserDefaults.standard.set(latestVersion, forKey: "SkippedVersion")
-        }
-    }
-    
-    func showUpdateNotification(currentVersion: String, latestVersion: String, releaseNotes: String) {
-        // Create a modern notification using UserNotifications framework
-        let content = UNMutableNotificationContent()
-        content.title = "🚀 Clnbrd Update Available!"
-        content.subtitle = "Version \(latestVersion) is ready"
-        content.body = "Click to download and install the latest version with new features and improvements."
-        content.sound = .default
-        
-        // Store update info in userInfo
-        content.userInfo = [
-            "type": "update",
-            "currentVersion": currentVersion,
-            "latestVersion": latestVersion,
-            "releaseNotes": releaseNotes
-        ]
-        
-        // Create notification request
-        let request = UNNotificationRequest(
-            identifier: "clnbrd-update-\(latestVersion)",
-            content: content,
-            trigger: nil
-        )
-        
-        // Schedule the notification
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Failed to schedule notification: \(error.localizedDescription)")
-            }
-        }
-        
-        // Also show a menu bar notification
-        showMenuBarUpdateNotification(latestVersion: latestVersion)
-    }
-    
-    func showMenuBarUpdateNotification(latestVersion: String) {
-        // Update menu bar to show update available
-        DispatchQueue.main.async {
-            // This will be handled by MenuBarManager
-            NotificationCenter.default.post(
-                name: NSNotification.Name("UpdateAvailable"),
-                object: nil,
-                userInfo: ["version": latestVersion]
-            )
-        }
-    }
-    
-    // Sparkle handles periodic update checking automatically based on Info.plist
-}
-
-// MARK: - UNUserNotificationCenterDelegate
-extension AppDelegate: UNUserNotificationCenterDelegate {
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Handle notification activation
-        let userInfo = response.notification.request.content.userInfo
-        
-        if let type = userInfo["type"] as? String,
-           type == "update" {
-            
-            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-                // User clicked on the notification
-                if let downloadUrl = userInfo["downloadUrl"] as? String,
-                   let url = URL(string: downloadUrl) {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        }
-        
-        completionHandler()
-    }
-    
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Always show notifications, even when app is active
-        completionHandler([.banner, .sound])
-    }
-}
-
-
-// MARK: - MenuBarManagerDelegate
-
-extension AppDelegate: MenuBarManagerDelegate {
-    func hotkeyTriggered() {
-        clipboardManager.cleanAndPasteClipboard()
-    }
-    
-    func cleanAndPasteRequested() {
-        clipboardManager.cleanAndPasteClipboard()
-    }
-    
-    func cleanClipboardRequested() {
-        clipboardManager.cleanClipboard()
-        showNotification(title: "Clipboard Cleaned", message: "Text has been cleaned and formatting removed")
-    }
-    
-    func toggleAutoCleanRequested() {
-        autoCleanEnabled.toggle()
-        preferencesManager.saveAutoCleanEnabled(autoCleanEnabled)
-        
-        menuBarManager.updateAutoCleanState(autoCleanEnabled)
-        
-        if autoCleanEnabled {
-            clipboardManager.startClipboardMonitoring()
-            showNotification(title: "Auto-clean Enabled", message: "Clipboard will be automatically cleaned when you copy")
-        } else {
-            clipboardManager.stopClipboardMonitoring()
-            showNotification(title: "Auto-clean Disabled", message: "Use ⌘⌥V or menu to clean clipboard")
-        }
-    }
-    
-    func openSettingsRequested() {
-        if settingsWindowController == nil {
-            settingsWindowController = SettingsWindow(cleaningRules: clipboardManager.cleaningRules)
-        }
-        
-        settingsWindowController?.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-    
-    func checkForUpdatesRequested() {
-        // Use Sparkle's updater to check for updates
-        updaterController.updater.checkForUpdates()
-    }
-    
     func testSentryRequested() {
         // Trigger test error for Sentry
         SentryManager.shared.testCrashReporting()
@@ -1326,90 +412,170 @@ extension AppDelegate: MenuBarManagerDelegate {
             }
         }
     }
+    func checkForUpdatesRequested() {
+        // Use Sparkle's updater to check for updates
+        updaterController.updater.checkForUpdates()
+    }
+    func openSettingsRequested() {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindow(cleaningRules: clipboardManager.cleaningRules)
+        }
+        
+        settingsWindowController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    func toggleAutoCleanRequested() {
+        autoCleanEnabled.toggle()
+        preferencesManager.saveAutoCleanEnabled(autoCleanEnabled)
+        
+        menuBarManager.updateAutoCleanState(autoCleanEnabled)
+        
+        if autoCleanEnabled {
+            clipboardManager.startClipboardMonitoring()
+            notificationManager.showNotification(title: "Auto-clean Enabled", message: "Clipboard will be automatically cleaned when you copy")
+        } else {
+            clipboardManager.stopClipboardMonitoring()
+            notificationManager.showNotification(title: "Auto-clean Disabled", message: "Use ⌘⌥V or menu to clean clipboard")
+        }
+    }
+    func cleanClipboardRequested() {
+        clipboardManager.cleanClipboard()
+        notificationManager.showNotification(title: "Clipboard Cleaned", message: "Text has been cleaned and formatting removed")
+    }
+    func cleanAndPasteRequested() {
+        clipboardManager.cleanAndPasteClipboard()
+    }
+    func hotkeyTriggered() {
+        clipboardManager.cleanAndPasteClipboard()
+    }
     
-    func reportIssueRequested() {
-        // Get analytics data for the support email
+    private func gatherSupportInfo() -> String {
         let analyticsData = AnalyticsManager.shared.getAnalyticsSummary()
         let systemInfo = SystemInfoUtility.getSystemInformation()
         let formattedSystemInfo = SystemInfoUtility.formatSystemInformation(systemInfo)
-        
-        // Create support email with analytics and system info
-        let subject = "Clnbrd Support Request - v\(VersionManager.version) Build \(VersionManager.buildNumber)"
-        let body = """
-        Hi Allan,
-        
-        Please describe the issue you're experiencing:
-        
-        [Your description here]
-        
-        Steps to Reproduce:
-        1. 
-        2. 
-        3. 
-        
-        Expected Behavior:
-        [What should happen]
-        
-        Actual Behavior:
-        [What actually happens]
-        
+
+        return """
         App Version: \(VersionManager.version) (Build \(VersionManager.buildNumber))
-        
+
         Analytics Data:
         \(analyticsData)
-        
+
         \(formattedSystemInfo)
-        
-        Thank you for your help!
-        
-        Best regards,
-        [Your name]
         """
-        
-        // Encode the email components properly
-        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) ?? subject
-        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) ?? body
-        
-        // Create mailto URL
-        let mailtoURL = "mailto:olivedesignstudios@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)"
-        
-        logger.info("Opening support email with version \(VersionManager.version) build \(VersionManager.buildNumber)")
-        
-        // Check if URL is too long (mailto URLs have length limits)
-        if mailtoURL.count > 2000 {
-            logger.warning("Email URL too long (\(mailtoURL.count) chars), falling back to clipboard")
-            // Fallback: copy to clipboard
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(body, forType: .string)
+    }
+
+    private func showIssueReportDialog(with supportInfo: String) {
+        let alert = NSAlert()
+        alert.messageText = "Report an Issue"
+        alert.informativeText = "Choose how you'd like to report this issue:"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Copy Info & Open Email")
+        alert.addButton(withTitle: "Copy Info Only")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        handleIssueReportResponse(response, supportInfo: supportInfo)
+    }
+
+    private func handleIssueReportResponse(_ response: NSApplication.ModalResponse, supportInfo: String) {
+        switch response {
+        case .alertFirstButtonReturn:
+            copySupportInfoToClipboard(supportInfo)
+            handleEmailOption(supportInfo)
             
-            let fallbackAlert = NSAlert()
-            fallbackAlert.messageText = "Email Support"
-            fallbackAlert.informativeText = "The support information is too long for email. It has been copied to your clipboard. Please paste it into an email to olivedesignstudios@gmail.com"
-            fallbackAlert.alertStyle = .informational
-            fallbackAlert.addButton(withTitle: "OK")
-            fallbackAlert.runModal()
-            return
-        }
-        
-        // Open email client
-        if let url = URL(string: mailtoURL) {
-            let success = NSWorkspace.shared.open(url)
-            if success {
-                logger.info("Email client opened successfully")
-                showNotification(title: "Email Opened", message: "Your email client should now be open with a pre-filled support request.")
-            } else {
-                logger.error("Failed to open email client")
-                showAlert(title: "Email Error", message: "Could not open your email client. Please email olivedesignstudios@gmail.com directly.")
-            }
-        } else {
-            logger.error("Invalid mailto URL")
-            showAlert(title: "Email Error", message: "Could not create email. Please contact olivedesignstudios@gmail.com directly.")
+        case .alertSecondButtonReturn:
+            handleCopyOnlyOption(supportInfo)
+            
+        default:
+            // Cancelled
+            break
         }
     }
-    
-    func showInstallationGuideRequested() {
-        showInstallationGuide()
+
+    private func copySupportInfoToClipboard(_ supportInfo: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(supportInfo, forType: .string)
+    }
+
+    private func handleEmailOption(_ supportInfo: String) {
+        let subject = "Clnbrd Support Request - v\(VersionManager.version) Build \(VersionManager.buildNumber)"
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
+
+        let mailtoURLs = [
+            "mailto:olivedesignstudios@gmail.com?subject=\(encodedSubject)",
+            "mailto:olivedesignstudios@gmail.com"
+        ]
+
+        var emailOpened = false
+        for mailtoString in mailtoURLs {
+            if let url = URL(string: mailtoString) {
+                logger.info("Attempting to open email with URL: \(mailtoString)")
+
+                if NSWorkspace.shared.open(url) {
+                    logger.info("Email client opened successfully with URL: \(mailtoString)")
+                    emailOpened = true
+                    showEmailInstructions(subject)
+                    break
+                } else {
+                    logger.warning("Failed to open with URL: \(mailtoString)")
+                }
+            }
+        }
+
+        if !emailOpened {
+            logger.error("All email opening attempts failed")
+            showEmailError(subject)
+        }
+    }
+
+    private func handleCopyOnlyOption(_ supportInfo: String) {
+        copySupportInfoToClipboard(supportInfo)
+
+        let copyAlert = NSAlert()
+        copyAlert.messageText = "Info Copied"
+        copyAlert.informativeText = "System diagnostic information has been copied to your clipboard. Please email it to: olivedesignstudios@gmail.com"
+        copyAlert.alertStyle = .informational
+        copyAlert.addButton(withTitle: "OK")
+        copyAlert.runModal()
+    }
+
+    private func showEmailInstructions(_ subject: String) {
+        let instructionAlert = NSAlert()
+        instructionAlert.messageText = "System Info Copied!"
+        instructionAlert.informativeText = """
+        Your email client should now be open.
+
+        The system diagnostic information has been copied to your clipboard.
+
+        Please:
+        1. Set recipient to: olivedesignstudios@gmail.com
+        2. Subject: \(subject)
+        3. Describe your issue
+        4. Paste (⌘V) the diagnostic info
+        5. Send
+        """
+        instructionAlert.alertStyle = .informational
+        instructionAlert.addButton(withTitle: "Got It")
+        instructionAlert.runModal()
+    }
+
+    private func showEmailError(_ subject: String) {
+        let errorAlert = NSAlert()
+        errorAlert.messageText = "Email Client Not Available"
+        errorAlert.informativeText = """
+        Could not open your email client automatically.
+
+        The system diagnostic information has been copied to your clipboard.
+
+        Please manually email it to:
+        olivedesignstudios@gmail.com
+
+        Subject: \(subject)
+        """
+        errorAlert.alertStyle = .warning
+        errorAlert.addButton(withTitle: "OK")
+        errorAlert.runModal()
     }
     
     @objc func openAboutRequested() {
@@ -1516,18 +682,10 @@ extension AppDelegate: MenuBarManagerDelegate {
     @objc func openSupport() {
         reportIssueRequested()
     }
-    
-    func showSamplesRequested() {
-        showSamples()
-    }
-    
-    func showVersionHistoryRequested() {
-        showVersionHistory()
-    }
-    
-    func isAutoCleanEnabled() -> Bool {
-        return autoCleanEnabled
-    }
+}
+
+extension AppDelegate: MenuBarManagerDelegate {
+    // Delegate methods are already implemented in the main class
 }
 
 // Sparkle handles update checking and notifications automatically

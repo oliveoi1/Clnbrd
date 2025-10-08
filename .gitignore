@@ -106,3 +106,6 @@ CleanPaste/
 # Workspace files
 *.code-workspace
 
+
+# Sparkle EdDSA Private Key (NEVER commit this!)
+.sparkle_keys/

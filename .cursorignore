@@ -1,0 +1,130 @@
+# Cursor Ignore File for Clnbrd
+# Excludes unnecessary files from indexing for better performance
+
+# Xcode project files (metadata only, no code)
+*.xcodeproj
+*.xcworkspace
+*.xcuserstate
+*.xcscheme
+*.xccheckout
+*.moved-aside
+
+# Build artifacts
+DerivedData/
+*.build/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Dependencies
+Carthage/
+Pods/
+*.framework
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+.Spotlight-V100
+.Trashes
+
+# Archives
+*.zip
+*.tar.gz
+*.dmg
+
+# Asset catalogs (binary files)
+*.xcassets
+
+# Temporary files
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Build scripts output
+Build/
+Releases/
+
+# Documentation
+*.pdf
+*.pages
+
+# Images (already in assets)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.icns
+
+# Sparkle framework
+Sparkle.framework/
+
+# Notarization artifacts
+*.zip.notarization
+
+# Version control
+.svn/
+.hg/
+
+# IDEs
+.vscode/
+.idea/
+
+# Package managers
+.swiftpm/
+Package.resolved
+
+# Test artifacts
+*.xcresult
+
+# Profiling data
+*.trace
+
+# Code coverage
+*.gcda
+*.gcno
+*.profdata
+
+# Compiled files
+*.o
+*.a
+*.dylib
+
+# Swift Package Manager
+/.build
+/Packages
+/*.xcodeproj
+Package.pins
+Package.resolved
+xcuserdata/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Backup files
+*.bak
+*.backup
+*~.nib
+
+# Preview content
+PreviewContent/
+
+# Logs
+*.log
+
+
+

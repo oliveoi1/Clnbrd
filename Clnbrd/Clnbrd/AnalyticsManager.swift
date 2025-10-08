@@ -4,9 +4,9 @@ import os.log
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "analytics")
 
 enum CleaningMethod: String, Codable, CaseIterable {
-    case hotkey = "hotkey"
-    case autoClean = "autoClean"
-    case manual = "manual"
+    case hotkey
+    case autoClean
+    case manual
 }
 
 struct AnalyticsData: Codable {

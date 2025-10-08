@@ -1,0 +1,23 @@
+# This is an example configuration file
+
+# Include only source files - be very specific
+included:
+  - Clnbrd/Clnbrd/Clnbrd
+
+excluded:
+  - Clnbrd/Clnbrd/Documentation
+  - Documentation
+  - Pods
+  - Carthage
+  - .build
+  - DerivedData
+  - Scripts
+  - Build
+  - build
+  - .git
+  - "**/*.xcodeproj"
+  - "**/*.xcworkspace"
+  - "**/*.xcassets"
+
+# Other configuration settings
+someOtherSetting: true

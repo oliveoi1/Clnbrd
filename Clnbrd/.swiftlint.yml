@@ -1,0 +1,13 @@
+included:
+  - Clnbrd
+
+excluded:
+  - Clnbrd/Documentation
+  - DerivedData
+  - .build
+  - Carthage
+  - Pods
+
+# You can add or adjust rules below as needed
+opt_in_rules: []
+disabled_rules: []

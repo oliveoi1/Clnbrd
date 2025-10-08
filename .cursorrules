@@ -1,0 +1,274 @@
+# Clnbrd Development Rules for AI Code Generation
+# macOS clipboard cleaning utility with AppKit
+
+## Project Overview
+Clnbrd is a macOS menu bar app that cleans clipboard content by:
+- Removing formatting (bold, italic, colors)
+- Removing AI watermarks (invisible Unicode characters)
+- Removing URL tracking parameters
+- Supporting custom find & replace rules
+- Managing multiple cleaning profiles
+
+## Architecture Patterns
+
+### Manager Pattern (Singleton)
+We use dedicated manager classes for different concerns:
+```swift
+class ManagerName {
+    static let shared = ManagerName()
+    private init() { }
+}
+```
+
+Examples:
+- `ClipboardManager` - Clipboard operations
+- `MenuBarManager` - Menu bar UI
+- `ProfileManager` - Profile management
+- `AnalyticsManager` - Usage tracking
+- `PreferencesManager` - Settings persistence
+- `PerformanceMonitor` - Performance tracking
+- `ErrorRecoveryManager` - Error handling
+- `SentryManager` - Crash reporting
+- `VersionManager` - Version info
+- `UpdateChecker` - Auto-updates
+
+### File Organization
+- **Separate concerns into individual files** (not monolithic AppDelegate)
+- Each manager gets its own .swift file
+- Settings UI in `SettingsWindow.swift`
+- Cleaning logic in `CleaningRules.swift`
+- Profile system in `CleaningProfile.swift`
+
+### Naming Conventions
+- Use `camelCase` for variables and functions
+- Use `PascalCase` for types, classes, structs, enums
+- Manager classes end with "Manager" suffix
+- Use descriptive, full names (no abbreviations)
+
+## Code Style
+
+### Swift Preferences
+- Prefer `struct` over `class` for data models (value types)
+- Use `let` instead of `var` whenever possible
+- Use `guard` for early returns
+- Use meaningful variable names (no single letters except in loops)
+- Add `// MARK: -` comments to organize code sections
+
+### Error Handling
+- Use `os.log` Logger for logging (subsystem: "com.allanray.Clnbrd")
+- Integrate with Sentry for crash reporting
+- Use Result type for operations that can fail
+- Show user-friendly NSAlert dialogs for errors
+
+### Example Logger Usage:
+```swift
+import os.log
+
+private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "feature-name")
+
+logger.info("Operation successful")
+logger.warning("Potential issue detected")
+logger.error("Error occurred: \(error.localizedDescription)")
+```
+
+## AppKit Specifics (NOT iOS/UIKit)
+
+### UI Components
+- Use `NSWindow`, `NSButton`, `NSTextField` (not UIWindow, UIButton, etc.)
+- Use `NSStackView` for layouts
+- Use `NSAlert` for dialogs
+- Use `NSMenuItem` for menu items
+- Use `NSWorkspace` for system operations
+- Menu bar app uses `NSStatusBar` and `NSStatusItem`
+
+### Layout
+- Use Auto Layout with constraints
+- Use `translatesAutoresizingMaskIntoConstraints = false`
+- Create constraints programmatically (not Interface Builder)
+- Use NSStackView for simple vertical/horizontal layouts
+
+### Window Management
+```swift
+let window = NSWindow(
+    contentRect: NSRect(x: 0, y: 0, width: 600, height: 550),
+    styleMask: [.titled, .closable, .resizable],
+    backing: .buffered,
+    defer: false
+)
+window.center()
+window.isReleasedWhenClosed = false
+```
+
+## Data Persistence
+
+### UserDefaults for Settings
+- Use UserDefaults for simple preferences
+- Use Codable for complex objects
+- ProfileManager handles profile persistence
+
+### Example:
+```swift
+UserDefaults.standard.set(value, forKey: "SettingName")
+let value = UserDefaults.standard.bool(forKey: "SettingName")
+```
+
+## Cleaning Rules Architecture
+
+### CleaningRules Class
+- Codable for serialization
+- Boolean flags for each rule
+- `apply(to:)` method applies all enabled rules
+- Custom rules use CustomRule struct: `CustomRule(find: "text", replace: "replacement")`
+
+### Profile System
+- CleaningProfile wraps rules with metadata (name, id)
+- ProfileManager handles CRUD operations
+- Deep copy rules to avoid shared references
+- Support import/export as JSON files
+
+## Keyboard Events (Carbon API)
+- Use Carbon.HIToolbox for global hotkey monitoring
+- Hotkey: ⌘⌥V (Command + Option + V)
+- Use `CGEventTapCreate` for event monitoring
+- Handle accessibility permissions properly
+
+## Menu Bar App Patterns
+
+### Menu Structure
+```swift
+let menu = NSMenu()
+menu.addItem(NSMenuItem(title: "Item", action: #selector(action), keyEquivalent: ""))
+menu.addItem(NSMenuItem.separator())
+statusItem.menu = menu
+```
+
+### Status Item
+```swift
+let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+statusItem.button?.image = NSImage(named: "MenuBarIcon")
+statusItem.button?.imagePosition = .imageLeft
+```
+
+## URL Cleaning
+
+### Pattern
+- Extract URLs using regex
+- Parse with URLComponents
+- Remove tracking parameters (utm_*, fbclid, gclid, etc.)
+- Platform-specific tracking (YouTube SI, Amazon ref=, etc.)
+- Preserve core URL functionality
+
+## Testing Approach
+- Use XCTest framework
+- Test cleaning rules with various inputs
+- Test profile management CRUD operations
+- Test URL tracking removal accuracy
+- Mock clipboard operations in tests
+
+## Documentation Style
+- Use /// for documentation comments
+- Document public APIs and complex logic
+- Include parameter and return descriptions
+- Add examples for complex functions
+
+Example:
+```swift
+/// Apply all enabled cleaning rules to the provided text
+/// - Parameter text: The original text to clean
+/// - Returns: Cleaned text with all enabled rules applied
+func apply(to text: String) -> String {
+    // Implementation
+}
+```
+
+## Permissions Required
+- **Accessibility**: Required for simulating paste (⌘V)
+- **Input Monitoring**: Required for detecting hotkey (⌘⌥V)
+- Handle permission requests gracefully with user instructions
+
+## Version Management
+- Version stored in version.json
+- Format: { "version": "1.3", "build": 34 }
+- VersionManager reads from bundle and JSON
+- Use semantic versioning
+
+## Sparkle Integration
+- Auto-update framework
+- Appcast XML for release info
+- EdDSA signatures for security
+- Check for updates on launch
+
+## Analytics
+- Optional user analytics (can be disabled)
+- Track feature usage (not personal data)
+- AnalyticsManager singleton
+- Privacy-first approach
+
+## Performance
+- Use PerformanceMonitor for tracking
+- Log slow operations
+- Optimize regex patterns
+- Cache compiled patterns when possible
+
+## Common Patterns to AVOID
+- ❌ Don't use print() - use Logger instead
+- ❌ Don't use UIKit (iOS) - use AppKit (macOS)
+- ❌ Don't use SwiftUI (this project uses AppKit)
+- ❌ Don't create massive view controllers - split into managers
+- ❌ Don't use force unwrapping (!) unless absolutely safe
+- ❌ Don't ignore memory management (use weak for delegates)
+
+## Common Patterns to USE
+- ✅ Use Manager pattern for separation of concerns
+- ✅ Use Codable for serialization
+- ✅ Use UserDefaults for simple persistence
+- ✅ Use Logger with proper subsystem and category
+- ✅ Use guard for early returns
+- ✅ Use NSAlert for user-facing errors
+- ✅ Use meaningful variable and function names
+- ✅ Use // MARK: - comments for organization
+- ✅ Use Auto Layout programmatically
+- ✅ Use value types (struct) when possible
+
+## Project-Specific Terminology
+- **Cleaning Rules**: Individual text transformation rules
+- **Cleaning Profile**: Named collection of cleaning rules
+- **Custom Rules**: User-defined find & replace patterns
+- **URL Tracking**: Tracking parameters in URLs (utm_*, fbclid, etc.)
+- **AI Watermarks**: Invisible Unicode characters (zero-width spaces, etc.)
+- **Menu Bar Manager**: Handles status bar icon and menu
+- **Hotkey**: ⌘⌥V shortcut for clean-and-paste
+
+## When Generating Code
+1. Follow existing file structure patterns
+2. Use appropriate managers for functionality
+3. Add proper error handling with Logger
+4. Include documentation comments
+5. Use AppKit (not UIKit or SwiftUI)
+6. Handle macOS permissions appropriately
+7. Maintain code quality with proper naming
+8. Keep functions focused and small
+9. Use // MARK: - for organization
+10. Test edge cases (empty strings, special characters, etc.)
+
+## Build Configuration
+- Target: macOS 15.5+
+- Swift version: Latest
+- Bundle ID: com.allanray.Clnbrd
+- Code signing: Apple Developer ID
+- Notarization: Required for distribution
+- Sandboxed: No (requires accessibility permissions)
+
+## Git Workflow
+- Feature branches for new work
+- Descriptive commit messages
+- Keep commits focused and atomic
+- Update ROADMAP.md with changes
+- Version bumps in version.json
+
+---
+
+*This file helps AI assistants generate code that matches Clnbrd's architecture, style, and patterns.*
+
+
+

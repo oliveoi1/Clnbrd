@@ -7,7 +7,7 @@ struct CustomRule: Codable {
 }
 
 /// Handles all text cleaning operations including AI watermark removal, formatting cleanup, and URL cleaning
-class CleaningRules {
+class CleaningRules: Codable {
     // Basic formatting rules
     var removeEmdashes = true
     var replaceEmdashWith = ", "
@@ -31,6 +31,10 @@ class CleaningRules {
     // Custom user-defined rules
     var customRules: [CustomRule] = []
     
+    init() {
+        // Default initializer - all properties have default values
+    }
+    
     /// Apply all enabled cleaning rules to the provided text
     /// - Parameter text: The original text to clean
     /// - Returns: Cleaned text with all enabled rules applied
@@ -52,10 +56,8 @@ class CleaningRules {
         }
         
         // Apply custom find/replace rules
-        for rule in customRules {
-            if !rule.find.isEmpty {
-                cleaned = cleaned.replacingOccurrences(of: rule.find, with: rule.replace)
-            }
+        for rule in customRules where !rule.find.isEmpty {
+            cleaned = cleaned.replacingOccurrences(of: rule.find, with: rule.replace)
         }
         
         // Remove AI watermarks and hidden Unicode characters
@@ -189,29 +191,59 @@ class CleaningRules {
         
         return cleaned
     }
-    
+
     /// Clean a single URL by removing tracking parameters
     /// - Parameter urlString: The URL string to clean
     /// - Returns: Cleaned URL string, or nil if URL cannot be parsed
     private func cleanURL(_ urlString: String) -> String? {
+        // Parse and validate URL
+        guard var components = parseAndValidateURL(urlString) else {
+            return nil
+        }
+        
+        let host = components.host?.lowercased() ?? ""
+        
+        // Remove tracking parameters
+        removeTrackingParameters(from: &components, host: host)
+        
+        // Remove Amazon /ref= path segments
+        if host.contains("amazon.com") && components.path.contains("/ref=") {
+            if let refRange = components.path.range(of: "/ref=") {
+                components.path = String(components.path[..<refRange.lowerBound])
+            }
+        }
+        
+        // Return cleaned URL (remove scheme if original didn't have it)
+        guard let cleanedURL = components.string else {
+            return urlString
+        }
+        
+        if urlString.hasPrefix("www.") {
+            return cleanedURL.replacingOccurrences(of: "https://", with: "")
+        }
+        
+        return cleanedURL
+    }
+    
+    // MARK: - URL Cleaning Helper Methods
+    
+    private func parseAndValidateURL(_ urlString: String) -> URLComponents? {
         // Ensure URL has a scheme
         var fullURL = urlString
         if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
             fullURL = "https://" + urlString
         }
         
-        guard var components = URLComponents(string: fullURL) else {
-            return nil
-        }
+        return URLComponents(string: fullURL)
+    }
+    
+    private func removeTrackingParameters(from components: inout URLComponents, host: String) {
+        guard let queryItems = components.queryItems else { return }
         
-        let host = components.host?.lowercased() ?? ""
+        var filteredItems = queryItems
         
-        // Remove tracking query parameters based on platform
-        if let queryItems = components.queryItems {
-            var filteredItems = queryItems
-            
-            // Universal tracking parameters (all platforms)
-            let universalTracking = [
+        // Universal tracking parameters (all platforms)
+        let universalTracking = [
                 // UTM Parameters (Google Analytics)
                 "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
                 "utm_name", "utm_id", "utm_source_platform", "utm_creative_format", "utm_marketing_tactic",
@@ -310,10 +342,8 @@ class CleaningRules {
             
             // Get platform-specific tracking params
             var trackingParams = Set(universalTracking)
-            for (domain, params) in platformTracking {
-                if host.contains(domain) {
-                    trackingParams.formUnion(params)
-                }
+            for (domain, params) in platformTracking where host.contains(domain) {
+                trackingParams.formUnion(params)
             }
             
             // Filter out tracking parameters
@@ -324,24 +354,51 @@ class CleaningRules {
             // Update query items (or remove if empty)
             components.queryItems = filteredItems.isEmpty ? nil : filteredItems
         }
-        
-        // Remove Amazon /ref= path segments
-        if host.contains("amazon.com") && components.path.contains("/ref=") {
-            if let refRange = components.path.range(of: "/ref=") {
-                components.path = String(components.path[..<refRange.lowerBound])
-            }
-        }
-        
-        // Return cleaned URL (remove scheme if original didn't have it)
-        guard let cleanedURL = components.string else {
-            return urlString
-        }
-        
-        if urlString.hasPrefix("www.") {
-            return cleanedURL.replacingOccurrences(of: "https://", with: "")
-        }
-        
-        return cleanedURL
+    
+    // MARK: - Codable Implementation
+    
+    enum CodingKeys: String, CodingKey {
+        case removeEmdashes, replaceEmdashWith, normalizeSpaces, removeZeroWidthChars
+        case normalizeLineBreaks, removeTrailingSpaces, convertSmartQuotes, removeEmojis
+        case removeExtraLineBreaks, removeLeadingTrailingWhitespace, removeUrlTracking
+        case removeUrls, removeHtmlTags, removeExtraPunctuation, customRules
+    }
+    
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        removeEmdashes = try container.decode(Bool.self, forKey: .removeEmdashes)
+        replaceEmdashWith = try container.decode(String.self, forKey: .replaceEmdashWith)
+        normalizeSpaces = try container.decode(Bool.self, forKey: .normalizeSpaces)
+        removeZeroWidthChars = try container.decode(Bool.self, forKey: .removeZeroWidthChars)
+        normalizeLineBreaks = try container.decode(Bool.self, forKey: .normalizeLineBreaks)
+        removeTrailingSpaces = try container.decode(Bool.self, forKey: .removeTrailingSpaces)
+        convertSmartQuotes = try container.decode(Bool.self, forKey: .convertSmartQuotes)
+        removeEmojis = try container.decode(Bool.self, forKey: .removeEmojis)
+        removeExtraLineBreaks = try container.decode(Bool.self, forKey: .removeExtraLineBreaks)
+        removeLeadingTrailingWhitespace = try container.decode(Bool.self, forKey: .removeLeadingTrailingWhitespace)
+        removeUrlTracking = try container.decode(Bool.self, forKey: .removeUrlTracking)
+        removeUrls = try container.decode(Bool.self, forKey: .removeUrls)
+        removeHtmlTags = try container.decode(Bool.self, forKey: .removeHtmlTags)
+        removeExtraPunctuation = try container.decode(Bool.self, forKey: .removeExtraPunctuation)
+        customRules = try container.decode([CustomRule].self, forKey: .customRules)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(removeEmdashes, forKey: .removeEmdashes)
+        try container.encode(replaceEmdashWith, forKey: .replaceEmdashWith)
+        try container.encode(normalizeSpaces, forKey: .normalizeSpaces)
+        try container.encode(removeZeroWidthChars, forKey: .removeZeroWidthChars)
+        try container.encode(normalizeLineBreaks, forKey: .normalizeLineBreaks)
+        try container.encode(removeTrailingSpaces, forKey: .removeTrailingSpaces)
+        try container.encode(convertSmartQuotes, forKey: .convertSmartQuotes)
+        try container.encode(removeEmojis, forKey: .removeEmojis)
+        try container.encode(removeExtraLineBreaks, forKey: .removeExtraLineBreaks)
+        try container.encode(removeLeadingTrailingWhitespace, forKey: .removeLeadingTrailingWhitespace)
+        try container.encode(removeUrlTracking, forKey: .removeUrlTracking)
+        try container.encode(removeUrls, forKey: .removeUrls)
+        try container.encode(removeHtmlTags, forKey: .removeHtmlTags)
+        try container.encode(removeExtraPunctuation, forKey: .removeExtraPunctuation)
+        try container.encode(customRules, forKey: .customRules)
     }
 }
-

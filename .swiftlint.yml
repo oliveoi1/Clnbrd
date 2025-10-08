@@ -1,0 +1,147 @@
+# SwiftLint Configuration for Clnbrd
+# macOS clipboard cleaning utility
+
+# Disable rules that conflict with project style
+disabled_rules:
+  - trailing_whitespace  # Allow trailing whitespace for formatting
+  - todo                 # Allow TODO comments during development
+
+# Enable additional opt-in rules
+opt_in_rules:
+  - empty_count                    # Prefer isEmpty over count == 0
+  - empty_string                   # Prefer isEmpty over == ""
+  - explicit_init                  # Avoid calling .init() explicitly
+  - first_where                    # Prefer .first(where:) over .filter{}.first
+  - sorted_first_last              # Prefer min()/max() over sorted().first/last
+  - contains_over_first_not_nil    # Prefer contains over first(where:) != nil
+  - last_where                     # Prefer .last(where:) over .filter{}.last
+  - reduce_into                    # Prefer reduce(into:) for performance
+  - redundant_nil_coalescing       # Remove redundant ?? nil
+  - unused_optional_binding        # Catch unused let bindings
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
+# Include only source files - be very specific
+included:
+  - Clnbrd/Clnbrd
+
+# Exclude everything else to avoid sandbox issues
+excluded:
+  - Carthage
+  - Pods
+  - .build
+  - DerivedData
+  - Scripts
+  - Build
+  - build
+  - .git
+  - Assets
+  - Archived
+  - Distribution
+  - Clnbrd/Assets.xcassets
+  - Clnbrd/Archived
+  - Clnbrd/Distribution
+  - Clnbrd/Scripts
+  - Clnbrd/build
+  - Clnbrd/Clnbrd/Documentation
+  - Clnbrd/Documentation
+  - Documentation
+  - "**/*.xcodeproj"
+  - "**/*.xcworkspace"
+  - "**/*.xcassets"
+
+# Line length limits (macOS apps can have longer lines)
+line_length:
+  warning: 140
+  error: 200
+  ignores_urls: true
+  ignores_comments: true
+  ignores_function_declarations: true
+
+# File length limits (relaxed for UI controllers)
+file_length:
+  warning: 1100
+  error: 1500
+  ignore_comment_only_lines: true
+
+# Function length limits
+function_body_length:
+  warning: 80
+  error: 150
+
+# Type body length (relaxed for UI controllers)
+type_body_length:
+  warning: 1000
+  error: 1200
+
+# Function parameter count
+function_parameter_count:
+  warning: 6
+  error: 8
+
+# Cyclomatic complexity
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+  ignores_case_statements: true
+
+# Nesting depth
+nesting:
+  type_level:
+    warning: 2
+
+# Identifier naming rules
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - id
+    - ID
+    - URL
+    - url
+    - x
+    - y
+    - i
+    - j
+    - db
+    - at
+    - to
+
+# Type naming rules
+type_name:
+  min_length:
+    warning: 3
+    error: 2
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - ID
+
+# Large tuple warning
+large_tuple:
+  warning: 3
+  error: 4
+
+# Custom rules specific to Clnbrd project
+custom_rules:
+  # Prefer os.log over print for production code
+  no_print_statements:
+    name: "No Print Statements"
+    regex: '^\s*print\('
+    message: "Use Logger instead of print() for production code"
+    severity: warning
+
+# Report configuration
+reporter: "xcode" # Use Xcode-style output for better integration
+
+# Strict mode for better code quality
+strict: false  # Set to true when you want to treat warnings as errors
+
+# SwiftLint version requirement (optional)
+# swiftlint_version: 0.50.0
+

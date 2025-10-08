@@ -16,7 +16,7 @@ class UpdateChecker {
         
         logger.info("Fetching from URL: \(url)")
         
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
@@ -51,7 +51,6 @@ class UpdateChecker {
                        let assets = json["assets"] as? [[String: Any]],
                        let firstAsset = assets.first,
                        let downloadUrl = firstAsset["browser_download_url"] as? String {
-                        
                         // Strip "v" prefix from tag name (v1.3 -> 1.3)
                         let latestVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
                         let currentVersion = VersionManager.version
@@ -93,7 +92,6 @@ class UpdateChecker {
         
         task.resume()
     }
-    
 }
 
 protocol UpdateCheckerDelegate: AnyObject {

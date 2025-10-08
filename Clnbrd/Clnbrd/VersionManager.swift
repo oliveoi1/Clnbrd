@@ -3,7 +3,6 @@ import Foundation
 /// Centralized version management for Clnbrd
 /// Automatically reads version information from Info.plist to ensure consistency
 struct VersionManager {
-    
     // MARK: - Version Information
     
     /// App version string - reads from Info.plist

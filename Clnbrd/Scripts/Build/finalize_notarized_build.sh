@@ -141,6 +141,26 @@ EOF
 
 echo -e "${GREEN}✅ Version JSON created!${NC}"
 
+# Generate EdDSA signature for Sparkle
+echo -e "${YELLOW}🔐 Generating EdDSA signature for Sparkle updates...${NC}"
+SPARKLE_SIGN_TOOL=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -type f 2>/dev/null | grep "Sparkle/bin/sign_update" | head -1)
+SPARKLE_PRIVATE_KEY="../../.sparkle_keys/sparkle_eddsa_private.key"
+
+if [ -f "${SPARKLE_PRIVATE_KEY}" ] && [ -n "${SPARKLE_SIGN_TOOL}" ]; then
+    EDDSA_SIGNATURE=$("${SPARKLE_SIGN_TOOL}" "${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg" -f "${SPARKLE_PRIVATE_KEY}" | grep 'sparkle:edSignature=' | cut -d '"' -f 2)
+    echo -e "${GREEN}✅ EdDSA signature generated!${NC}"
+    echo -e "${BLUE}   Signature: ${EDDSA_SIGNATURE}${NC}"
+else
+    echo -e "${RED}⚠️  Warning: EdDSA signature not generated${NC}"
+    if [ ! -f "${SPARKLE_PRIVATE_KEY}" ]; then
+        echo -e "${YELLOW}   Private key not found at: ${SPARKLE_PRIVATE_KEY}${NC}"
+    fi
+    if [ -z "${SPARKLE_SIGN_TOOL}" ]; then
+        echo -e "${YELLOW}   Sparkle sign_update tool not found${NC}"
+    fi
+    EDDSA_SIGNATURE=""
+fi
+
 # Update appcast.xml
 echo -e "${YELLOW}📡 Updating appcast.xml...${NC}"
 APPCAST_FILE="../appcast.xml"
@@ -176,7 +196,8 @@ NEW_ITEM=$(cat <<APPCAST_ITEM
                 sparkle:version="${BUILD_NUMBER}" 
                 sparkle:shortVersionString="${VERSION}" 
                 length="${DMG_FILE_SIZE}"
-                type="application/octet-stream"
+                type="application/octet-stream"${EDDSA_SIGNATURE:+
+                sparkle:edSignature=\"${EDDSA_SIGNATURE}\"}
             />
         </item>
         
@@ -201,7 +222,11 @@ if [ -f "${APPCAST_FILE}" ]; then
     
     echo -e "${GREEN}✅ Appcast updated with Build ${BUILD_NUMBER}!${NC}"
     echo -e "${BLUE}   File: ${APPCAST_FILE}${NC}"
-    echo -e "${YELLOW}   ⚠️  Note: EdDSA signature not included (see ROADMAP.md)${NC}"
+    if [ -n "${EDDSA_SIGNATURE}" ]; then
+        echo -e "${GREEN}   ✅ EdDSA signature included for enhanced security!${NC}"
+    else
+        echo -e "${YELLOW}   ⚠️  Warning: EdDSA signature not included${NC}"
+    fi
 else
     echo -e "${RED}❌ Warning: appcast.xml not found at ${APPCAST_FILE}${NC}"
     echo -e "${YELLOW}   Skipping appcast update...${NC}"

@@ -1,6 +1,7 @@
 import Cocoa
 import os.log
 import ServiceManagement
+import UniformTypeIdentifiers
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
@@ -9,9 +10,15 @@ class SettingsWindow: NSWindowController {
     var cleaningRules: CleaningRules
     var checkboxes: [NSButton] = []
     var customRulesStackView: NSStackView!
+    var profileDropdown: NSPopUpButton!
+    var currentProfileId: UUID?
+    var scrollView: NSScrollView!
     
     init(cleaningRules: CleaningRules) {
-        self.cleaningRules = cleaningRules
+        // Load active profile
+        let activeProfile = ProfileManager.shared.getActiveProfile()
+        self.cleaningRules = activeProfile.rules
+        self.currentProfileId = activeProfile.id
         
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 600, height: 550),
@@ -33,13 +40,40 @@ class SettingsWindow: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func showWindow(_ sender: Any?) {
+        super.showWindow(sender)
+        
+        // Set up window delegate to catch window becoming key
+        window?.delegate = self
+        
+        scrollToTop()
+    }
+    
+    private func scrollToTop() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self = self, let scrollView = self.scrollView else { return }
+            guard let documentView = scrollView.documentView else { return }
+            
+            // Calculate the Y position for the TOP of the content
+            // In flipped coordinates: Y = documentHeight - visibleHeight
+            let documentHeight = documentView.frame.height
+            let visibleHeight = scrollView.contentView.bounds.height
+            let topY = max(0, documentHeight - visibleHeight)
+            
+            // Set bounds to show the top
+            let topPoint = NSPoint(x: 0, y: topY)
+            scrollView.contentView.setBoundsOrigin(topPoint)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+    }
+    
     func setupUI() {
         guard let window = window else { return }
         
         let mainContainer = NSView()
         mainContainer.translatesAutoresizingMaskIntoConstraints = false
         
-        let scrollView = NSScrollView()
+        scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
@@ -52,61 +86,13 @@ class SettingsWindow: NSWindowController {
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         
-        // Add section header for cleaning rules
-        stackView.addArrangedSubview(createSectionHeader("📝 Basic Text Cleaning"))
-        stackView.addArrangedSubview(createSpacer(height: 4))
+        // Setup all UI sections
+        setupProfileSection(stackView)
+        setupBasicTextCleaningSection(stackView)
+        setupAdvancedCleaningSection(stackView)
         
-        stackView.addArrangedSubview(createCheckbox(title: "Remove zero-width and invisible characters (AI watermarks)", tooltip: CleaningRuleTooltips.removeZeroWidthChars, isOn: cleaningRules.removeZeroWidthChars, tag: 0))
-        stackView.addArrangedSubview(createCheckbox(title: "Replace em-dashes (—) with comma+space", tooltip: CleaningRuleTooltips.removeEmdashes, isOn: cleaningRules.removeEmdashes, tag: 1))
-        stackView.addArrangedSubview(createCheckbox(title: "Normalize multiple spaces to single space", tooltip: CleaningRuleTooltips.normalizeSpaces, isOn: cleaningRules.normalizeSpaces, tag: 2))
-        stackView.addArrangedSubview(createCheckbox(title: "Convert smart quotes to straight quotes", tooltip: CleaningRuleTooltips.convertSmartQuotes, isOn: cleaningRules.convertSmartQuotes, tag: 3))
-        stackView.addArrangedSubview(createCheckbox(title: "Normalize line breaks", tooltip: CleaningRuleTooltips.normalizeLineBreaks, isOn: cleaningRules.normalizeLineBreaks, tag: 4))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove trailing spaces from lines", tooltip: CleaningRuleTooltips.removeTrailingSpaces, isOn: cleaningRules.removeTrailingSpaces, tag: 5))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove emojis", tooltip: CleaningRuleTooltips.removeEmojis, isOn: cleaningRules.removeEmojis, tag: 6))
-        
-        stackView.addArrangedSubview(createSpacer(height: 12))
-        stackView.addArrangedSubview(createSectionHeader("🧹 Advanced Cleaning"))
-        stackView.addArrangedSubview(createSpacer(height: 4))
-        
-        stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: CleaningRuleTooltips.removeExtraLineBreaks, isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove leading/trailing whitespace", tooltip: CleaningRuleTooltips.removeLeadingTrailingWhitespace, isOn: cleaningRules.removeLeadingTrailingWhitespace, tag: 8))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: CleaningRuleTooltips.removeUrlTracking, isOn: cleaningRules.removeUrlTracking, tag: 9))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: CleaningRuleTooltips.removeUrls, isOn: cleaningRules.removeUrls, tag: 10))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: CleaningRuleTooltips.removeHtmlTags, isOn: cleaningRules.removeHtmlTags, tag: 11))
-        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: CleaningRuleTooltips.removeExtraPunctuation, isOn: cleaningRules.removeExtraPunctuation, tag: 12))
-        
-        let spacer1 = NSView()
-        spacer1.translatesAutoresizingMaskIntoConstraints = false
-        stackView.addArrangedSubview(spacer1)
-        NSLayoutConstraint.activate([spacer1.heightAnchor.constraint(equalToConstant: 10)])
-        
-        let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
-        launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
-        stackView.addArrangedSubview(launchCheckbox)
-        
-        let setupButton = NSButton(title: "Setup Instructions", target: self, action: #selector(showSetupInstructions))
-        setupButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(setupButton)
-        
-        let securityButton = NSButton(title: "Security Warning Help", target: self, action: #selector(showSecurityHelp))
-        securityButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(securityButton)
-        
-        let analyticsButton = NSButton(title: "View Analytics", target: self, action: #selector(showAnalytics))
-        analyticsButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(analyticsButton)
-        
-        let analyticsToggle = NSButton(checkboxWithTitle: "Enable Analytics", target: self, action: #selector(toggleAnalytics(_:)))
-        analyticsToggle.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
-        stackView.addArrangedSubview(analyticsToggle)
-        
-        let testSystemInfoButton = NSButton(title: "Test System Info", target: self, action: #selector(testSystemInformation))
-        testSystemInfoButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(testSystemInfoButton)
-        
+        // CUSTOM FIND & REPLACE RULES SECTION
         stackView.addArrangedSubview(createSpacer(height: 20))
-        
-        // Add section header for custom rules
         stackView.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
         stackView.addArrangedSubview(createSpacer(height: 4))
         
@@ -133,6 +119,36 @@ class SettingsWindow: NSWindowController {
         addButton.bezelStyle = .rounded
         stackView.addArrangedSubview(addButton)
         
+        // HORIZONTAL SEPARATOR LINE
+        stackView.addArrangedSubview(createSpacer(height: 20))
+        stackView.addArrangedSubview(createSeparatorLine())
+        stackView.addArrangedSubview(createSpacer(height: 20))
+        
+        // APP SETTINGS & BUTTONS
+        let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
+        launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
+        stackView.addArrangedSubview(launchCheckbox)
+        
+        let setupButton = NSButton(title: "Setup Instructions", target: self, action: #selector(showSetupInstructions))
+        setupButton.bezelStyle = .rounded
+        stackView.addArrangedSubview(setupButton)
+        
+        let securityButton = NSButton(title: "Security Warning Help", target: self, action: #selector(showSecurityHelp))
+        securityButton.bezelStyle = .rounded
+        stackView.addArrangedSubview(securityButton)
+        
+        let analyticsButton = NSButton(title: "View Analytics", target: self, action: #selector(showAnalytics))
+        analyticsButton.bezelStyle = .rounded
+        stackView.addArrangedSubview(analyticsButton)
+        
+        let analyticsToggle = NSButton(checkboxWithTitle: "Enable Analytics", target: self, action: #selector(toggleAnalytics(_:)))
+        analyticsToggle.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
+        stackView.addArrangedSubview(analyticsToggle)
+        
+        let testSystemInfoButton = NSButton(title: "Test System Info", target: self, action: #selector(testSystemInformation))
+        testSystemInfoButton.bezelStyle = .rounded
+        stackView.addArrangedSubview(testSystemInfoButton)
+        
         // Configure scroll view
         scrollView.documentView = stackView
         mainContainer.addSubview(scrollView)
@@ -147,6 +163,50 @@ class SettingsWindow: NSWindowController {
         ])
         
         window.contentView = mainContainer
+    }
+    
+    // MARK: - UI Section Setup Helpers
+    
+    private func setupProfileSection(_ stackView: NSStackView) {
+        let profileSection = createProfileManagementSection()
+        stackView.addArrangedSubview(profileSection)
+        stackView.addArrangedSubview(createSpacer(height: 16))
+    }
+    
+    private func setupBasicTextCleaningSection(_ stackView: NSStackView) {
+        stackView.addArrangedSubview(createSectionHeaderWithControls("📝 Basic Text Cleaning", selectAllSelector: #selector(selectAllBasic), deselectAllSelector: #selector(deselectAllBasic)))
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        
+        stackView.addArrangedSubview(createCheckbox(
+            title: "Remove zero-width and invisible characters (AI watermarks)",
+            tooltip: CleaningRuleTooltips.removeZeroWidthChars,
+            isOn: cleaningRules.removeZeroWidthChars,
+            tag: 0
+        ))
+        stackView.addArrangedSubview(createCheckbox(title: "Replace em-dashes (—) with comma+space", tooltip: CleaningRuleTooltips.removeEmdashes, isOn: cleaningRules.removeEmdashes, tag: 1))
+        stackView.addArrangedSubview(createCheckbox(title: "Normalize multiple spaces to single space", tooltip: CleaningRuleTooltips.normalizeSpaces, isOn: cleaningRules.normalizeSpaces, tag: 2))
+        stackView.addArrangedSubview(createCheckbox(title: "Convert smart quotes to straight quotes", tooltip: CleaningRuleTooltips.convertSmartQuotes, isOn: cleaningRules.convertSmartQuotes, tag: 3))
+        stackView.addArrangedSubview(createCheckbox(title: "Normalize line breaks", tooltip: CleaningRuleTooltips.normalizeLineBreaks, isOn: cleaningRules.normalizeLineBreaks, tag: 4))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove trailing spaces from lines", tooltip: CleaningRuleTooltips.removeTrailingSpaces, isOn: cleaningRules.removeTrailingSpaces, tag: 5))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove emojis", tooltip: CleaningRuleTooltips.removeEmojis, isOn: cleaningRules.removeEmojis, tag: 6))
+    }
+    
+    private func setupAdvancedCleaningSection(_ stackView: NSStackView) {
+        stackView.addArrangedSubview(createSpacer(height: 12))
+        stackView.addArrangedSubview(createSectionHeaderWithControls("🧹 Advanced Cleaning", selectAllSelector: #selector(selectAllAdvanced), deselectAllSelector: #selector(deselectAllAdvanced)))
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        
+        stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: CleaningRuleTooltips.removeExtraLineBreaks, isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
+        stackView.addArrangedSubview(createCheckbox(
+            title: "Remove leading/trailing whitespace",
+            tooltip: CleaningRuleTooltips.removeLeadingTrailingWhitespace,
+            isOn: cleaningRules.removeLeadingTrailingWhitespace,
+            tag: 8
+        ))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: CleaningRuleTooltips.removeUrlTracking, isOn: cleaningRules.removeUrlTracking, tag: 9))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: CleaningRuleTooltips.removeUrls, isOn: cleaningRules.removeUrls, tag: 10))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: CleaningRuleTooltips.removeHtmlTags, isOn: cleaningRules.removeHtmlTags, tag: 11))
+        stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: CleaningRuleTooltips.removeExtraPunctuation, isOn: cleaningRules.removeExtraPunctuation, tag: 12))
     }
     
     // MARK: - UI Creation Helpers
@@ -171,6 +231,145 @@ class SettingsWindow: NSWindowController {
         return container
     }
     
+    func createSectionHeaderWithControls(_ title: String, selectAllSelector: Selector, deselectAllSelector: Selector) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Section title
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.boldSystemFont(ofSize: 14)
+        label.textColor = .controlTextColor
+        label.isEditable = false
+        label.isBordered = false
+        label.backgroundColor = .clear
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Select All button
+        let selectAllButton = NSButton(title: "Select All", target: self, action: selectAllSelector)
+        selectAllButton.bezelStyle = .rounded
+        selectAllButton.font = NSFont.systemFont(ofSize: 11)
+        selectAllButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Deselect All button
+        let deselectAllButton = NSButton(title: "Deselect All", target: self, action: deselectAllSelector)
+        deselectAllButton.bezelStyle = .rounded
+        deselectAllButton.font = NSFont.systemFont(ofSize: 11)
+        deselectAllButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addSubview(label)
+        container.addSubview(selectAllButton)
+        container.addSubview(deselectAllButton)
+        
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            deselectAllButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            deselectAllButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            selectAllButton.trailingAnchor.constraint(equalTo: deselectAllButton.leadingAnchor, constant: -8),
+            selectAllButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            container.heightAnchor.constraint(equalToConstant: 30)
+        ])
+        
+        return container
+    }
+    
+    func createProfileManagementSection() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Profile label
+        let profileLabel = NSTextField(labelWithString: "Profile:")
+        profileLabel.font = NSFont.boldSystemFont(ofSize: 13)
+        profileLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Profile dropdown
+        profileDropdown = NSPopUpButton(frame: .zero, pullsDown: false)
+        profileDropdown.translatesAutoresizingMaskIntoConstraints = false
+        profileDropdown.target = self
+        profileDropdown.action = #selector(profileChanged(_:))
+        refreshProfileDropdown()
+        
+        // Rename button
+        let renameButton = NSButton(title: "Rename", target: self, action: #selector(renameProfile))
+        renameButton.bezelStyle = .rounded
+        renameButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // New profile button
+        let newButton = NSButton(title: "+ New", target: self, action: #selector(createNewProfile))
+        newButton.bezelStyle = .rounded
+        newButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Delete button
+        let deleteButton = NSButton(title: "Delete", target: self, action: #selector(deleteCurrentProfile))
+        deleteButton.bezelStyle = .rounded
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Export button
+        let exportButton = NSButton(title: "Export...", target: self, action: #selector(exportProfile))
+        exportButton.bezelStyle = .rounded
+        exportButton.translatesAutoresizingMaskIntoConstraints = false
+        exportButton.toolTip = "Save profile to file"
+        
+        // Share button (using native macOS share icon)
+        let shareButton = NSButton(image: NSImage(named: NSImage.shareTemplateName)!, target: self, action: #selector(shareProfile))
+        shareButton.bezelStyle = .rounded
+        shareButton.translatesAutoresizingMaskIntoConstraints = false
+        shareButton.toolTip = "Share via AirDrop, Messages, or Mail"
+        
+        // Import button
+        let importButton = NSButton(title: "Import...", target: self, action: #selector(importProfile))
+        importButton.bezelStyle = .rounded
+        importButton.translatesAutoresizingMaskIntoConstraints = false
+        importButton.toolTip = "Import profile from file"
+        
+        // Add all subviews
+        container.addSubview(profileLabel)
+        container.addSubview(profileDropdown)
+        container.addSubview(renameButton)
+        container.addSubview(newButton)
+        container.addSubview(deleteButton)
+        container.addSubview(exportButton)
+        container.addSubview(shareButton)
+        container.addSubview(importButton)
+        
+        // Layout
+        NSLayoutConstraint.activate([
+            profileLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            profileLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            profileDropdown.leadingAnchor.constraint(equalTo: profileLabel.trailingAnchor, constant: 8),
+            profileDropdown.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            profileDropdown.widthAnchor.constraint(equalToConstant: 150),
+            
+            renameButton.leadingAnchor.constraint(equalTo: profileDropdown.trailingAnchor, constant: 12),
+            renameButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            newButton.leadingAnchor.constraint(equalTo: renameButton.trailingAnchor, constant: 8),
+            newButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            deleteButton.leadingAnchor.constraint(equalTo: newButton.trailingAnchor, constant: 8),
+            deleteButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            exportButton.leadingAnchor.constraint(equalTo: deleteButton.trailingAnchor, constant: 12),
+            exportButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            shareButton.leadingAnchor.constraint(equalTo: exportButton.trailingAnchor, constant: 4),
+            shareButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            shareButton.widthAnchor.constraint(equalToConstant: 32),
+            
+            importButton.leadingAnchor.constraint(equalTo: shareButton.trailingAnchor, constant: 8),
+            importButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            importButton.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            container.heightAnchor.constraint(equalToConstant: 30)
+        ])
+        
+        return container
+    }
+    
     func createSpacer(height: CGFloat) -> NSView {
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
@@ -178,6 +377,16 @@ class SettingsWindow: NSWindowController {
             spacer.heightAnchor.constraint(equalToConstant: height)
         ])
         return spacer
+    }
+    
+    func createSeparatorLine() -> NSView {
+        let separator = NSBox()
+        separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        separator.widthAnchor.constraint(equalToConstant: 540).isActive = true
+        
+        return separator
     }
     
     func createCheckbox(title: String, tooltip: String, isOn: Bool, tag: Int) -> NSButton {
@@ -306,8 +515,10 @@ class SettingsWindow: NSWindowController {
         default: break
         }
         
-        // Save preferences when settings change
-        PreferencesManager.shared.saveCleaningRules(cleaningRules)
+        // Save to current profile
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
     }
     
     @objc func toggleLaunchAtLogin(_ sender: NSButton) {
@@ -509,9 +720,9 @@ class SettingsWindow: NSWindowController {
         let systemInfo = SystemInfoUtility.getSystemInformation()
         let formatted = SystemInfoUtility.formatSystemInformation(systemInfo)
         
-        print("=== SYSTEM INFORMATION TEST ===")
-        print(formatted)
-        print("=== END TEST ===")
+        logger.info("=== SYSTEM INFORMATION TEST ===")
+        logger.info("\(formatted)")
+        logger.info("=== END TEST ===")
         
         // Also show in a dialog for manual verification
         let alert = NSAlert()
@@ -666,6 +877,429 @@ class SettingsWindow: NSWindowController {
             fallbackAlert.runModal()
         }
     }
+    
+    // MARK: - Profile Management
+    
+    func refreshProfileDropdown() {
+        profileDropdown?.removeAllItems()
+        
+        let profiles = ProfileManager.shared.getAllProfiles()
+        let activeProfile = ProfileManager.shared.getActiveProfile()
+        currentProfileId = activeProfile.id
+        
+        for profile in profiles {
+            profileDropdown?.addItem(withTitle: profile.name)
+            if let item = profileDropdown?.item(withTitle: profile.name) {
+                item.representedObject = profile.id
+            }
+        }
+        
+        // Select the active profile
+        if let index = profiles.firstIndex(where: { $0.id == activeProfile.id }) {
+            profileDropdown?.selectItem(at: index)
+        }
+    }
+    
+    @objc func profileChanged(_ sender: NSPopUpButton) {
+        guard let selectedItem = sender.selectedItem,
+              let profileId = selectedItem.representedObject as? UUID else {
+            return
+        }
+        
+        // Save current profile's rules first
+        if let currentId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: currentId, rules: cleaningRules)
+        }
+        
+        // Switch to new profile
+        ProfileManager.shared.setActiveProfile(id: profileId)
+        currentProfileId = profileId
+        
+        // Load new profile's rules
+        let newProfile = ProfileManager.shared.getActiveProfile()
+        cleaningRules = newProfile.rules
+        
+        // Update all checkboxes to reflect new profile's rules
+        updateCheckboxesFromRules()
+        
+        // Update custom rules UI
+        refreshCustomRulesUI()
+    }
+    
+    func updateCheckboxesFromRules() {
+        // Update all checkboxes to match current cleaningRules
+        for checkbox in checkboxes {
+            switch checkbox.tag {
+            case 0: checkbox.state = cleaningRules.removeZeroWidthChars ? .on : .off
+            case 1: checkbox.state = cleaningRules.removeEmdashes ? .on : .off
+            case 2: checkbox.state = cleaningRules.normalizeSpaces ? .on : .off
+            case 3: checkbox.state = cleaningRules.convertSmartQuotes ? .on : .off
+            case 4: checkbox.state = cleaningRules.normalizeLineBreaks ? .on : .off
+            case 5: checkbox.state = cleaningRules.removeTrailingSpaces ? .on : .off
+            case 6: checkbox.state = cleaningRules.removeEmojis ? .on : .off
+            case 7: checkbox.state = cleaningRules.removeExtraLineBreaks ? .on : .off
+            case 8: checkbox.state = cleaningRules.removeLeadingTrailingWhitespace ? .on : .off
+            case 9: checkbox.state = cleaningRules.removeUrlTracking ? .on : .off
+            case 10: checkbox.state = cleaningRules.removeUrls ? .on : .off
+            case 11: checkbox.state = cleaningRules.removeHtmlTags ? .on : .off
+            case 12: checkbox.state = cleaningRules.removeExtraPunctuation ? .on : .off
+            default: break
+            }
+        }
+    }
+    
+    func refreshCustomRulesUI() {
+        // Remove all existing custom rule rows
+        for view in customRulesStackView.arrangedSubviews {
+            customRulesStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        
+        // Re-add custom rules from current profile
+        for (index, rule) in cleaningRules.customRules.enumerated() {
+            addCustomRuleRow(find: rule.find, replace: rule.replace, index: index)
+        }
+    }
+    
+    @objc func renameProfile() {
+        guard let profileId = currentProfileId else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Rename Profile"
+        alert.informativeText = "Enter a new name for this profile:"
+        alert.alertStyle = .informational
+        
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        inputField.stringValue = ProfileManager.shared.getActiveProfile().name
+        alert.accessoryView = inputField
+        
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let newName = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newName.isEmpty {
+                ProfileManager.shared.renameProfile(id: profileId, newName: newName)
+                refreshProfileDropdown()
+            }
+        }
+    }
+    
+    @objc func createNewProfile() {
+        let alert = NSAlert()
+        alert.messageText = "Create New Profile"
+        alert.informativeText = "Enter a name for the new profile:"
+        alert.alertStyle = .informational
+        
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        inputField.placeholderString = "Profile name"
+        alert.accessoryView = inputField
+        
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let newName = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newName.isEmpty {
+                // Save current profile first
+                if let currentId = currentProfileId {
+                    ProfileManager.shared.updateProfile(id: currentId, rules: cleaningRules)
+                }
+                
+                // Create new profile based on current
+                let currentProfile = ProfileManager.shared.getActiveProfile()
+                let newProfile = ProfileManager.shared.createProfile(basedOn: currentProfile, name: newName)
+                
+                // Switch to new profile
+                ProfileManager.shared.setActiveProfile(id: newProfile.id)
+                currentProfileId = newProfile.id
+                
+                refreshProfileDropdown()
+            }
+        }
+    }
+    
+    @objc func deleteCurrentProfile() {
+        guard let profileId = currentProfileId else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Delete Profile"
+        alert.informativeText = "Are you sure you want to delete this profile? This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let success = ProfileManager.shared.deleteProfile(id: profileId)
+            if success {
+                // Load the new active profile
+                let newActiveProfile = ProfileManager.shared.getActiveProfile()
+                currentProfileId = newActiveProfile.id
+                cleaningRules = newActiveProfile.rules
+                
+                refreshProfileDropdown()
+                
+                // Update UI to reflect new profile
+                updateCheckboxesFromRules()
+                refreshCustomRulesUI()
+            } else {
+                let errorAlert = NSAlert()
+                errorAlert.messageText = "Cannot Delete"
+                errorAlert.informativeText = "You cannot delete the last profile."
+                errorAlert.alertStyle = .warning
+                errorAlert.addButton(withTitle: "OK")
+                errorAlert.runModal()
+            }
+        }
+    }
+    
+    @objc func exportProfile() {
+        guard let profileId = currentProfileId else { return }
+        
+        // Save current changes first
+        ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        
+        // Get the current profile
+        let profile = ProfileManager.shared.getActiveProfile()
+        
+        // Create save panel
+        let savePanel = NSSavePanel()
+        savePanel.title = "Export Profile"
+        savePanel.message = "Choose where to save your profile"
+        savePanel.nameFieldStringValue = "\(profile.name).clnbrd-profile"
+        savePanel.canCreateDirectories = true
+        savePanel.isExtensionHidden = false
+        
+        // Set allowed file type
+        if #available(macOS 11.0, *) {
+            savePanel.allowedContentTypes = [
+                UTType(exportedAs: "com.allanray.clnbrd.profile", conformingTo: .json)
+            ]
+        } else {
+            savePanel.allowedFileTypes = ["clnbrd-profile"]
+        }
+        
+        savePanel.begin { response in
+            guard response == .OK, let fileURL = savePanel.url else { return }
+            
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted
+                let jsonData = try encoder.encode(profile)
+                try jsonData.write(to: fileURL)
+                
+                // Show success message
+                let alert = NSAlert()
+                alert.messageText = "Profile Exported"
+                alert.informativeText = "Successfully saved to:\n\(fileURL.path)"
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Export Failed"
+                alert.informativeText = "Could not save profile: \(error.localizedDescription)"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+        }
+    }
+    
+    @objc func shareProfile(_ sender: NSButton) {
+        guard let profileId = currentProfileId else { return }
+        
+        // Save current changes first
+        ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        
+        // Get the current profile
+        let profile = ProfileManager.shared.getActiveProfile()
+        
+        // Export to JSON
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let jsonData = try encoder.encode(profile)
+            
+            // Create temporary file
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileName = "\(profile.name).clnbrd-profile"
+            let fileURL = tempDir.appendingPathComponent(fileName)
+            
+            try jsonData.write(to: fileURL)
+            
+            // Show native macOS share sheet
+            let sharingPicker = NSSharingServicePicker(items: [fileURL])
+            sharingPicker.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Share Failed"
+            alert.informativeText = "Could not share profile: \(error.localizedDescription)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+    
+    @objc func importProfile() {
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Import Profile"
+        openPanel.message = "Choose a Clnbrd profile file to import"
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        
+        // Use UTType for our custom file type
+        if #available(macOS 11.0, *) {
+            openPanel.allowedContentTypes = [
+                UTType(exportedAs: "com.allanray.clnbrd.profile", conformingTo: .json)
+            ]
+        } else {
+            openPanel.allowedFileTypes = ["clnbrd-profile"]
+        }
+        
+        openPanel.begin { response in
+            guard response == .OK, let fileURL = openPanel.url else { return }
+            
+            do {
+                let jsonData = try Data(contentsOf: fileURL)
+                let decoder = JSONDecoder()
+                let importedProfile = try decoder.decode(CleaningProfile.self, from: jsonData)
+                
+                // Check if a profile with this name already exists
+                let existingProfiles = ProfileManager.shared.getAllProfiles()
+                var finalName = importedProfile.name
+                var counter = 1
+                
+                while existingProfiles.contains(where: { $0.name == finalName }) {
+                    finalName = "\(importedProfile.name) (\(counter))"
+                    counter += 1
+                }
+                
+                // Create new profile with potentially modified name
+                let newProfile = ProfileManager.shared.createProfile(
+                    basedOn: importedProfile,
+                    name: finalName
+                )
+                
+                // Switch to the newly imported profile
+                ProfileManager.shared.setActiveProfile(id: newProfile.id)
+                self.currentProfileId = newProfile.id
+                self.cleaningRules = newProfile.rules
+                
+                // Update UI
+                self.refreshProfileDropdown()
+                self.updateCheckboxesFromRules()
+                self.refreshCustomRulesUI()
+                
+                // Show success message
+                let alert = NSAlert()
+                alert.messageText = "Profile Imported"
+                alert.informativeText = "Successfully imported profile: \(finalName)"
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Import Failed"
+                alert.informativeText = "Could not import profile: \(error.localizedDescription)"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+        }
+    }
+    
+    // MARK: - Section Select All/Deselect All
+    
+    @objc func selectAllBasic() {
+        // Basic Text Cleaning: tags 0-6
+        for tag in 0...6 {
+            if let checkbox = checkboxes.first(where: { $0.tag == tag }) {
+                checkbox.state = .on
+            }
+        }
+        // Update rules
+        cleaningRules.removeZeroWidthChars = true
+        cleaningRules.removeEmdashes = true
+        cleaningRules.normalizeSpaces = true
+        cleaningRules.convertSmartQuotes = true
+        cleaningRules.normalizeLineBreaks = true
+        cleaningRules.removeTrailingSpaces = true
+        cleaningRules.removeEmojis = true
+        
+        // Save to profile
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
+    }
+    
+    @objc func deselectAllBasic() {
+        // Basic Text Cleaning: tags 0-6
+        for tag in 0...6 {
+            if let checkbox = checkboxes.first(where: { $0.tag == tag }) {
+                checkbox.state = .off
+            }
+        }
+        // Update rules
+        cleaningRules.removeZeroWidthChars = false
+        cleaningRules.removeEmdashes = false
+        cleaningRules.normalizeSpaces = false
+        cleaningRules.convertSmartQuotes = false
+        cleaningRules.normalizeLineBreaks = false
+        cleaningRules.removeTrailingSpaces = false
+        cleaningRules.removeEmojis = false
+        
+        // Save to profile
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
+    }
+    
+    @objc func selectAllAdvanced() {
+        // Advanced Cleaning: tags 7-12
+        for tag in 7...12 {
+            if let checkbox = checkboxes.first(where: { $0.tag == tag }) {
+                checkbox.state = .on
+            }
+        }
+        // Update rules
+        cleaningRules.removeExtraLineBreaks = true
+        cleaningRules.removeLeadingTrailingWhitespace = true
+        cleaningRules.removeUrlTracking = true
+        cleaningRules.removeUrls = true
+        cleaningRules.removeHtmlTags = true
+        cleaningRules.removeExtraPunctuation = true
+        
+        // Save to profile
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
+    }
+    
+    @objc func deselectAllAdvanced() {
+        // Advanced Cleaning: tags 7-12
+        for tag in 7...12 {
+            if let checkbox = checkboxes.first(where: { $0.tag == tag }) {
+                checkbox.state = .off
+            }
+        }
+        // Update rules
+        cleaningRules.removeExtraLineBreaks = false
+        cleaningRules.removeLeadingTrailingWhitespace = false
+        cleaningRules.removeUrlTracking = false
+        cleaningRules.removeUrls = false
+        cleaningRules.removeHtmlTags = false
+        cleaningRules.removeExtraPunctuation = false
+        
+        // Save to profile
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
+    }
 }
 
 // MARK: - NSTextFieldDelegate
@@ -688,9 +1322,19 @@ extension SettingsWindow: NSTextFieldDelegate {
             
             cleaningRules.customRules[index] = newRule
             
-            // Save preferences when custom rules change
-            PreferencesManager.shared.saveCleaningRules(cleaningRules)
+            // Save to current profile when custom rules change
+            if let profileId = currentProfileId {
+                ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+            }
         }
     }
 }
 
+// MARK: - NSWindowDelegate
+
+extension SettingsWindow: NSWindowDelegate {
+    func windowDidBecomeKey(_ notification: Notification) {
+        // Window became active, scroll to top
+        scrollToTop()
+    }
+}

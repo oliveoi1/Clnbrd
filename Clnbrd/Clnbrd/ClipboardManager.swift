@@ -93,33 +93,11 @@ class ClipboardManager {
         logger.info("🔍 cleanAndPasteClipboard() called!")
         let pasteboard = NSPasteboard.general
         
-        // Store original clipboard data (all types, not just text)
-        let originalTypes = pasteboard.types ?? []
-        var originalData: [NSPasteboard.PasteboardType: Data] = [:]
+        // Store original clipboard data
+        let originalData = preserveClipboardData(pasteboard)
         
-        // Preserve all data types
-        for type in originalTypes {
-            if let data = pasteboard.data(forType: type) {
-                originalData[type] = data
-            }
-        }
-        
-        // Get original text for cleaning
-        var text: String?
-        text = pasteboard.string(forType: .string)
-        logger.info("🔍 Plain text from clipboard: \(text != nil ? "YES" : "NO")")
-        
-        if text == nil, let rtfData = pasteboard.data(forType: .rtf) {
-            text = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string
-            logger.info("🔍 RTF text from clipboard: \(text != nil ? "YES" : "NO")")
-        }
-        
-        if text == nil, let htmlData = pasteboard.data(forType: .html) {
-            text = NSAttributedString(html: htmlData, documentAttributes: nil)?.string
-            logger.info("🔍 HTML text from clipboard: \(text != nil ? "YES" : "NO")")
-        }
-        
-        guard let originalText = text else {
+        // Extract text from clipboard
+        guard let originalText = extractTextFromClipboard(pasteboard) else {
             logger.error("❌ No text found in clipboard!")
             return
         }
@@ -218,6 +196,40 @@ class ClipboardManager {
             
             executePasteSequence(cleanedText)
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func preserveClipboardData(_ pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType: Data] {
+        let originalTypes = pasteboard.types ?? []
+        var originalData: [NSPasteboard.PasteboardType: Data] = [:]
+        
+        // Preserve all data types
+        for type in originalTypes {
+            if let data = pasteboard.data(forType: type) {
+                originalData[type] = data
+            }
+        }
+        
+        return originalData
+    }
+    
+    private func extractTextFromClipboard(_ pasteboard: NSPasteboard) -> String? {
+        var text: String?
+        text = pasteboard.string(forType: .string)
+        logger.info("🔍 Plain text from clipboard: \(text != nil ? "YES" : "NO")")
+        
+        if text == nil, let rtfData = pasteboard.data(forType: .rtf) {
+            text = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string
+            logger.info("🔍 RTF text from clipboard: \(text != nil ? "YES" : "NO")")
+        }
+        
+        if text == nil, let htmlData = pasteboard.data(forType: .html) {
+            text = NSAttributedString(html: htmlData, documentAttributes: nil)?.string
+            logger.info("🔍 HTML text from clipboard: \(text != nil ? "YES" : "NO")")
+        }
+        
+        return text
     }
     
     func startClipboardMonitoring() {

@@ -3,7 +3,6 @@ import Foundation
 /// Centralized tooltip definitions for all cleaning rules
 /// Provides consistent, example-rich descriptions for the Settings UI
 struct CleaningRuleTooltips {
-    
     // MARK: - Basic Text Cleaning Rules
     
     static let removeZeroWidthChars = """
@@ -199,4 +198,3 @@ struct CleaningRuleTooltips {
         return allTooltips.count
     }
 }
-
