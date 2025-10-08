@@ -140,8 +140,13 @@ echo -e "${GREEN}✅ App fully signed with hardened runtime!${NC}"
 
 # ===== CREATE ZIP FOR NOTARIZATION =====
 echo -e "${YELLOW}📦 Creating ZIP for notarization...${NC}"
-cd "${BUILD_DIR}"
-ditto -c -k --keepParent --sequesterRsrc App/Clnbrd.app "Upload/Clnbrd-Build${BUILD_NUMBER}.zip"
+# Copy app back to /tmp to create clean ZIP
+rm -rf /tmp/Clnbrd.app
+cp -R "${BUILD_DIR}/App/Clnbrd.app" /tmp/
+xattr -cr /tmp/Clnbrd.app
+cd /tmp
+ditto -c -k --keepParent --noextattr --norsrc "Clnbrd.app" "${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}.zip"
+cd "${BUILD_DIR}/.."
 cd ..
 
 ZIP_SIZE=$(du -h "${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}.zip" | cut -f1)
