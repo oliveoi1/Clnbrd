@@ -102,30 +102,41 @@ struct CleaningRuleTooltips {
     Strips tracking from URLs (150+ parameters!).
     
     Examples:
-      Before: "youtu.be/VIDEO?si=xyz123"
-      After:  "youtu.be/VIDEO"
+      Before: "https://youtu.be/VIDEO?si=xyz123"
+      After:  "https://youtu.be/VIDEO"
     
-      Before: "amazon.com/product?tag=aff"
-      After:  "amazon.com/product"
+      Before: "https://amazon.com/product/ref=abc?tag=aff&keywords=test"
+      After:  "https://amazon.com/product"
     
-      Before: "example.com/page?utm_source=twitter"
-      After:  "example.com/page"
+      Before: "https://example.com/page?utm_source=twitter&page=2"
+      After:  "https://example.com/page?page=2"
     
     Removes: UTM parameters, fbclid, gclid, igshid, ttclid,
-    and 150+ other tracking parameters from 18+ platforms!
+    Amazon /ref= paths, and 150+ other tracking parameters
+    from 18+ platforms!
     
-    Preserves: Legitimate query parameters (q, page, id, etc.)
+    Preserves: Legitimate query parameters (q, page, id, v, etc.)
+    
+    💡 Tip: Use BOTH "Remove URL tracking" and "Remove URL protocols"
+    to get the cleanest URLs for spreadsheets!
+    
+    Combined result:
+      Before: "https://youtu.be/VIDEO?si=xyz123"
+      After:  "youtu.be/VIDEO" (tracking + protocol removed!)
     """
     
     static let removeUrls = """
     Strips URL protocols but keeps domain visible.
     
-    Example:
-      Before: "https://example.com/page"
-      After:  "example.com/page"
+    Examples:
+      Before: "Check out https://example.com and www.test.com"
+      After:  "Check out example.com and test.com"
     
-      Before: "www.example.com"
-      After:  "example.com"
+      Before: "Visit https://github.com/user/repo"
+      After:  "Visit github.com/user/repo"
+    
+    Removes: https://, http://, ftp://, www.
+    Keeps: Domain and path visible
     
     Perfect for: Excel/Sheets paste values!
     Excel's ⌘⇧V keeps hyperlinks, Clnbrd removes them.
