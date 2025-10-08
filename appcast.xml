@@ -4,7 +4,7 @@
         <title>Clnbrd Updates</title>
         <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
         <description>Most recent updates to Clnbrd</description>
-        <language>en</language>
+        <language>en</language> <!-- Updated $(date) -->
         
         <item>
             <title>Version 1.3 (Build 33) - ✅ Fully Notarized by Apple</title>
