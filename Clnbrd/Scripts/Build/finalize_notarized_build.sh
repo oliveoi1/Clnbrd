@@ -162,6 +162,32 @@ else
 fi
 
 # Update appcast.xml
+
+# ===== GENERATE EDSA SIGNATURE =====
+echo -e "${YELLOW}🔐 Generating EdDSA signature for enhanced security...${NC}"
+DMG_FILE="${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg"
+
+# Check if EdDSA signature generation is available
+if [ -f "./Scripts/Build/generate_eddsa_signature.sh" ] && [ -f "../.sparkle_keys/sparkle_eddsa_private.key" ]; then
+    echo -e "${BLUE}   Using automated EdDSA signature generation...${NC}"
+    cd Scripts/Build
+    SIGNATURE_OUTPUT=$(./generate_eddsa_signature.sh "../../${DMG_FILE}" 2>/dev/null)
+    cd ../..
+    
+    if [ $? -eq 0 ] && [ -n "$SIGNATURE_OUTPUT" ]; then
+        EDDSA_SIGNATURE=$(echo "$SIGNATURE_OUTPUT" | grep -o "sparkle:edSignature="[^"]*"" | cut -d""" -f2)
+        echo -e "${GREEN}   ✅ EdDSA signature generated successfully!${NC}"
+        echo -e "${BLUE}   📝 Signature: ${EDDSA_SIGNATURE:0:20}...${NC}"
+    else
+        echo -e "${YELLOW}   ⚠️  EdDSA signature generation failed, continuing without signature${NC}"
+        EDDSA_SIGNATURE=""
+    fi
+else
+    echo -e "${YELLOW}   ⚠️  EdDSA signature tools not available, skipping signature generation${NC}"
+    echo -e "${BLUE}   💡 To enable: brew install sparkle && ensure .sparkle_keys/sparkle_eddsa_private.key exists${NC}"
+    EDDSA_SIGNATURE=""
+fi
+
 echo -e "${YELLOW}📡 Updating appcast.xml...${NC}"
 APPCAST_FILE="../appcast.xml"
 DMG_FILE_SIZE=$(stat -f%z "${BUILD_DIR}/DMG/Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg")
