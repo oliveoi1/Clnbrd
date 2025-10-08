@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"  xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Clnbrd Updates</title>
+        <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
+        <description>Most recent updates to Clnbrd</description>
+        <language>en</language> <!-- Updated $(date) -->
+        
+        <item>
+            <title>Version 1.3 (Build 33) - ✅ Fully Notarized by Apple</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3-build33</link>
+            <sparkle:version>33</sparkle:version>
+            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>🎉 Build 33 - Fully Notarized by Apple!</h2>
+                <ul>
+                    <li>✅ <strong>Fully Notarized by Apple</strong> - No security warnings!</li>
+                    <li>🔐 Code Signed with Developer ID - Verified and secure</li>
+                    <li>🎯 ⌘⌥V Hotkey - Paste cleaned text instantly</li>
+                    <li>🤖 Auto-clean on Copy - Automatically strip formatting</li>
+                    <li>📋 Menu Bar Integration - Quick access from your Mac</li>
+                    <li>🧹 Format Removal - Strips all formatting, styles, and metadata</li>
+                    <li>🚀 Performance Monitoring - Built-in memory and CPU optimization</li>
+                    <li>🔄 Error Recovery - Automatic recovery from clipboard issues</li>
+                    <li>📊 Privacy-focused Analytics - Track usage patterns</li>
+                    <li>⚡ Auto-updates - Seamless future updates</li>
+                </ul>
+                <p><strong>This is a fully notarized release approved by Apple's security team!</strong></p>
+            ]]></description>
+            <pubDate>Sun, 06 Oct 2025 21:30:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3-build33/Clnbrd-1.3-Build-33-Notarized.dmg" 
+                sparkle:version="33" 
+                sparkle:shortVersionString="1.3" 
+                length="2651189"
+                type="application/octet-stream"
+                sparkle:edSignature="QVO9lM85h2WbDNaZqq2bPmKjhY1IRz0CdQu+BE8V2+LkMxb1uuIEOY01nN5x2KcB+LwhIV3ahKVju4dZXkoGCg=="
+            />
+        </item>
+        
+        <item>
+            <title>Version 1.3 (Build 31) - Sparkle Test</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3-build31</link>
+            <sparkle:version>31</sparkle:version>
+            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>🧪 Build 31 - Testing Sparkle Updates!</h2>
+                <ul>
+                    <li>✅ This is a test build to demonstrate Sparkle</li>
+                    <li>🚀 Automatic download and installation</li>
+                    <li>✨ One-click seamless update experience</li>
+                    <li>🔒 Cryptographically verified and secure</li>
+                </ul>
+                <p><strong>This update will install automatically when you click "Install Update"!</strong></p>
+            ]]></description>
+            <pubDate>Sat, 05 Oct 2025 17:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3-build31/Clnbrd-1.3-build31.dmg" 
+                sparkle:version="31" 
+                sparkle:shortVersionString="1.3" 
+                length="2273209"
+                type="application/octet-stream"
+                sparkle:edSignature="3hKdsmBv9jIGA6lbyJzE/3eL8UszsFuzD33whJa6JdoC0+kAwctc+lGgiWrLA8+OIyY3uPJgpQMWc5o+XmwlBg=="
+            />
+        </item>
+        
+        <item>
+            <title>Version 1.3 (Build 30)</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3-build30</link>
+            <sparkle:version>30</sparkle:version>
+            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in Build 30</h2>
+                <ul>
+                    <li>🎉 <strong>Sparkle automatic updates</strong> - One-click seamless updates!</li>
+                    <li>🌐 Added Website button to About page - Quick access to GitHub</li>
+                    <li>✨ Professional update experience with progress indicators</li>
+                    <li>🔒 Cryptographically signed updates for security</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 05 Oct 2025 16:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3-build30/Clnbrd-1.3-build30.dmg" 
+                sparkle:version="30" 
+                sparkle:shortVersionString="1.3" 
+                length="2273163"
+                type="application/octet-stream"
+                sparkle:edSignature="PHN7AU6KmXV6eqPsG+y+Mv4/vUUv+vXSTWKUlOByLdUX6KIAzbrhBL5/6en7Txkpv8+cMup0b270o9jTJRFeBw=="
+            />
+        </item>
+        
+        <item>
+            <title>Version 1.3 (Build 29)</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3</link>
+            <sparkle:version>29</sparkle:version>
+            <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>What's New in 1.3</h2>
+                <ul>
+                    <li>Enhanced system information collection</li>
+                    <li>Improved post-update permission handling</li>
+                    <li>Professional DMG installer with drag-to-Applications interface</li>
+                    <li>Push notification system for updates</li>
+                    <li>Better error handling and user experience</li>
+                    <li>Organized project structure and proper versioning</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sat, 05 Oct 2025 00:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3/Clnbrd-1.3.dmg" 
+                sparkle:version="29" 
+                sparkle:shortVersionString="1.3" 
+                length="971175"
+                type="application/octet-stream"
+                sparkle:edSignature="Clo6ATsedSSaHvWydEfz4nraiCH3qZkyWT770Fp0xPhOeHwos/r3nYo81WWqNYfpoHlxAci8inzIGRARzE2LCA=="
+            />
+        </item>
+    </channel>
+</rss>
+<!-- Updated Wed Oct  8 12:46:03 PDT 2025 -->
