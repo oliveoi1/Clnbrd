@@ -6,13 +6,13 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 
 ## 📥 Download
 
-**[⬇️ Download Latest Version (Clnbrd 1.3 Build 43)](https://github.com/oliveoi1/Clnbrd/releases/latest/download/Clnbrd-1.3.43.-Build-43-Notarized.dmg)**
+**[⬇️ Download Latest Version (Clnbrd 1.3 Build 50)](https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.50/Clnbrd-1.3.50.-Build-50-Notarized.dmg)**
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
 ### ✅ Fully Notarized by Apple
 
-This app is **officially notarized by Apple** and will install without any security warnings. Just download, open the DMG, and drag to Applications!
+This app is **officially notarized by Apple** and will install without any security warnings on **macOS Sequoia (15.0)** and later. Just download, open the DMG, and drag to Applications!
 
 **No bypassing Gatekeeper required** - it's signed with a Developer ID and approved by Apple's notarization service.
 
@@ -148,6 +148,8 @@ Clnbrd requires:
 
 ## 🏗️ Building from Source
 
+### Development Build
+
 ```bash
 # Clone the repository
 git clone https://github.com/oliveoi1/Clnbrd.git
@@ -164,12 +166,49 @@ open Clnbrd/Clnbrd.xcodeproj
 - macOS 15.5+ SDK
 - Apple Developer account (for code signing)
 
+### Creating Notarized Distribution Builds (macOS Sequoia+)
+
+For creating fully notarized releases that work on macOS Sequoia (15.0), use the new build scripts:
+
+```bash
+cd Clnbrd
+
+# 1. Build and sign (creates clean ZIP for notarization)
+./build_notarization_fixed.sh
+
+# 2. Submit to Apple for notarization
+xcrun notarytool submit Distribution-Clean/Upload/*.zip \
+  --keychain-profile "YOUR_PROFILE" \
+  --wait
+
+# 3. After Apple approves, finalize (staple ticket and create DMG)
+./finalize_notarized_clean.sh
+
+# Your notarized DMG is ready in Distribution-Clean/DMG/
+```
+
+**Why these scripts?**
+- Fixes `com.apple.provenance` extended attribute issues on macOS Sequoia
+- Clean-room build process avoids notarization failures
+- Proper inside-out code signing
+- Comprehensive documentation in `NOTARIZATION_FIX_GUIDE.md`
+
+See `Clnbrd/SOLUTION_SUMMARY.md` for complete details.
+
 ---
 
 ## 📋 Version History
 
-### v1.3 (44) (Build 44) - Current ✅ Notarized
-- **✅ Fully Notarized by Apple** - Approved October 6, 2025
+### v1.3 (Build 50) - Current ✅ Fully Notarized
+- **✅ Fully Notarized by Apple** - Approved October 9, 2025
+- **✅ macOS Sequoia (15.0) Compatible** - No security warnings
+- Fixed notarization issues with new clean-room build process
+- Notarization ticket stapled to app bundle
+- Comprehensive build documentation added
+- Updated auto-update appcast
+
+### v1.3 (Build 43) - ✅ Notarized
+- Fully Notarized by Apple - Approved October 6, 2025
 - Apple Developer ID properly configured
 - App ID registered: com.allanray.Clnbrd
 - Team ID verified: 58Y8VPZ7JG
