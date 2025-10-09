@@ -1,7 +1,7 @@
 # Clnbrd - Professional Clipboard Cleaning for macOS
 
 [![Version](https://img.shields.io/badge/version-1.3-blue.svg)](https://github.com/oliveoi1/Clnbrd)
-[![Build](https://img.shields.io/badge/build-44-green.svg)](https://github.com/oliveoi1/Clnbrd)
+[![Build](https://img.shields.io/badge/build-45-green.svg)](https://github.com/oliveoi1/Clnbrd)
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://github.com/oliveoi1/Clnbrd)
 
 ## 📍 Project Location
@@ -143,7 +143,7 @@ xcrun notarytool submit Clnbrd.zip --keychain-profile "Clnbrd-Notarization" --wa
 ## 📦 Distribution
 
 ### Current Build
-- **DMG**: `Distribution/Upload/Clnbrd-Build44.zip`
+- **DMG**: `Distribution/Upload/Clnbrd-Build45.zip`
 - **Size**: ~2.7 MB
 - **Contents**: Signed App Bundle
 - **Signed**: ✅ Developer ID
@@ -188,6 +188,6 @@ Proprietary - Allan Alomes © 2025
 
 ---
 
-**Last Updated**: October 08, 2025  
-**Current Build**: 1.3 (44) (44)  
+**Last Updated**: October 09, 2025  
+**Current Build**: 1.3 (45) (45)  
 **Project Status**: ⏳ Awaiting Notarization
