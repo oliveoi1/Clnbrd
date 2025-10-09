@@ -97,11 +97,29 @@ echo -e "${YELLOW}📦 Exporting app from archive...${NC}"
 cp -R "${BUILD_DIR}/Clnbrd.xcarchive/Products/Applications/Clnbrd.app" "${BUILD_DIR}/App/"
 
 # ===== CRITICAL: CLEAN EXTENDED ATTRIBUTES =====
-echo -e "${YELLOW}🧹 Cleaning extended attributes...${NC}"
+echo -e "${YELLOW}🧹 Cleaning extended attributes (prevents notarization failures)...${NC}"
 cd "${BUILD_DIR}/App"
+
+# Remove all extended attributes recursively
 xattr -cr Clnbrd.app
-dot_clean -m Clnbrd.app 2>/dev/null || true
+
+# Remove AppleDouble files (._*)
 find Clnbrd.app -name "._*" -delete 2>/dev/null || true
+
+# Remove resource forks and metadata
+dot_clean -m Clnbrd.app 2>/dev/null || true
+
+# Additional cleanup for file provider issues (iCloud, Dropbox, etc.)
+find Clnbrd.app -type f -exec xattr -c {} \; 2>/dev/null || true
+
+# Verify cleanup
+echo -e "${BLUE}   Verifying extended attributes cleanup...${NC}"
+if find Clnbrd.app -name "._*" | grep -q .; then
+    echo -e "${RED}   ⚠️  Warning: Some AppleDouble files remain${NC}"
+else
+    echo -e "${GREEN}   ✅ All AppleDouble files removed${NC}"
+fi
+
 cd ../..
 echo -e "${GREEN}✅ Extended attributes cleaned!${NC}"
 
@@ -120,19 +138,33 @@ echo -e "${GREEN}✅ Sparkle components signed!${NC}"
 
 # ===== SIGN FRAMEWORKS AND MAIN APP =====
 echo -e "${YELLOW}🔏 Signing frameworks and main app...${NC}"
-# Move app to /tmp to avoid file provider issues (iCloud, etc.)
+
+# Move app to /tmp to avoid file provider issues (iCloud, Dropbox, etc.)
+echo -e "${BLUE}   Moving app to /tmp to avoid file provider issues...${NC}"
 rm -rf /tmp/Clnbrd.app
 cp -R "${BUILD_DIR}/App/Clnbrd.app" /tmp/
-xattr -cr /tmp/Clnbrd.app
 
-# Sign frameworks
+# Clean extended attributes again (file providers may re-add them)
+echo -e "${BLUE}   Cleaning extended attributes in /tmp...${NC}"
+xattr -cr /tmp/Clnbrd.app
+find /tmp/Clnbrd.app -name "._*" -delete 2>/dev/null || true
+find /tmp/Clnbrd.app -type f -exec xattr -c {} \; 2>/dev/null || true
+
+# Sign frameworks with hardened runtime
+echo -e "${BLUE}   Signing frameworks with hardened runtime...${NC}"
 codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app/Contents/Frameworks/Sparkle.framework"
 codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app/Contents/Frameworks/Sentry.framework"
 
-# Sign main app
+# Sign main app with hardened runtime
+echo -e "${BLUE}   Signing main app with hardened runtime...${NC}"
 codesign --force --sign "${DEVELOPER_ID}" --options runtime --timestamp "/tmp/Clnbrd.app"
 
+# Verify signing
+echo -e "${BLUE}   Verifying app signature...${NC}"
+codesign -dv /tmp/Clnbrd.app
+
 # Move signed app back
+echo -e "${BLUE}   Moving signed app back to build directory...${NC}"
 rm -rf "${BUILD_DIR}/App/Clnbrd.app"
 mv /tmp/Clnbrd.app "${BUILD_DIR}/App/"
 
@@ -140,14 +172,32 @@ echo -e "${GREEN}✅ App fully signed with hardened runtime!${NC}"
 
 # ===== CREATE ZIP FOR NOTARIZATION =====
 echo -e "${YELLOW}📦 Creating ZIP for notarization...${NC}"
-# Copy app back to /tmp to create clean ZIP
+
+# Copy app back to /tmp to create clean ZIP (avoid file provider issues)
+echo -e "${BLUE}   Copying app to /tmp for clean ZIP creation...${NC}"
 rm -rf /tmp/Clnbrd.app
 cp -R "${BUILD_DIR}/App/Clnbrd.app" /tmp/
+
+# Final extended attributes cleanup before ZIP
+echo -e "${BLUE}   Final extended attributes cleanup...${NC}"
 xattr -cr /tmp/Clnbrd.app
+find /tmp/Clnbrd.app -name "._*" -delete 2>/dev/null || true
+find /tmp/Clnbrd.app -type f -exec xattr -c {} \; 2>/dev/null || true
+
+# Create ZIP with no extended attributes or resource forks
 cd /tmp
+echo -e "${BLUE}   Creating ZIP with --noextattr --norsrc flags...${NC}"
 ditto -c -k --keepParent --noextattr --norsrc "Clnbrd.app" "${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}.zip"
 cd "${BUILD_DIR}/.."
 cd ..
+
+# Verify ZIP doesn't contain extended attributes
+echo -e "${BLUE}   Verifying ZIP is clean...${NC}"
+if zipinfo "${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}.zip" | grep -q "._"; then
+    echo -e "${RED}   ⚠️  Warning: ZIP may contain AppleDouble files${NC}"
+else
+    echo -e "${GREEN}   ✅ ZIP is clean (no AppleDouble files)${NC}"
+fi
 
 ZIP_SIZE=$(du -h "${BUILD_DIR}/Upload/Clnbrd-Build${BUILD_NUMBER}.zip" | cut -f1)
 echo -e "${GREEN}✅ ZIP created: ${ZIP_SIZE}${NC}"
