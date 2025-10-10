@@ -22,6 +22,9 @@
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		EBAFB7E02E8EC60000EFF86B /* Exceptions for "Clnbrd" folder in "Clnbrd" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			additionalCompilerFlagsByRelativePath = {
+				PFMoveApplication.m = "-fno-objc-arc";
+			};
 			membershipExceptions = (
 				Info.plist,
 			);
@@ -245,6 +248,7 @@
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "Clnbrd/Clnbrd-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -304,6 +308,7 @@
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "Clnbrd/Clnbrd-Bridging-Header.h";
 			};
 			name = Release;
 		};
