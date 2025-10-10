@@ -171,6 +171,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Prompt to move to Applications folder if needed (must be first!)
+        #if !DEBUG
+        PFMoveToApplicationsFolderIfNecessary()
+        #endif
+        
         // Initialize crash reporting first
         SentryManager.shared.initialize()
         SentryManager.shared.trackUserAction("app_launched")
