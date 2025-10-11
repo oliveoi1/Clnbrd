@@ -30,6 +30,7 @@ class SettingsWindow: NSWindowController {
         window.center()
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 500, height: 400)
+        window.maxSize = NSSize(width: 800, height: 1200)  // Allow vertical resizing
         
         super.init(window: window)
         
@@ -250,9 +251,10 @@ class SettingsWindow: NSWindowController {
         launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
         mainStack.addArrangedSubview(launchCheckbox)
         
-        // Spacer
+        // Flexible spacer to push bottom content down
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
         mainStack.addArrangedSubview(spacer)
         
         // Bottom section: Acknowledgments on left, buttons on right
@@ -290,7 +292,8 @@ class SettingsWindow: NSWindowController {
             bottomStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
             
-            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 20)
+            // Spacer grows/shrinks with window height
+            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 10)
         ])
         
         return container
