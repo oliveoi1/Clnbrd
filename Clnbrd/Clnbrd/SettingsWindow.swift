@@ -124,36 +124,19 @@ class SettingsWindow: NSWindowController {
         stackView.addArrangedSubview(createSeparatorLine())
         stackView.addArrangedSubview(createSpacer(height: 20))
         
-        // APP SETTINGS & BUTTONS
+        // APP SETTINGS
         let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
         launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
         stackView.addArrangedSubview(launchCheckbox)
         
-        let setupButton = NSButton(title: "Setup Instructions", target: self, action: #selector(showSetupInstructions))
-        setupButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(setupButton)
-        
-        let securityButton = NSButton(title: "Security Warning Help", target: self, action: #selector(showSecurityHelp))
-        securityButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(securityButton)
-        
-        let analyticsButton = NSButton(title: "View Analytics", target: self, action: #selector(showAnalytics))
-        analyticsButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(analyticsButton)
-        
-        let analyticsToggle = NSButton(checkboxWithTitle: "Enable Analytics", target: self, action: #selector(toggleAnalytics(_:)))
-        analyticsToggle.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
-        stackView.addArrangedSubview(analyticsToggle)
-        
-        let shareAppButton = NSButton(title: "Share Clnbrd", target: self, action: #selector(shareApp))
-        shareAppButton.bezelStyle = .rounded
-        shareAppButton.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share app")
-        shareAppButton.imagePosition = .imageLeft
-        stackView.addArrangedSubview(shareAppButton)
-        
-        let testSystemInfoButton = NSButton(title: "Test System Info", target: self, action: #selector(testSystemInformation))
-        testSystemInfoButton.bezelStyle = .rounded
-        stackView.addArrangedSubview(testSystemInfoButton)
+        // Info text about other settings
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        let infoText = NSTextField(wrappingLabelWithString: "💡 More options available in the menu bar (updates, analytics, sharing)")
+        infoText.font = NSFont.systemFont(ofSize: 11)
+        infoText.textColor = .secondaryLabelColor
+        infoText.alignment = .left
+        infoText.preferredMaxLayoutWidth = 560
+        stackView.addArrangedSubview(infoText)
         
         // Configure scroll view
         scrollView.documentView = stackView
@@ -590,93 +573,19 @@ class SettingsWindow: NSWindowController {
         }
     }
     
+    // MARK: - Removed Functions (Build 51 - UI Simplification)
+    // These functions were removed from Settings window to reduce clutter
+    // LetsMove now handles setup, About window handles analytics
+    
+    /*
     @objc func showSetupInstructions() {
-        let alert = NSAlert()
-        alert.messageText = "Clnbrd Setup Instructions"
-        alert.informativeText = """
-        HOW TO USE CLNBRD:
-        • Press ⌘⌥V (Cmd+Option+V) to paste cleaned text
-        • Use menu bar icon → "Clean Clipboard Now" for permanent cleaning
-        • Enable "Auto-clean on Copy" to automatically clean when copying
-        
-        REQUIRED PERMISSIONS FOR HOTKEY (⌘⌥V):
-        
-        Clnbrd needs TWO permissions to work:
-        
-        1️⃣ ACCESSIBILITY
-           • Required to simulate paste (⌘V) action
-           • Click "Open Accessibility" below
-        
-        2️⃣ INPUT MONITORING  
-           • Required to detect ⌘⌥V hotkey
-           • Click "Open Input Monitoring" below
-        
-        After granting both permissions:
-        • Quit Clnbrd (⌘Q)
-        • Relaunch from Applications folder
-        • Test the ⌘⌥V hotkey!
-        
-        FEATURES:
-        • Removes formatting (bold, italic, colors)
-        • Removes AI watermarks (invisible characters)
-        • Removes URLs, HTML tags, extra punctuation
-        • Removes emojis (when enabled)
-        • Removes extra line breaks and whitespace
-        • Custom find & replace rules
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open Accessibility")
-        alert.addButton(withTitle: "Open Input Monitoring")
-        alert.addButton(withTitle: "Close")
-        
-        let response = alert.runModal()
-        switch response {
-        case .alertFirstButtonReturn:
-            // Open Accessibility Settings
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        case .alertSecondButtonReturn:
-            // Open Input Monitoring Settings
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
-                NSWorkspace.shared.open(url)
-            }
-        default:
-            break
-        }
+        // Removed: LetsMove automatically handles app installation
     }
     
     @objc func showSecurityHelp() {
-        let alert = NSAlert()
-        alert.messageText = "Security Warning Help"
-        alert.informativeText = """
-        If you see "Clnbrd.app cannot be opened because it is not from an identified developer":
-        
-        METHOD 1 (Recommended):
-        1. Go to System Settings → Privacy & Security
-        2. Scroll down to find "Clnbrd.app was blocked"
-        3. Click "Open Anyway"
-        4. Click "Open" in the confirmation dialog
-        
-        METHOD 2 (Alternative):
-        1. Right-click Clnbrd.app in Finder
-        2. Select "Open" from the context menu
-        3. Click "Open" in the security dialog
-        
-        WHY THIS HAPPENS:
-        This is normal for apps not distributed through the App Store. macOS protects you by blocking unsigned apps, but you can safely allow Clnbrd to run.
-        
-        Would you like to open System Settings now?
-        """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Close")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security")!)
-        }
+        // Removed: App is now properly notarized, no security warnings
     }
+    */
     
     @objc func emailDeveloper() {
         // Gather comprehensive system information
@@ -721,30 +630,11 @@ class SettingsWindow: NSWindowController {
         }
     }
     
-    // Test function to verify system information collection
+    /*
     @objc func testSystemInformation() {
-        let systemInfo = SystemInfoUtility.getSystemInformation()
-        let formatted = SystemInfoUtility.formatSystemInformation(systemInfo)
-        
-        logger.info("=== SYSTEM INFORMATION TEST ===")
-        logger.info("\(formatted)")
-        logger.info("=== END TEST ===")
-        
-        // Also show in a dialog for manual verification
-        let alert = NSAlert()
-        alert.messageText = "System Information Test"
-        alert.informativeText = "App Version: \(VersionManager.version) (Build \(VersionManager.buildNumber))\n\n\(formatted)"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Copy to Clipboard")
-        alert.addButton(withTitle: "OK")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString("App Version: \(VersionManager.version) (Build \(VersionManager.buildNumber))\n\n\(formatted)", forType: .string)
-        }
+        // Removed: Debug function no longer exposed in UI
     }
+    */
     
     func isLaunchAtLoginEnabled() -> Bool {
         if #available(macOS 13.0, *) {
@@ -754,114 +644,19 @@ class SettingsWindow: NSWindowController {
         }
     }
     
+    /*
     @objc func showAnalytics() {
-        let analyticsSummary = AnalyticsManager.shared.getAnalyticsSummary()
-        let systemInfo = SystemInfoUtility.getSystemInformation()
-        let formattedSystemInfo = SystemInfoUtility.formatSystemInformation(systemInfo)
-        
-        let fullSummary = analyticsSummary + "\n\n" + formattedSystemInfo
-        
-        let alert = NSAlert()
-        alert.messageText = "Clnbrd Analytics"
-        alert.informativeText = fullSummary
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Copy to Clipboard")
-        alert.addButton(withTitle: "Email Support")
-        alert.addButton(withTitle: "Reset Analytics")
-        alert.addButton(withTitle: "Close")
-        
-        let response = alert.runModal()
-        switch response {
-        case .alertFirstButtonReturn:
-            // Copy to clipboard
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(fullSummary, forType: .string)
-        case .alertSecondButtonReturn:
-            // Reset analytics
-            let confirmAlert = NSAlert()
-            confirmAlert.messageText = "Reset Analytics"
-            confirmAlert.informativeText = "This will permanently delete all analytics data. Are you sure?"
-            confirmAlert.alertStyle = .warning
-            confirmAlert.addButton(withTitle: "Reset")
-            confirmAlert.addButton(withTitle: "Cancel")
-            
-            if confirmAlert.runModal() == .alertFirstButtonReturn {
-                AnalyticsManager.shared.resetAnalytics()
-            }
-        case .alertThirdButtonReturn:
-            // Email support
-            emailSupportWithAnalytics(fullSummary)
-        default:
-            break
-        }
+        // Removed: Analytics now in About window
     }
     
     @objc func toggleAnalytics(_ sender: NSButton) {
-        let enabled = sender.state == .on
-        AnalyticsManager.shared.setAnalyticsEnabled(enabled)
-        
-        let message = enabled ? "Analytics enabled. Usage data will be collected to help improve Clnbrd." : "Analytics disabled. No usage data will be collected."
-        
-        let alert = NSAlert()
-        alert.messageText = "Analytics \(enabled ? "Enabled" : "Disabled")"
-        alert.informativeText = message
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        // Removed: Analytics toggle now in About window
     }
     
     @objc func shareApp() {
-        let shareText = """
-        🎉 Check out Clnbrd - The Ultimate Clipboard Cleaner for Mac!
-        
-        ✨ Features:
-        • 🧹 Automatically strips formatting from copied text
-        • ⚡ Instant paste with ⌘⌥V hotkey
-        • 🤖 Auto-clean on copy (optional)
-        • 📋 Menu bar integration
-        • 🔐 Fully notarized by Apple
-        • 🚀 Lightweight and privacy-focused
-        
-        Perfect for writers, developers, and anyone who copies text from websites, PDFs, or documents!
-        
-        Download: https://github.com/oliveoi1/Clnbrd/releases/latest
-        
-        #Clnbrd #MacApp #Productivity #ClipboardCleaner
-        """
-        
-        // Create a sharing picker with all available services
-        let sharingPicker = NSSharingServicePicker(items: [shareText])
-        
-        // Show the picker relative to the share button
-        if let shareButton = findShareButton() {
-            sharingPicker.show(relativeTo: shareButton.bounds, of: shareButton, preferredEdge: .minY)
-        } else {
-            // Fallback: show relative to window
-            sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 1, height: 1), of: window?.contentView ?? NSView(), preferredEdge: .minY)
-        }
+        // Removed: Share option now in menu bar and About window
     }
-    
-    
-    
-    
-    
-    private func findShareButton() -> NSButton? {
-        // Find the share button in the view hierarchy
-        guard let contentView = window?.contentView else { return nil }
-        
-        for subview in contentView.subviews {
-            if let stackView = subview as? NSStackView {
-                for arrangedSubview in stackView.arrangedSubviews {
-                    if let button = arrangedSubview as? NSButton,
-                       button.title == "Share Clnbrd" {
-                        return button
-                    }
-                }
-            }
-        }
-        return nil
-    }
+    */
     
     func emailSupportWithAnalytics(_ analyticsData: String) {
         let subject = "Clnbrd Support Request - Version \(VersionManager.version)"
