@@ -76,11 +76,11 @@ class SettingsWindow: NSWindowController {
         tabView.translatesAutoresizingMaskIntoConstraints = false
         tabView.delegate = self
         
-        // Tab 1: General (Cleaning Rules)
-        let generalTab = NSTabViewItem(identifier: "general")
-        generalTab.label = "General"
-        generalTab.view = createGeneralTab()
-        tabView.addTabViewItem(generalTab)
+        // Tab 1: Rules (Cleaning Rules)
+        let rulesTab = NSTabViewItem(identifier: "rules")
+        rulesTab.label = "Rules"
+        rulesTab.view = createGeneralTab()
+        tabView.addTabViewItem(rulesTab)
         
         // Tab 2: About
         let aboutTab = NSTabViewItem(identifier: "about")
@@ -92,7 +92,7 @@ class SettingsWindow: NSWindowController {
         window.contentView = tabView
         
         // Set initial window title
-        window.title = "General"
+        window.title = "Rules"
     }
     
     private func createGeneralTab() -> NSView {
@@ -167,10 +167,10 @@ class SettingsWindow: NSWindowController {
         
         let mainStack = NSStackView()
         mainStack.orientation = .vertical
-        mainStack.spacing = 16
+        mainStack.spacing = 12
         mainStack.alignment = .leading
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        mainStack.edgeInsets = NSEdgeInsets(top: 30, left: 30, bottom: 20, right: 30)
+        mainStack.edgeInsets = NSEdgeInsets(top: 20, left: 30, bottom: 15, right: 30)
         
         // Top section: Icon + App Info (side by side)
         let topStack = NSStackView()
@@ -184,15 +184,15 @@ class SettingsWindow: NSWindowController {
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 100),
-            iconView.heightAnchor.constraint(equalToConstant: 100)
+            iconView.widthAnchor.constraint(equalToConstant: 90),
+            iconView.heightAnchor.constraint(equalToConstant: 90)
         ])
         topStack.addArrangedSubview(iconView)
         
-        // Right side: Name, version, button, copyright
+        // Right side: Name, version, button
         let rightStack = NSStackView()
         rightStack.orientation = .vertical
-        rightStack.spacing = 8
+        rightStack.spacing = 4
         rightStack.alignment = .leading
         
         // App Name
@@ -208,7 +208,7 @@ class SettingsWindow: NSWindowController {
         versionLabel.alignment = .left
         rightStack.addArrangedSubview(versionLabel)
         
-        rightStack.addArrangedSubview(createSpacer(height: 4))
+        rightStack.addArrangedSubview(createSpacer(height: 8))
         
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
@@ -232,10 +232,10 @@ class SettingsWindow: NSWindowController {
         mainStack.addArrangedSubview(copyrightLabel)
         
         // Separator
-        mainStack.addArrangedSubview(createSpacer(height: 8))
+        mainStack.addArrangedSubview(createSpacer(height: 12))
         let separator1 = createFullWidthSeparator()
         mainStack.addArrangedSubview(separator1)
-        mainStack.addArrangedSubview(createSpacer(height: 8))
+        mainStack.addArrangedSubview(createSpacer(height: 12))
         
         // Analytics section
         let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
@@ -249,11 +249,7 @@ class SettingsWindow: NSWindowController {
         analyticsDescription.alignment = .left
         mainStack.addArrangedSubview(analyticsDescription)
         
-        // Launch at Login
-        mainStack.addArrangedSubview(createSpacer(height: 8))
-        let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
-        launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
-        mainStack.addArrangedSubview(launchCheckbox)
+        // Launch at Login (removed - not needed in About tab per design)
         
         // Flexible spacer to push bottom content down
         let spacer = NSView()
@@ -296,8 +292,8 @@ class SettingsWindow: NSWindowController {
             bottomStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
             
-            // Spacer grows/shrinks with window height
-            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 10)
+            // Spacer grows/shrinks with window height (minimal spacing for compact layout)
+            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 8)
         ])
         
         return container
