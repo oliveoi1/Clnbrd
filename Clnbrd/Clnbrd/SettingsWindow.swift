@@ -224,29 +224,34 @@ class SettingsWindow: NSWindowController {
         
         rightStack.addArrangedSubview(createSpacer(height: 8))
         
+        // Horizontal stack for button + checkbox on same line
+        let updateStack = NSStackView()
+        updateStack.orientation = .horizontal
+        updateStack.spacing = 16
+        updateStack.alignment = .centerY
+        
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
         updateButton.bezelStyle = .rounded
-        rightStack.addArrangedSubview(updateButton)
+        updateStack.addArrangedSubview(updateButton)
         
-        topStack.addArrangedSubview(rightStack)
-        
-        mainStack.addArrangedSubview(topStack)
-        
-        mainStack.addArrangedSubview(createSpacer(height: 4))
-        
-        // Auto-update checkbox (left-aligned)
+        // Auto-update checkbox (on same line)
         let autoUpdateCheckbox = NSButton(checkboxWithTitle: "Automatically check for updates", target: self, action: #selector(toggleAutoUpdate))
         autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
-        autoUpdateCheckbox.alignment = .left
-        mainStack.addArrangedSubview(autoUpdateCheckbox)
+        updateStack.addArrangedSubview(autoUpdateCheckbox)
         
-        // Copyright (very light grey)
+        rightStack.addArrangedSubview(updateStack)
+        
+        // Copyright (very light grey) - aligned with app name
         let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2020 All Rights Reserved.")
         copyrightLabel.font = NSFont.systemFont(ofSize: 10)
         copyrightLabel.textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.6)
         copyrightLabel.alignment = .left
-        mainStack.addArrangedSubview(copyrightLabel)
+        rightStack.addArrangedSubview(copyrightLabel)
+        
+        topStack.addArrangedSubview(rightStack)
+        
+        mainStack.addArrangedSubview(topStack)
         
         // Separator
         mainStack.addArrangedSubview(createSpacer(height: 12))
@@ -268,19 +273,17 @@ class SettingsWindow: NSWindowController {
         
         // Launch at Login (removed - not needed in About tab per design)
         
-        // Flexible spacer to push bottom content down
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
-        mainStack.addArrangedSubview(spacer)
+        // Compact spacing
+        mainStack.addArrangedSubview(createSpacer(height: 12))
         
-        // Bottom section: Acknowledgments on left, buttons on right
+        // Bottom section: Acknowledgments on left, buttons on right (same line)
         let bottomStack = NSStackView()
         bottomStack.orientation = .horizontal
         bottomStack.spacing = 12
         bottomStack.alignment = .centerY
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
         
+        // Acknowledgments link on left
         let acknowledgementsLabel = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
         acknowledgementsLabel.alignment = .left
         bottomStack.addArrangedSubview(acknowledgementsLabel)
@@ -307,10 +310,7 @@ class SettingsWindow: NSWindowController {
             separator1.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             
             bottomStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
-            bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
-            
-            // Spacer grows/shrinks with window height (minimal spacing for compact layout)
-            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 8)
+            bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20)
         ])
         
         return container
@@ -374,7 +374,7 @@ class SettingsWindow: NSWindowController {
     }
     
     private func setupBasicTextCleaningSection(_ stackView: NSStackView) {
-        stackView.addArrangedSubview(createSectionHeaderWithControls("📝 Basic Text Cleaning", selectAllSelector: #selector(selectAllBasic), deselectAllSelector: #selector(deselectAllBasic)))
+        stackView.addArrangedSubview(createSectionHeaderWithControls("Basic Text Cleaning", selectAllSelector: #selector(selectAllBasic), deselectAllSelector: #selector(deselectAllBasic)))
         stackView.addArrangedSubview(createSpacer(height: 4))
         
         stackView.addArrangedSubview(createCheckbox(
@@ -393,7 +393,7 @@ class SettingsWindow: NSWindowController {
     
     private func setupAdvancedCleaningSection(_ stackView: NSStackView) {
         stackView.addArrangedSubview(createSpacer(height: 12))
-        stackView.addArrangedSubview(createSectionHeaderWithControls("🧹 Advanced Cleaning", selectAllSelector: #selector(selectAllAdvanced), deselectAllSelector: #selector(deselectAllAdvanced)))
+        stackView.addArrangedSubview(createSectionHeaderWithControls("Advanced Cleaning", selectAllSelector: #selector(selectAllAdvanced), deselectAllSelector: #selector(deselectAllAdvanced)))
         stackView.addArrangedSubview(createSpacer(height: 4))
         
         stackView.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: CleaningRuleTooltips.removeExtraLineBreaks, isOn: cleaningRules.removeExtraLineBreaks, tag: 7))

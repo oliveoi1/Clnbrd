@@ -72,6 +72,9 @@ class MenuBarManager {
         settingsItem.target = self
         menu.addItem(settingsItem)
         
+        // Separator before Quit
+        menu.addItem(NSMenuItem.separator())
+        
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         statusItem?.menu = menu
