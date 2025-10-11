@@ -600,21 +600,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showShareAppDialog() {
         let shareText = """
-        🎉 Check out Clnbrd - The Ultimate Clipboard Cleaner for Mac!
+        Clnbrd - Professional Clipboard Cleaner for macOS
         
-        ✨ Features:
-        • 🧹 Automatically strips formatting from copied text
-        • ⚡ Instant paste with ⌘⌥V hotkey
-        • 🤖 Auto-clean on copy (optional)
-        • 📋 Menu bar integration
-        • 🔐 Fully notarized by Apple
-        • 🚀 Lightweight and privacy-focused
+        A lightweight menu bar utility that automatically removes formatting from clipboard text, including hidden AI watermarks and tracking codes.
         
-        Perfect for writers, developers, and anyone who copies text from websites, PDFs, or documents!
+        Key Features:
+        • Instant paste with Command+Option+V hotkey
+        • Automatic format stripping on copy
+        • Removes AI watermarks (ChatGPT, Claude)
+        • Menu bar integration
+        • Fully notarized by Apple
+        • Privacy-focused - all processing happens locally
         
-        Download: https://github.com/oliveoi1/Clnbrd/releases/latest
+        Perfect for content writers, developers, and professionals who work with text from multiple sources.
         
-        #Clnbrd #MacApp #Productivity #ClipboardCleaner
+        Learn more: https://olivedesignstudios.com/clnbrd
+        
+        #Clnbrd #MacApp #Productivity
         """
         
         // Create a sharing picker with all available services
