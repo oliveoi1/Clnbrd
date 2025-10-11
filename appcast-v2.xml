@@ -7,41 +7,46 @@
         <language>en</language> <!-- Updated $(date) -->
         
         <item>
-            <title>Version 1.3 (Build 51) - Fully Notarized for macOS Sequoia</title>
-            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3.51</link>
-            <sparkle:version>51</sparkle:version>
+            <title>Version 1.3 (Build 52) - Fully Notarized for macOS Sequoia</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.3.52</link>
+            <sparkle:version>52</sparkle:version>
             <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>Build 51 Release Notes</h2>
+                <h2>Build 52 - Auto-Update Fix</h2>
                 
-                <h3>New Features</h3>
+                <h3>Critical Fix</h3>
+                <ul>
+                    <li>Fixed auto-update installer error (removed app sandboxing)</li>
+                    <li>Sparkle updates now work correctly</li>
+                </ul>
+                
+                <h3>New Features (from Build 51)</h3>
                 <ul>
                     <li>Added "Move to Applications" prompt for first-time installations</li>
-                    <li>Improved onboarding experience for new users</li>
+                    <li>Improved onboarding experience</li>
                 </ul>
                 
                 <h3>User Interface Improvements</h3>
                 <ul>
-                    <li>Compacted About tab layout for better space efficiency</li>
-                    <li>Improved alignment and spacing throughout settings</li>
-                    <li>Added separator line in menu before Quit option</li>
+                    <li>Compacted About tab layout</li>
+                    <li>Improved alignment throughout settings</li>
+                    <li>Added menu separator before Quit</li>
                     <li>Cleaned up Rules section headers</li>
-                    <li>Fixed version number display format</li>
                 </ul>
                 
                 <h3>Technical Details</h3>
                 <ul>
-                    <li>Fully notarized and stapled for macOS Sequoia compatibility</li>
+                    <li>Fully notarized for macOS Sequoia</li>
                     <li>Universal binary (Apple Silicon + Intel)</li>
-                    <li>Compatible with macOS 15.5 and later</li>
+                    <li>Compatible with macOS 15.5+</li>
                 </ul>
             ]]></description>
-            <pubDate>Fri, 11 Oct 2025 02:52:00 +0000</pubDate>
+            <pubDate>Fri, 11 Oct 2025 03:10:00 +0000</pubDate>
             <enclosure 
-                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.51/Clnbrd-v1.3-Build51-notarized-stapled.zip" 
-                sparkle:version="51" 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.52/Clnbrd-v1.3-Build52-notarized-stapled.zip" 
+                sparkle:version="52" 
                 sparkle:shortVersionString="1.3" 
-                length="1918089"
+                length="1918004"
                 type="application/octet-stream"
             />
         </item>
