@@ -194,14 +194,14 @@ class SettingsWindow: NSWindowController {
         topStack.spacing = 16
         topStack.alignment = .top
         
-        // App Icon
+        // App Icon (bigger)
         let iconView = NSImageView()
         iconView.image = NSImage(named: NSImage.applicationIconName)
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 90),
-            iconView.heightAnchor.constraint(equalToConstant: 90)
+            iconView.widthAnchor.constraint(equalToConstant: 110),
+            iconView.heightAnchor.constraint(equalToConstant: 110)
         ])
         topStack.addArrangedSubview(iconView)
         
@@ -235,15 +235,18 @@ class SettingsWindow: NSWindowController {
         
         mainStack.addArrangedSubview(topStack)
         
-        // Auto-update checkbox
+        mainStack.addArrangedSubview(createSpacer(height: 4))
+        
+        // Auto-update checkbox (left-aligned)
         let autoUpdateCheckbox = NSButton(checkboxWithTitle: "Automatically check for updates", target: self, action: #selector(toggleAutoUpdate))
         autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
+        autoUpdateCheckbox.alignment = .left
         mainStack.addArrangedSubview(autoUpdateCheckbox)
         
-        // Copyright
-        let copyrightLabel = NSTextField(labelWithString: "© OliveDesign Studios All Rights Reserved.")
+        // Copyright (very light grey)
+        let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2020 All Rights Reserved.")
         copyrightLabel.font = NSFont.systemFont(ofSize: 10)
-        copyrightLabel.textColor = .tertiaryLabelColor
+        copyrightLabel.textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.6)
         copyrightLabel.alignment = .left
         mainStack.addArrangedSubview(copyrightLabel)
         
