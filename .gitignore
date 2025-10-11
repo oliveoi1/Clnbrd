@@ -113,3 +113,5 @@ Distribution-Clean/
 *.backup*
 # Screenshot working directory (originals copied to screenshots/)
 Clnbrd/Screenshots/
+# Testing artifacts
+TestDMG/
