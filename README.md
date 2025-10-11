@@ -34,8 +34,9 @@ This app is **officially notarized by Apple** and will install without any secur
 
 ---
 
-## 💼 Perfect For
+## Perfect For
 
+### Cleaning AI Wateramrks and pasting unformatted text into emails, documents etc
 ### Spreadsheet Users (Excel, Google Sheets, Numbers)
 **Deeper cleaning than ⌘⇧V** - While Excel and Google Sheets have paste-values shortcuts (⌘⇧V), Clnbrd goes much further: removes hyperlinks, AI watermarks, hidden Unicode characters, and works consistently across ALL apps with one hotkey (⌘⌥V).
 
