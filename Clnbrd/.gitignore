@@ -60,3 +60,5 @@ clnbrd-version-*.json
 
 # Build history (local tracking only)
 .build_history.txt
+TestBuild/
+Info.plist.backup
