@@ -1,499 +1,272 @@
 # Clnbrd Development Roadmap
 
-**Last Updated:** October 8, 2025  
-**Current Version:** 1.3 (Build 44 - Latest Release) ✅
+**Last Updated:** October 11, 2025  
+**Current Version:** 1.3 (Build 52)  
+**Status:** Stable Release ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 43-44)
+## 🎉 Recent Milestones
 
-### ✅ Completed in Latest Release
-- [x] **Fixed Sparkle Update System** (Build 44)
-  - Resolved "Update Error!" dialog issue
-  - Created appcast-v2.xml to bypass GitHub cache
-  - Updated Info.plist to use new appcast URL
-  - **Status:** ✅ Complete
-  - **Impact:** Users can now receive updates properly
+### Build 52 - Auto-Update Fix (October 2025)
+**Status:** ✅ Current Release
 
-- [x] **Enhanced Profile Management UI** (Build 43)
-  - Consolidated all profile options into single dropdown menu
-  - Improved settings interface organization
-  - Better user experience for profile management
-  - **Status:** ✅ Complete
-  - **Impact:** Cleaner, more intuitive interface
+**Critical Fixes:**
+- Fixed auto-update installer error by removing app sandboxing
+- Sparkle updates now work correctly for all users
+- Updated entitlements for proper Hardened Runtime configuration
 
-- [x] **Code Signing & Notarization Fixes** (Build 43)
-  - Fixed "resource fork" signing errors
-  - Implemented /tmp directory signing approach
-  - Successfully notarized with Apple (ID: d763a4df-2ca5-4450-b6e7-9a874f996223)
-  - **Status:** ✅ Complete
-  - **Impact:** Reliable build and distribution process
+**Technical Improvements:**
+- Removed `com.apple.security.app-sandbox` entitlement
+- Added proper Hardened Runtime entitlements for Sparkle compatibility
+- Created comprehensive build process documentation
+- Automated Sparkle-ready ZIP creation from stapled builds
 
 ---
 
-## 🎯 Immediate Priority
+### Build 51 - macOS Sequoia Ready (October 2025)
+**Status:** ✅ Released
 
-### Security & Distribution
-- [x] **Add EdDSA Signature to Appcast** (High Priority) ✅
-  - Locate Sparkle's `sign_update` tool
-  - Generate signature for Build 43 DMG
-  - Update `appcast-v2.xml` with `sparkle:edSignature`
-  - Add signature generation to build automation
-  - **Status:** ✅ **COMPLETED** - EdDSA signature added to Build 43
-  - **Effort:** 15 minutes (completed)
-  - **Impact:** Enhanced update security
-  - **Signature:** `66gOpAxBfOaJ99+HILncZH+gH5n4KLf610LJRWX0vDOwgw+8X3ocjDxvgmHcfcoYPmVJ3sNTRlj2/k/WM0EqBQ==`
+**Major Features:**
+- **LetsMove Integration:** Prompts users to move app to `/Applications` on first launch
+- **UI Refinements:**
+  - Compacted About window layout for better space utilization
+  - Added menu separator between Settings and Quit
+  - Improved text alignment throughout settings
+  - Cleaned up Rules section headers (removed emojis)
+- **Professional Share Dialog:** Updated with website link and polished messaging
+
+**Technical Achievements:**
+- Successfully integrated Objective-C library (LetsMove) with Swift codebase
+- Created bridging header for seamless interoperability
+- Resolved ARC compatibility issues
 
 ---
 
-## 📋 Short Term (Next 1-2 Builds)
+### Build 50 - Notarization Breakthrough (October 2025)
+**Status:** ✅ Released
 
-### Build Automation Improvements
-- [x] **Fixed Code Signing Process** (Build 43)
-  - Implemented /tmp directory signing to avoid file provider issues
-  - Updated build_distribution.sh with robust signing approach
-  - **Status:** ✅ Complete
-  - **Impact:** Reliable automated builds
+**Major Achievement:**
+- Solved `com.apple.provenance` extended attribute issue on macOS Sequoia
+- Created "clean-room" build process avoiding `xcodebuild -exportArchive`
+- Successful notarization with new approach
 
-- [x] **Automate EdDSA Signature Generation** ✅
-  - Integrate `sign_update` into `finalize_notarized_build.sh`
-  - Store Sparkle private key securely
-  - Auto-update `appcast-v2.xml` with signature
-  - **Status:** ✅ **COMPLETED** - Automated EdDSA signature generation implemented
-  - **Effort:** 1.5 hours (completed)
-  - **Impact:** Enhanced security for all future releases
-  - **Implementation:** 
-    - Created `generate_eddsa_signature.sh` script
-    - Integrated into `finalize_notarized_build.sh`
-    - Automatic signature inclusion in appcast generation
-    - Graceful fallback if tools unavailable
+**Technical Innovations:**
+- New `build_notarization_fixed.sh` script with /tmp build process
+- Aggressive extended attribute cleanup
+- Inside-out code signing for all frameworks
+- Proper Sparkle framework component signing
 
-- [ ] **Automatic Appcast Update**
-  - Script to update `appcast-v2.xml` automatically
-  - Extract version, file size, date from build
-  - Generate release notes from git commits
-  - **Status:** Not Started
+---
+
+### Build 43-50 - Foundation Work
+**Completed Features:**
+- ✅ Profile management system (create, rename, delete, export, share)
+- ✅ Custom find & replace rules
+- ✅ Code architecture refactoring (CleaningRules, SettingsWindow, CleaningProfile)
+- ✅ EdDSA signature implementation for secure updates
+- ✅ Enhanced URL tracking detection
+- ✅ SwiftLint integration for code quality
+- ✅ Sentry crash reporting
+
+---
+
+## 🎯 Current Focus (Build 53+)
+
+### High Priority
+
+#### Build Automation
+- [ ] **Automated Appcast Generation**
+  - Extract version info automatically
+  - Calculate file sizes and generate EdDSA signatures
+  - Update appcast-v2.xml programmatically
   - **Effort:** 3 hours
-  - **Impact:** Eliminates manual appcast updates
+  - **Impact:** Eliminates manual updates and errors
 
-- [ ] **Automated GitHub Release**
-  - Integrate `gh release create` into finalization script
-  - Auto-upload DMG, ZIP, JSON, and appcast
-  - Generate release notes from template
-  - **Status:** Not Started
-  - **Effort:** 2 hours
-  - **Impact:** One-command release process
+- [ ] **One-Command Release**
+  - Single script to build, notarize, staple, and release
+  - Automatic GitHub release creation
+  - Upload DMG and ZIP files
+  - **Effort:** 4 hours
+  - **Impact:** Faster, error-free releases
 
-### Testing & Validation
-- [ ] **Build Number Validation**
+#### User Experience
+- [ ] **Keyboard Shortcut Customization**
+  - Allow users to customize the ⌘⌥V hotkey
+  - Conflict detection with system shortcuts
+  - **Effort:** 4 hours
+  - **Impact:** Better accessibility and flexibility
+
+- [ ] **Enhanced First-Run Experience**
+  - Welcome screen with feature overview
+  - Guided permission setup
+  - Quick tutorial for best practices
+  - **Effort:** 5 hours
+  - **Impact:** Better user onboarding
+
+---
+
+## 🚀 Medium Term (Next 3-6 Months)
+
+### Features
+- [ ] **Clipboard History** (Optional Feature)
+  - View and search previous clipboard items
+  - Clean historical entries
+  - Privacy-focused (local only)
+  - **Effort:** 12 hours
+  - **Impact:** Major feature for power users
+
+- [ ] **Preferences Window Redesign**
+  - Modern SwiftUI interface
+  - Better organization and grouping
+  - Search/filter settings
+  - **Effort:** 8 hours
+  - **Impact:** Modern, native look and feel
+
+- [ ] **Enhanced Analytics**
+  - Track most-used cleaning rules
+  - Usage pattern insights
+  - Performance metrics
+  - **Effort:** 3 hours
+  - **Impact:** Data-driven improvements
+
+### Quality & Polish
+- [ ] **Build Validation**
   - Prevent duplicate build numbers
   - Check if build already exists on GitHub
-  - Warn before overwriting
-  - **Status:** Not Started
-  - **Effort:** 1 hour
-  - **Impact:** Prevents release conflicts
+  - Pre-notarization testing
+  - **Effort:** 2 hours
+  - **Impact:** Fewer release conflicts
 
-- [ ] **Automated Testing Before Notarization**
-  - Unit tests for core functionality
-  - Integration tests for clipboard operations
-  - Accessibility permission checks
-  - **Status:** Not Started
-  - **Effort:** 4 hours
-  - **Impact:** Fewer rejected builds
-
----
-
-## ✅ Recently Completed (Build 34)
-
-### Features & Code Architecture
-- [x] **Code Refactoring: Separate CleaningRules & SettingsWindow** ✅
-  - ✅ Extracted `CleaningRules` class → `CleaningRules.swift` (~400 lines with full URL tracking)
-  - ✅ Extracted `SettingsWindow` class → `SettingsWindow.swift` (~1,323 lines)
-  - ✅ Extracted `CustomRule` struct into `CleaningRules.swift`
-  - ✅ Created `CleaningProfile.swift` for profile management (~180 lines)
-  - ✅ Significantly reduced `AppDelegate.swift` complexity
-  - **Status:** ✅ Completed (October 8, 2025)
-  - **Actual Effort:** 2-3 hours (including profile management system)
-  - **Impact:** Excellent maintainability, cleaner architecture, easier future development
-  - **Benefits Achieved:** 
-    - AppDelegate complexity greatly reduced
-    - Follows existing pattern (ClipboardManager, MenuBarManager, etc.)
-    - Much easier to add new features
-    - Clean separation of concerns
-
-- [x] **Profile Management System** ✅ *NEW FEATURE!*
-  - ✅ Create, rename, and delete cleaning profiles
-  - ✅ Switch between different rule configurations
-  - ✅ Export profiles to `.clnbrd-profile` files
-  - ✅ Import profiles from files
-  - ✅ Share profiles via AirDrop, Messages, Mail (native macOS share sheet)
-  - ✅ Profile persistence using UserDefaults
-  - ✅ Deep copy mechanism to prevent shared references
-  - ✅ Automatic profile switching with UI updates
-  - **Status:** ✅ Completed (October 8, 2025)
-  - **Effort:** 3-4 hours
-  - **Impact:** Major user feature - enables multiple cleaning configurations
-  - **User Benefits:**
-    - Different profiles for different use cases (e.g., "Work", "Personal", "Minimal")
-    - Share custom configurations with team members
-    - Backup and restore cleaning settings
-    - Quick switching between rule sets
-
-### Code Quality & Development Tools
-- [x] **SwiftLint Integration & Code Quality** ✅ *MAJOR IMPROVEMENT!*
-  - ✅ Installed and configured SwiftLint with comprehensive rules
-  - ✅ Created `.swiftlint.yml` with project-specific configuration
-  - ✅ Integrated SwiftLint into Xcode build process
-  - ✅ Fixed all 41 compilation errors from refactoring
-  - ✅ Resolved all 3 Function Body Length Violations by refactoring large functions
-  - ✅ Created `.cursorrules` for AI-assisted development
-  - ✅ Created `.cursorignore` for optimal Cursor performance
-  - ✅ Documented setup in `CURSOR_SETUP.md`
-  - **Status:** ✅ Completed (October 8, 2025)
-  - **Effort:** 4-5 hours
-  - **Impact:** Significantly improved code quality and development workflow
-  - **Technical Achievements:**
-    - Fixed syntax errors in `CleaningRules.swift` refactoring
-    - Broke down large functions into smaller, focused helper methods
-    - Replaced `print()` statements with proper `Logger` usage
-    - Resolved Xcode build phase integration challenges
-    - Disabled user script sandboxing for SwiftLint execution
-  - **Developer Benefits:**
-    - Automated code style enforcement
-    - Consistent code formatting across team
-    - Early detection of code quality issues
-    - Better maintainability through smaller functions
-    - Professional development environment setup
-
----
-
-## 🚀 Medium Term (Next 3-6 Builds)
-
-### Features & Code Architecture
-
-- [x] **Custom Cleaning Rules** ✅ *COMPLETED IN BUILD 34!*
-  - ✅ UI for adding/editing custom find & replace rules
-  - ✅ Dynamic rule creation and deletion
-  - ✅ Save/load custom rule sets (per profile)
-  - ✅ Import/export via profile system
-  - **Status:** ✅ Completed (October 8, 2025)
-  - **Effort:** Included in profile management system
-  - **Impact:** Power user feature - highly requested!
-
-- [ ] **Keyboard Shortcut Customization**
-  - Allow users to change ⌘⌥V to custom hotkey
-  - Conflict detection with system shortcuts
-  - Multiple hotkey profiles
-  - **Status:** Not Started
-  - **Effort:** 4 hours
-  - **Impact:** Better flexibility
-
-### UI/UX Improvements
 - [ ] **Enhanced About Window**
-  - Show notarization status
-  - Display build date
-  - Add "Copy Debug Info" button
-  - Link to GitHub releases
-  - **Status:** Not Started
+  - Show notarization status and build date
+  - "Copy Debug Info" button for support
+  - Direct link to GitHub releases
   - **Effort:** 2 hours
   - **Impact:** Better user support
 
-- [ ] **First-Run Experience**
-  - Welcome screen with feature tour
-  - Guided permission setup
-  - Tips for best usage
-  - **Status:** Not Started
-  - **Effort:** 3 hours
-  - **Impact:** Better onboarding
-
-- [ ] **Preferences Window Redesign**
-  - SwiftUI-based modern interface
-  - Grouped settings by category
-  - Search/filter settings
-  - **Status:** Partially designed (see PREFERENCES_UI_DESIGN.md)
-  - **Effort:** 8 hours
-  - **Impact:** Modern, native look
-
-### Analytics & Monitoring
-- [ ] **Enhanced Usage Analytics**
-  - Track which cleaning rules are used most
-  - Hotkey vs auto-clean usage patterns
-  - Performance metrics
-  - **Status:** Basic analytics in place
-  - **Effort:** 2 hours
-  - **Impact:** Better product decisions
-
-- [ ] **Crash Reporting Improvements**
-  - Enhanced Sentry integration
-  - User feedback on crashes
-  - Automatic bug reports with context
-  - **Status:** Basic Sentry in place
-  - **Effort:** 3 hours
-  - **Impact:** Faster bug fixes
-
 ---
 
-## 🔮 Long Term (Future Versions)
+## 🔮 Long Term Vision (Version 2.0+)
 
 ### Major Features
-- [ ] **Cloud Sync for Settings**
-  - iCloud sync for preferences
-  - Multiple device support
-  - **Status:** Not Started
-  - **Effort:** 10+ hours
-  - **Impact:** Multi-device users
-
-- [ ] **Clipboard History**
-  - Optional clipboard history feature
-  - Search previous clips
-  - Clean historical items
-  - **Status:** Not Started
-  - **Effort:** 12+ hours
-  - **Impact:** Major feature addition
-
-- [ ] **iOS Companion App**
-  - iPhone/iPad version
-  - Universal clipboard with Mac
-  - **Status:** Not Started
-  - **Effort:** 40+ hours
-  - **Impact:** Ecosystem expansion
+- **Cloud Sync:** iCloud sync for settings and profiles
+- **Multi-Language Support:** Localization for international users
+- **iOS Companion App:** iPhone/iPad version with universal clipboard
+- **Mac App Store Release:** Wider distribution channel
 
 ### Platform Expansion
-- [ ] **Mac App Store Release**
-  - Prepare for App Store requirements
-  - Sandbox compliance
-  - In-app purchases for premium features?
-  - **Status:** Not Started
-  - **Effort:** 20+ hours
-  - **Impact:** Wider distribution
-
-- [ ] **Localization**
-  - Support for multiple languages
-  - Localized documentation
-  - **Status:** Not Started
-  - **Effort:** 8+ hours per language
-  - **Impact:** International users
+- **Homebrew Distribution:** Easy installation via `brew install clnbrd`
+- **Community Profiles:** Share and discover cleaning profiles
+- **Plugin System:** Allow third-party extensions
 
 ---
 
-## 🐛 Known Issues & Tech Debt
+## 📊 Success Metrics
 
-### High Priority
-- [ ] **Sparkle Framework Extended Attributes**
-  - Current workaround: manual xattr cleaning
-  - **Permanent Fix:** Investigate why Sparkle includes extended attributes
-  - **Status:** Workaround in place
-  - **Effort:** 3 hours research
-  - **Impact:** Cleaner build process
-
-- [ ] **Settings Window Crash**
-  - `EnhancedSettingsUI.swift` causes runtime crash
-  - Temporarily commented out
-  - **Status:** Needs debugging
-  - **Effort:** 2 hours
-  - **Impact:** Enables advanced features
-
-### Medium Priority
-- [ ] **DMG Background Image**
-  - Current: Solid color fallback
-  - **Goal:** Professional branded background
-  - **Status:** Working but basic
-  - **Effort:** 1 hour + design
-  - **Impact:** Polish
-
-- [x] **Code Organization** ✅
-  - ~~`AppDelegate.swift` is 2400+ lines~~
-  - **Goal:** ✅ Break into separate files
-  - **Status:** ✅ Completed (October 8, 2025)
-  - **Actual Effort:** 3 hours
-  - **Impact:** ✅ Significantly better maintainability achieved!
-  - **Files Created:**
-    - `CleaningRules.swift` (~400 lines)
-    - `SettingsWindow.swift` (~1,323 lines)
-    - `CleaningProfile.swift` (~180 lines)
-
-### Low Priority
-- [ ] **Documentation Updates**
-  - Add video tutorials
-  - Create FAQ section
-  - **Status:** Not Started
-  - **Effort:** Ongoing
-  - **Impact:** User support
-
----
-
-## 📊 Version Planning
-
-### Version 1.3 (Build 34) - Current Development
-**Focus:** Code Architecture & User Features ✅
-- ✅ Complete code refactoring (CleaningRules, SettingsWindow, CleaningProfile)
-- ✅ Profile management system (create, rename, delete, import/export, share)
-- ✅ Custom find & replace rules
-- ✅ Improved code maintainability
-- ✅ SwiftLint integration and code quality enforcement
-- ✅ Professional development environment setup
-- ✅ All compilation errors resolved
-- 🚧 Final testing and bug fixes
-- 🚧 Performance optimizations
-
-**Status:** Nearly Complete - Ready for Release  
-**Target Release:** October 2025
-
-### Version 1.4 (Next Release)
-**Focus:** Automation & Polish
-- EdDSA signature automation
-- Automatic appcast updates
-- Automatic GitHub releases
-- Enhanced About window
-- Bug fixes
-
-**Target:** November 2025
-
-### Version 1.5
-**Focus:** UI/UX Enhancements
-- Enhanced About window with build info
-- First-run experience and onboarding
-- Keyboard shortcut customization
-- Preferences window redesign (SwiftUI)
-- Advanced URL tracking UI
-
-**Target:** December 2025
-
-### Version 2.0
-**Focus:** Major Features
-- Clipboard history
-- iCloud sync
-- iOS companion app
-- Mac App Store release
-
-**Target:** Q1 2026
-
----
-
-## 🎯 Success Metrics
-
-### Current (Build 34 - In Development)
-- ✅ Fully notarized by Apple
-- ✅ Automated build process
-- ✅ GitHub releases working
-- ✅ Auto-updates via Sparkle
-- ✅ Excellent project organization (refactored architecture)
-- ✅ Profile management system implemented
-- ✅ Custom cleaning rules support
-- ✅ Professional development environment (SwiftLint, Cursor optimization)
-- ✅ All compilation errors resolved
-- ✅ Code quality standards enforced
-- 🚧 Testing and performance optimization ongoing
+### Current Status (Build 52)
+- ✅ Fully notarized for macOS Sequoia
+- ✅ Automated build and distribution process
+- ✅ Working auto-updates via Sparkle
+- ✅ Professional GitHub presence with screenshots
+- ✅ Clean, organized codebase
+- ✅ Comprehensive documentation
 
 ### Goals for Next 3 Months
-- [ ] 1000+ downloads
-- [ ] 4.5+ star rating
-- [ ] Zero critical bugs
-- [ ] < 1 hour from build to release
-- [ ] 90%+ crash-free users
+- [ ] 1,000+ downloads
+- [ ] Zero critical bugs in production
+- [ ] < 30 minutes from build to release
+- [ ] 95%+ crash-free users
+- [ ] Active user feedback and engagement
 
-### Goals for Next Year
-- [ ] 10,000+ downloads
+### Goals for 2026
+- [ ] 10,000+ users
+- [ ] 4.5+ star rating
+- [ ] Featured on MacStories or 9to5Mac
 - [ ] Mac App Store presence
-- [ ] iOS app launched
-- [ ] Featured on MacStories/9to5Mac
-- [ ] Sustainable revenue model
+- [ ] Sustainable development model
+
+---
+
+## 🛠️ Technical Debt
+
+### Low Priority
+- [ ] **DMG Background Image:** Professional branded background
+- [ ] **Extended Attribute Research:** Understand Sparkle XPC service attributes
+- [ ] **Performance Optimization:** Profile and optimize hot paths
+- [ ] **Documentation Videos:** Create tutorial videos for advanced features
+
+---
+
+## 📋 Version Planning
+
+### Version 1.3 (Current)
+**Builds 43-52** | Stable Release
+- Complete notarization solution for macOS Sequoia
+- LetsMove integration
+- Auto-update fixes
+- UI polish and refinements
+- Professional development workflow
+
+### Version 1.4 (Q4 2025)
+**Focus:** Automation & Customization
+- Automated release process
+- Keyboard shortcut customization
+- Enhanced first-run experience
+- Build validation and testing
+
+### Version 1.5 (Q1 2026)
+**Focus:** Power User Features
+- Clipboard history (optional)
+- Enhanced analytics
+- Preferences window redesign
+- Performance optimizations
+
+### Version 2.0 (Q2 2026)
+**Focus:** Ecosystem Expansion
+- Cloud sync
+- iOS companion app
+- Mac App Store release
+- Localization
 
 ---
 
 ## 🤝 Contributing
 
-### How to Add to Roadmap
-1. Create GitHub issue for feature request
-2. Discuss feasibility and priority
-3. Add to appropriate roadmap section
-4. Update status as progress is made
+### How to Contribute
+1. Check [open issues](https://github.com/oliveoi1/Clnbrd/issues) for current needs
+2. Discuss feature ideas before implementing
+3. Follow code style guidelines (SwiftLint enforced)
+4. Submit pull requests with clear descriptions
 
-### Priority Levels
+### Priority Definitions
 - **High:** Critical for next release
 - **Medium:** Important but not blocking
 - **Low:** Nice to have, when time permits
 
-### Effort Estimates
-- **< 2 hours:** Quick win
-- **2-8 hours:** Single feature
-- **8-20 hours:** Major feature
-- **20+ hours:** Epic/milestone
-
 ---
 
-## 📝 Notes
+## 📝 Development Notes
 
-### Decision Log
-- **Oct 8, 2025:** ✅ Completed major code refactoring (CleaningRules, SettingsWindow, CleaningProfile)
-- **Oct 8, 2025:** ✅ Implemented profile management system with import/export/share
-- **Oct 8, 2025:** ✅ Added custom find & replace rules functionality
-- **Oct 8, 2025:** ✅ Integrated SwiftLint for automated code quality enforcement
-- **Oct 8, 2025:** ✅ Optimized Cursor AI development environment
-- **Oct 8, 2025:** ✅ Fixed all 41 compilation errors and code quality issues
-- **Oct 8, 2025:** Shifted Build 34 focus from automation to architecture and user features
-- **Oct 6, 2025:** Prioritized EdDSA signature for security (deferred to Build 35)
-- **Oct 6, 2025:** Deferred iOS app to v2.0 for focus
-- **Oct 6, 2025:** Committed to monthly release cadence
+### Recent Decisions
+- **Oct 11, 2025:** Completed major project organization and cleanup
+- **Oct 10, 2025:** Fixed auto-update installer error (removed sandboxing)
+- **Oct 10, 2025:** Successfully integrated LetsMove for better UX
+- **Oct 9, 2025:** Solved macOS Sequoia notarization issues
+- **Oct 8, 2025:** Implemented profile management and custom rules
 
-### Resources Needed
-- [ ] Design assets for DMG background
-- [ ] Beta testers for profile management system ⭐ NEW
-- [ ] User feedback on custom rules feature ⭐ NEW
-- [ ] Feedback on URL tracking rules
-- [ ] Localization translators (future)
+### Lessons Learned
+- App sandboxing prevents Sparkle auto-updates
+- macOS Sequoia requires clean-room build process
+- Hardened Runtime entitlements are critical for XPC services
+- Stapled apps must be used for Sparkle ZIP files
+- Professional UI polish matters for user perception
 
 ---
 
 **Maintained by:** Allan Alomes  
-**Email:** olivedesignstudios@gmail.com  
-**GitHub:** https://github.com/oliveoi1/Clnbrd
+**Website:** http://olvbrd.x10.network/wp/  
+**GitHub:** https://github.com/oliveoi1/Clnbrd  
+**Email:** olivedesignstudios@gmail.com
 
-**Last Review:** October 8, 2025  
-**Next Review:** November 1, 2025
-
----
-
-## 🎉 Build 34 Highlights
-
-This build represents a **major architectural milestone** with significant code improvements and professional development setup:
-
-### What Changed:
-1. **Complete Code Refactoring** 
-   - Separated monolithic `AppDelegate.swift` into focused modules
-   - Created `CleaningRules.swift`, `SettingsWindow.swift`, `CleaningProfile.swift`
-   - Improved maintainability and development velocity
-
-2. **Profile Management System** (Major New Feature!)
-   - Create unlimited cleaning profiles for different use cases
-   - Import/Export profiles as `.clnbrd-profile` files
-   - Share profiles via AirDrop, Messages, or Mail
-   - Switch between profiles instantly
-
-3. **Custom Find & Replace Rules**
-   - Add your own text replacement rules
-   - Saved per profile for flexibility
-   - Applied before built-in cleaning rules
-
-4. **Professional Development Environment** (Major Infrastructure!)
-   - SwiftLint integration for automated code quality
-   - Cursor AI optimization with `.cursorrules` and `.cursorignore`
-   - Fixed all compilation errors and code quality issues
-   - Comprehensive development documentation
-
-### User Benefits:
-- 🎯 Multiple cleaning configurations (Work, Personal, Minimal, etc.)
-- 🤝 Share custom rule sets with team members
-- 💾 Backup and restore your settings
-- ⚡ Better app performance from cleaner code architecture
-- 🛡️ More reliable app with better error handling
-
-### Developer Benefits:
-- 📦 Modular, maintainable codebase
-- 🧪 Easier to add new features
-- 🐛 Simpler debugging and testing
-- 📚 Clear separation of concerns
-- 🔧 Professional development tools and workflows
-- 📏 Automated code quality enforcement
-- 🤖 AI-assisted development optimization
-
+**Next Review:** November 15, 2025
