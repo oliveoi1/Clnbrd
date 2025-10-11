@@ -74,6 +74,7 @@ class SettingsWindow: NSWindowController {
         // Create tab view
         let tabView = NSTabView()
         tabView.translatesAutoresizingMaskIntoConstraints = false
+        tabView.delegate = self
         
         // Tab 1: General (Cleaning Rules)
         let generalTab = NSTabViewItem(identifier: "general")
@@ -89,6 +90,9 @@ class SettingsWindow: NSWindowController {
         
         // Add tab view to window
         window.contentView = tabView
+        
+        // Set initial window title
+        window.title = "General"
     }
     
     private func createGeneralTab() -> NSView {
@@ -1512,5 +1516,14 @@ extension SettingsWindow: NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         // Window became active, scroll to top
         scrollToTop()
+    }
+}
+
+// MARK: - NSTabViewDelegate
+extension SettingsWindow: NSTabViewDelegate {
+    func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        // Update window title based on selected tab
+        guard let tabViewItem = tabViewItem else { return }
+        window?.title = tabViewItem.label
     }
 }
