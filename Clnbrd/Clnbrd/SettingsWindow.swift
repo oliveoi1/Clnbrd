@@ -56,11 +56,9 @@ class SettingsWindow: NSWindowController {
               let tabView = window.contentView as? NSTabView else { return }
         
         // Find and select the tab
-        for item in tabView.tabViewItems {
-            if item.identifier as? String == tabIdentifier {
-                tabView.selectTabViewItem(item)
-                break
-            }
+        for item in tabView.tabViewItems where item.identifier as? String == tabIdentifier {
+            tabView.selectTabViewItem(item)
+            break
         }
         
         showWindow(nil)
@@ -882,7 +880,7 @@ class SettingsWindow: NSWindowController {
         
         alert.addButton(withTitle: "Close")
         
-        let response = alert.runModal()
+        _ = alert.runModal()
         
         // Save checkbox state
         let showChangelog = checkbox.state == .on

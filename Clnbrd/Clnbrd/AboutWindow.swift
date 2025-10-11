@@ -11,7 +11,6 @@ import os.log
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "about")
 
 class AboutWindow: NSWindowController {
-    
     // MARK: - Properties
     private var autoUpdateCheckbox: NSButton!
     private var analyticsCheckbox: NSButton!
@@ -304,7 +303,7 @@ class AboutWindow: NSWindowController {
         
         alert.addButton(withTitle: "Close")
         
-        let response = alert.runModal()
+        _ = alert.runModal()
         
         // Save checkbox state
         let showChangelog = checkbox.state == .on
@@ -344,4 +343,3 @@ class AboutWindow: NSWindowController {
         }
     }
 }
-

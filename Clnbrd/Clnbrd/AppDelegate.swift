@@ -629,10 +629,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             sharingPicker.show(relativeTo: NSRect(x: 0, y: 0, width: 1, height: 1), of: NSApp.keyWindow?.contentView ?? NSView(), preferredEdge: .minY)
         }
     }
-    
-    
-    
-    
 }
 
 extension AppDelegate: MenuBarManagerDelegate {
