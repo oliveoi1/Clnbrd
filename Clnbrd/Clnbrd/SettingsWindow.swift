@@ -775,7 +775,6 @@ class SettingsWindow: NSWindowController {
             """
             alert.alertStyle = .informational
             alert.addButton(withTitle: "Open System Settings")
-            // alert.addButton(withTitle: "Cancel")
             
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
@@ -787,67 +786,10 @@ class SettingsWindow: NSWindowController {
     }
     
     // MARK: - Removed Functions (Build 51 - UI Simplification)
-    // These functions were removed from Settings window to reduce clutter
-    // LetsMove now handles setup, About window handles analytics
-    
-    /*
-    @objc func showSetupInstructions() {
-        // Removed: LetsMove automatically handles app installation
-    }
-    
-    @objc func showSecurityHelp() {
-        // Removed: App is now properly notarized, no security warnings
-    }
-    */
-    
-    @objc func emailDeveloper() {
-        // Gather comprehensive system information
-        let systemInfo = SystemInfoUtility.getSystemInformation()
-        let formattedSystemInfo = SystemInfoUtility.formatSystemInformation(systemInfo)
-        
-        // Get current settings
-        let settings = """
-        Remove Zero-Width Chars: \(cleaningRules.removeZeroWidthChars)
-        Remove Em-dashes: \(cleaningRules.removeEmdashes)
-        Normalize Spaces: \(cleaningRules.normalizeSpaces)
-        Convert Smart Quotes: \(cleaningRules.convertSmartQuotes)
-        Normalize Line Breaks: \(cleaningRules.normalizeLineBreaks)
-        Remove Trailing Spaces: \(cleaningRules.removeTrailingSpaces)
-        Remove Emojis: \(cleaningRules.removeEmojis)
-        Remove Extra Line Breaks: \(cleaningRules.removeExtraLineBreaks)
-        Remove Leading/Trailing Whitespace: \(cleaningRules.removeLeadingTrailingWhitespace)
-        Remove URLs: \(cleaningRules.removeUrls)
-        Remove HTML Tags: \(cleaningRules.removeHtmlTags)
-        Remove Extra Punctuation: \(cleaningRules.removeExtraPunctuation)
-        Custom Rules: \(cleaningRules.customRules.count)
-        """
-        
-        let emailBody = """
-        Hi Allan,
-        
-        [Please describe your issue or feedback here]
-        
-        
-        
-        Current Settings:
-        \(settings)
-        
-        \(formattedSystemInfo)
-        """
-        
-        let encodedBody = emailBody.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) ?? ""
-        let emailURL = "mailto:olivedesignstudios@gmail.com?subject=Clnbrd%20Support&body=\(encodedBody)"
-        
-        if let url = URL(string: emailURL) {
-            NSWorkspace.shared.open(url)
-        }
-    }
-    
-    /*
-    @objc func testSystemInformation() {
-        // Removed: Debug function no longer exposed in UI
-    }
-    */
+    // showSetupInstructions: LetsMove automatically handles app installation
+    // showSecurityHelp: App is now properly notarized, no security warnings
+    // showAnalytics, toggleAnalytics, shareApp: Moved to About tab
+    // emailDeveloper, testSystemInformation, emailSupportWithAnalytics: Unused helper functions
     
     func isLaunchAtLoginEnabled() -> Bool {
         if #available(macOS 13.0, *) {
@@ -979,94 +921,6 @@ class SettingsWindow: NSWindowController {
         }
     }
     
-    /*
-    // Removed functions from old Settings layout
-    @objc func showAnalytics() {
-        // Removed: Analytics now in About tab
-    }
-    
-    @objc func toggleAnalytics(_ sender: NSButton) {
-        // Removed: Analytics toggle now in About tab
-    }
-    
-    @objc func shareApp() {
-        // Removed: Share option now in menu bar and About window
-    }
-    */
-    
-    func emailSupportWithAnalytics(_ analyticsData: String) {
-        let subject = "Clnbrd Support Request - Version \(VersionManager.version)"
-        let systemInfo = SystemInfoUtility.getSystemInformation()
-        let formattedSystemInfo = SystemInfoUtility.formatSystemInformation(systemInfo)
-        
-        let body = """
-        Hi Allan,
-        
-        I'm experiencing an issue with Clnbrd and would like to report it.
-        
-        Issue Description:
-        [Please describe your issue here]
-        
-        Steps to Reproduce:
-        1. 
-        2. 
-        3. 
-        
-        Expected Behavior:
-        [What should happen]
-        
-        Actual Behavior:
-        [What actually happens]
-        
-        Analytics Data:
-        \(analyticsData)
-        
-        \(formattedSystemInfo)
-        
-        Thank you for your help!
-        
-        Best regards,
-        [Your name]
-        """
-        
-        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) ?? ""
-        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) ?? ""
-        
-        let mailtoURL = "mailto:olivedesignstudios@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)"
-        
-        // Check if URL is too long
-        if mailtoURL.count > 2000 {
-            // Fallback: copy to clipboard
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(body, forType: .string)
-            
-            let fallbackAlert = NSAlert()
-            fallbackAlert.messageText = "Email Support"
-            fallbackAlert.informativeText = "The support information is too long for email. It has been copied to your clipboard. Please paste it into an email to olivedesignstudios@gmail.com"
-            fallbackAlert.alertStyle = .informational
-            fallbackAlert.addButton(withTitle: "OK")
-            fallbackAlert.runModal()
-            return
-        }
-        
-        if let url = URL(string: mailtoURL) {
-            NSWorkspace.shared.open(url)
-        } else {
-            // Fallback: copy to clipboard
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(body, forType: .string)
-            
-            let fallbackAlert = NSAlert()
-            fallbackAlert.messageText = "Email Support"
-            fallbackAlert.informativeText = "Could not open email client. Support information has been copied to your clipboard. Please paste it into an email to olivedesignstudios@gmail.com"
-            fallbackAlert.alertStyle = .informational
-            fallbackAlert.addButton(withTitle: "OK")
-            fallbackAlert.runModal()
-        }
-    }
-    
     // MARK: - Profile Management
     
     func refreshProfileDropdown() {
@@ -1156,9 +1010,7 @@ class SettingsWindow: NSWindowController {
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
         inputField.stringValue = ProfileManager.shared.getActiveProfile().name
         alert.accessoryView = inputField
-        
         alert.addButton(withTitle: "Rename")
-        // alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -1179,9 +1031,7 @@ class SettingsWindow: NSWindowController {
         let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
         inputField.placeholderString = "Profile name"
         alert.accessoryView = inputField
-        
         alert.addButton(withTitle: "Create")
-        // alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -1213,7 +1063,7 @@ class SettingsWindow: NSWindowController {
         alert.informativeText = "Are you sure you want to delete this profile? This cannot be undone."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Delete")
-        // alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {

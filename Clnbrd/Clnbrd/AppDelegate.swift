@@ -150,11 +150,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var dialogManager: DialogManager!
     var settingsWindowController: SettingsWindow?
     var autoCleanEnabled = false
-    private var aboutWindowController: AboutWindow?
-    
-    // Legacy properties for compatibility (will be removed in future versions)
-    var lastClipboardChangeCount = 0
-    var clipboardMonitorTimer: Timer?
     
     // Managers
     private let clipboardManager = ClipboardManager()
