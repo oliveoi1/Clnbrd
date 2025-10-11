@@ -71,8 +71,28 @@ else
     echo -e "${YELLOW}⚠️  Gatekeeper check inconclusive${NC}"
 fi
 
-# Step 3: Create DMG
-echo -e "${YELLOW}📀 Step 3/3: Creating DMG installer...${NC}"
+# Step 3: Create Sparkle update ZIP (stapled)
+echo -e "${YELLOW}📦 Step 3/4: Creating Sparkle update ZIP...${NC}"
+echo -e "${BLUE}   Creating ZIP from stapled app...${NC}"
+
+cd "${DISTRIBUTION_DIR}/App"
+SPARKLE_ZIP_NAME="Clnbrd-v${VERSION}-Build${BUILD_NUMBER}-notarized-stapled.zip"
+zip -r -y -X "${DISTRIBUTION_DIR}/Upload/${SPARKLE_ZIP_NAME}" Clnbrd.app > /dev/null 2>&1
+
+if [ -f "${DISTRIBUTION_DIR}/Upload/${SPARKLE_ZIP_NAME}" ]; then
+    ZIP_SIZE=$(du -h "${DISTRIBUTION_DIR}/Upload/${SPARKLE_ZIP_NAME}" | cut -f1)
+    ZIP_BYTES=$(stat -f%z "${DISTRIBUTION_DIR}/Upload/${SPARKLE_ZIP_NAME}")
+    echo -e "${GREEN}✅ Sparkle ZIP created: ${ZIP_SIZE} (${ZIP_BYTES} bytes)${NC}"
+    echo -e "${BLUE}   File: ${SPARKLE_ZIP_NAME}${NC}"
+    echo -e "${BLUE}   Use this ZIP for Sparkle auto-updates in appcast-v2.xml${NC}"
+else
+    echo -e "${RED}❌ Failed to create Sparkle ZIP${NC}"
+fi
+
+cd "${PROJECT_DIR}"
+
+# Step 4: Create DMG
+echo -e "${YELLOW}📀 Step 4/4: Creating DMG installer...${NC}"
 
 DMG_NAME="Clnbrd-${VERSION}-Build-${BUILD_NUMBER}-Notarized.dmg"
 DMG_PATH="${DISTRIBUTION_DIR}/DMG/${DMG_NAME}"
@@ -129,14 +149,22 @@ Status: ✅ FULLY NOTARIZED & STAPLED
 
 Release Files:
 --------------
-📦 ${DMG_PATH}
+📦 DMG (Manual Downloads):
+   ${DMG_PATH}
    • Fully notarized and stapled
-   • Ready for distribution
    • Ready for GitHub release
+   • Use for: Manual downloads from website/GitHub
+
+🔄 ZIP (Sparkle Auto-Updates):
+   ${DISTRIBUTION_DIR}/Upload/${SPARKLE_ZIP_NAME}
+   Size: ${ZIP_BYTES} bytes
+   • Fully notarized and stapled
+   • Ready for Sparkle auto-updates
+   • Use for: appcast-v2.xml enclosure URL
 
 🍎 ${APP_PATH}
    • Notarized and stapled
-   • Can be distributed directly (without DMG)
+   • Can be distributed directly
 
 Verification Completed:
 -----------------------
@@ -203,8 +231,10 @@ echo -e "${GREEN}✅ App is fully notarized, stapled, and ready for distribution
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "${BLUE}1. Test DMG on a clean Mac${NC}"
-echo -e "${BLUE}2. Upload to GitHub Releases${NC}"
-echo -e "${BLUE}3. Update appcast-v2.xml${NC}"
+echo -e "${BLUE}2. Upload BOTH files to GitHub Releases:${NC}"
+echo -e "${BLUE}   • ${DMG_NAME} (for manual downloads)${NC}"
+echo -e "${BLUE}   • ${SPARKLE_ZIP_NAME} (for Sparkle auto-updates)${NC}"
+echo -e "${BLUE}3. Update appcast-v2.xml with ZIP URL and size: ${ZIP_BYTES} bytes${NC}"
 echo -e "${BLUE}4. Announce release${NC}"
 echo ""
 echo -e "${PURPLE}═══════════════════════════════════════════════════════════════${NC}"
