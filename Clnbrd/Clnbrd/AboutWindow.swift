@@ -160,7 +160,7 @@ class AboutWindow: NSWindowController {
         
         // Analytics checkbox
         analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalytics))
-        analyticsCheckbox.state = AnalyticsManager.shared.isEnabled ? .on : .off
+        analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
         stack.addArrangedSubview(analyticsCheckbox)
         
         // Description
@@ -241,7 +241,7 @@ class AboutWindow: NSWindowController {
     
     @objc private func toggleAnalytics(_ sender: NSButton) {
         let enabled = sender.state == .on
-        AnalyticsManager.shared.setEnabled(enabled)
+        AnalyticsManager.shared.setAnalyticsEnabled(enabled)
         logger.info("Analytics toggled: \(enabled)")
         SentryManager.shared.trackUserAction("about_toggle_analytics", data: ["enabled": enabled])
     }
