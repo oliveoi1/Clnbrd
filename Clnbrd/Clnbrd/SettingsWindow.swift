@@ -160,12 +160,18 @@ class SettingsWindow: NSWindowController {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         
-        let stackView = NSStackView()
-        stackView.orientation = .vertical
-        stackView.spacing = 16
-        stackView.alignment = .centerX
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.edgeInsets = NSEdgeInsets(top: 30, left: 40, bottom: 20, right: 40)
+        let mainStack = NSStackView()
+        mainStack.orientation = .vertical
+        mainStack.spacing = 16
+        mainStack.alignment = .leading
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.edgeInsets = NSEdgeInsets(top: 30, left: 30, bottom: 20, right: 30)
+        
+        // Top section: Icon + App Info (side by side)
+        let topStack = NSStackView()
+        topStack.orientation = .horizontal
+        topStack.spacing = 16
+        topStack.alignment = .top
         
         // App Icon
         let iconView = NSImageView()
@@ -173,112 +179,131 @@ class SettingsWindow: NSWindowController {
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 96),
-            iconView.heightAnchor.constraint(equalToConstant: 96)
+            iconView.widthAnchor.constraint(equalToConstant: 100),
+            iconView.heightAnchor.constraint(equalToConstant: 100)
         ])
-        stackView.addArrangedSubview(iconView)
+        topStack.addArrangedSubview(iconView)
+        
+        // Right side: Name, version, button, copyright
+        let rightStack = NSStackView()
+        rightStack.orientation = .vertical
+        rightStack.spacing = 8
+        rightStack.alignment = .leading
         
         // App Name
         let appNameLabel = NSTextField(labelWithString: "Clnbrd")
-        appNameLabel.font = NSFont.systemFont(ofSize: 24, weight: .bold)
-        appNameLabel.alignment = .center
-        stackView.addArrangedSubview(appNameLabel)
+        appNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
+        appNameLabel.alignment = .left
+        rightStack.addArrangedSubview(appNameLabel)
         
         // Version
         let versionLabel = NSTextField(labelWithString: VersionManager.fullVersion)
-        versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        versionLabel.textColor = .secondaryLabelColor
-        versionLabel.alignment = .center
-        stackView.addArrangedSubview(versionLabel)
+        versionLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        versionLabel.textColor = .labelColor
+        versionLabel.alignment = .left
+        rightStack.addArrangedSubview(versionLabel)
         
-        stackView.addArrangedSubview(createSpacer(height: 8))
+        rightStack.addArrangedSubview(createSpacer(height: 4))
         
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
         updateButton.bezelStyle = .rounded
-        updateButton.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            updateButton.widthAnchor.constraint(equalToConstant: 200)
-        ])
-        stackView.addArrangedSubview(updateButton)
+        rightStack.addArrangedSubview(updateButton)
         
-        stackView.addArrangedSubview(createAboutSeparator())
+        topStack.addArrangedSubview(rightStack)
+        
+        mainStack.addArrangedSubview(topStack)
         
         // Auto-update checkbox
         let autoUpdateCheckbox = NSButton(checkboxWithTitle: "Automatically check for updates", target: self, action: #selector(toggleAutoUpdate))
         autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
-        stackView.addArrangedSubview(autoUpdateCheckbox)
+        mainStack.addArrangedSubview(autoUpdateCheckbox)
+        
+        // Copyright
+        let copyrightLabel = NSTextField(labelWithString: "© OliveDesign Studios All Rights Reserved.")
+        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
+        copyrightLabel.textColor = .tertiaryLabelColor
+        copyrightLabel.alignment = .left
+        mainStack.addArrangedSubview(copyrightLabel)
+        
+        // Separator
+        mainStack.addArrangedSubview(createSpacer(height: 8))
+        let separator1 = createFullWidthSeparator()
+        mainStack.addArrangedSubview(separator1)
+        mainStack.addArrangedSubview(createSpacer(height: 8))
         
         // Analytics section
-        let analyticsStack = createAnalyticsSection()
-        stackView.addArrangedSubview(analyticsStack)
+        let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
+        analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
+        mainStack.addArrangedSubview(analyticsCheckbox)
+        
+        let analyticsDescription = NSTextField(wrappingLabelWithString: "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
+        analyticsDescription.font = NSFont.systemFont(ofSize: 11)
+        analyticsDescription.textColor = .secondaryLabelColor
+        analyticsDescription.preferredMaxLayoutWidth = 540
+        analyticsDescription.alignment = .left
+        mainStack.addArrangedSubview(analyticsDescription)
         
         // Launch at Login
-        stackView.addArrangedSubview(createSpacer(height: 4))
+        mainStack.addArrangedSubview(createSpacer(height: 8))
         let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
         launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
-        stackView.addArrangedSubview(launchCheckbox)
-        
-        stackView.addArrangedSubview(createAboutSeparator())
-        
-        // Acknowledgments link
-        let acknowledgementsLabel = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
-        stackView.addArrangedSubview(acknowledgementsLabel)
+        mainStack.addArrangedSubview(launchCheckbox)
         
         // Spacer
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
-        stackView.addArrangedSubview(spacer)
+        mainStack.addArrangedSubview(spacer)
         
-        // Bottom buttons
+        // Bottom section: Acknowledgments on left, buttons on right
+        let bottomStack = NSStackView()
+        bottomStack.orientation = .horizontal
+        bottomStack.spacing = 12
+        bottomStack.alignment = .centerY
+        bottomStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        let acknowledgementsLabel = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
+        acknowledgementsLabel.alignment = .left
+        bottomStack.addArrangedSubview(acknowledgementsLabel)
+        
+        // Spacer to push buttons to right
+        let bottomSpacer = NSView()
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+        bottomStack.addArrangedSubview(bottomSpacer)
+        
+        // Right-aligned buttons
         let buttonStack = createAboutButtons()
-        stackView.addArrangedSubview(buttonStack)
+        bottomStack.addArrangedSubview(buttonStack)
         
-        container.addSubview(stackView)
+        mainStack.addArrangedSubview(bottomStack)
+        
+        container.addSubview(mainStack)
         
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: container.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            mainStack.topAnchor.constraint(equalTo: container.topAnchor),
+            mainStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            mainStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            mainStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             
-            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
+            separator1.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
+            
+            bottomStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
+            bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
+            
+            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 20)
         ])
         
         return container
     }
     
-    private func createAboutSeparator() -> NSBox {
+    private func createFullWidthSeparator() -> NSBox {
         let separator = NSBox()
         separator.boxType = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            separator.widthAnchor.constraint(equalToConstant: 420),
             separator.heightAnchor.constraint(equalToConstant: 1)
         ])
         return separator
-    }
-    
-    private func createAnalyticsSection() -> NSStackView {
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.spacing = 8
-        stack.alignment = .leading
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Analytics checkbox
-        let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
-        analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
-        stack.addArrangedSubview(analyticsCheckbox)
-        
-        // Description
-        let description = NSTextField(wrappingLabelWithString: "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
-        description.font = NSFont.systemFont(ofSize: 11)
-        description.textColor = .secondaryLabelColor
-        description.preferredMaxLayoutWidth = 420
-        stack.addArrangedSubview(description)
-        
-        return stack
     }
     
     private func createClickableLink(text: String, action: Selector) -> NSTextField {
