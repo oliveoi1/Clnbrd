@@ -70,8 +70,29 @@ class SettingsWindow: NSWindowController {
     func setupUI() {
         guard let window = window else { return }
         
-        let mainContainer = NSView()
-        mainContainer.translatesAutoresizingMaskIntoConstraints = false
+        // Create tab view
+        let tabView = NSTabView()
+        tabView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Tab 1: General (Cleaning Rules)
+        let generalTab = NSTabViewItem(identifier: "general")
+        generalTab.label = "General"
+        generalTab.view = createGeneralTab()
+        tabView.addTabViewItem(generalTab)
+        
+        // Tab 2: About
+        let aboutTab = NSTabViewItem(identifier: "about")
+        aboutTab.label = "About"
+        aboutTab.view = createAboutTab()
+        tabView.addTabViewItem(aboutTab)
+        
+        // Add tab view to window
+        window.contentView = tabView
+    }
+    
+    private func createGeneralTab() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
         
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -82,7 +103,7 @@ class SettingsWindow: NSWindowController {
         let stackView = NSStackView()
         stackView.orientation = .vertical
         stackView.alignment = .leading
-        stackView.spacing = 8  // Increased from 12 for better breathing room
+        stackView.spacing = 8
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         
@@ -119,39 +140,184 @@ class SettingsWindow: NSWindowController {
         addButton.bezelStyle = .rounded
         stackView.addArrangedSubview(addButton)
         
-        // HORIZONTAL SEPARATOR LINE
-        stackView.addArrangedSubview(createSpacer(height: 20))
-        stackView.addArrangedSubview(createSeparatorLine())
-        stackView.addArrangedSubview(createSpacer(height: 20))
-        
-        // APP SETTINGS
-        let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
-        launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
-        stackView.addArrangedSubview(launchCheckbox)
-        
-        // Info text about other settings
-        stackView.addArrangedSubview(createSpacer(height: 8))
-        let infoText = NSTextField(wrappingLabelWithString: "💡 More options available in the menu bar (updates, analytics, sharing)")
-        infoText.font = NSFont.systemFont(ofSize: 11)
-        infoText.textColor = .secondaryLabelColor
-        infoText.alignment = .left
-        infoText.preferredMaxLayoutWidth = 560
-        stackView.addArrangedSubview(infoText)
-        
         // Configure scroll view
         scrollView.documentView = stackView
-        mainContainer.addSubview(scrollView)
+        container.addSubview(scrollView)
         
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: mainContainer.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             
             stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
         ])
         
-        window.contentView = mainContainer
+        return container
+    }
+    
+    private func createAboutTab() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let stackView = NSStackView()
+        stackView.orientation = .vertical
+        stackView.spacing = 16
+        stackView.alignment = .centerX
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.edgeInsets = NSEdgeInsets(top: 30, left: 40, bottom: 20, right: 40)
+        
+        // App Icon
+        let iconView = NSImageView()
+        iconView.image = NSImage(named: NSImage.applicationIconName)
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 96),
+            iconView.heightAnchor.constraint(equalToConstant: 96)
+        ])
+        stackView.addArrangedSubview(iconView)
+        
+        // App Name
+        let appNameLabel = NSTextField(labelWithString: "Clnbrd")
+        appNameLabel.font = NSFont.systemFont(ofSize: 24, weight: .bold)
+        appNameLabel.alignment = .center
+        stackView.addArrangedSubview(appNameLabel)
+        
+        // Version
+        let versionLabel = NSTextField(labelWithString: VersionManager.fullVersion)
+        versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        versionLabel.textColor = .secondaryLabelColor
+        versionLabel.alignment = .center
+        stackView.addArrangedSubview(versionLabel)
+        
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // Check for Updates Button
+        let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
+        updateButton.bezelStyle = .rounded
+        updateButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            updateButton.widthAnchor.constraint(equalToConstant: 200)
+        ])
+        stackView.addArrangedSubview(updateButton)
+        
+        stackView.addArrangedSubview(createAboutSeparator())
+        
+        // Auto-update checkbox
+        let autoUpdateCheckbox = NSButton(checkboxWithTitle: "Automatically check for updates", target: self, action: #selector(toggleAutoUpdate))
+        autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
+        stackView.addArrangedSubview(autoUpdateCheckbox)
+        
+        // Analytics section
+        let analyticsStack = createAnalyticsSection()
+        stackView.addArrangedSubview(analyticsStack)
+        
+        // Launch at Login
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        let launchCheckbox = NSButton(checkboxWithTitle: "Launch at Login", target: self, action: #selector(toggleLaunchAtLogin(_:)))
+        launchCheckbox.state = isLaunchAtLoginEnabled() ? .on : .off
+        stackView.addArrangedSubview(launchCheckbox)
+        
+        stackView.addArrangedSubview(createAboutSeparator())
+        
+        // Acknowledgments link
+        let acknowledgementsLabel = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
+        stackView.addArrangedSubview(acknowledgementsLabel)
+        
+        // Spacer
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(spacer)
+        
+        // Bottom buttons
+        let buttonStack = createAboutButtons()
+        stackView.addArrangedSubview(buttonStack)
+        
+        container.addSubview(stackView)
+        
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: container.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 0)
+        ])
+        
+        return container
+    }
+    
+    private func createAboutSeparator() -> NSBox {
+        let separator = NSBox()
+        separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            separator.widthAnchor.constraint(equalToConstant: 420),
+            separator.heightAnchor.constraint(equalToConstant: 1)
+        ])
+        return separator
+    }
+    
+    private func createAnalyticsSection() -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 8
+        stack.alignment = .leading
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Analytics checkbox
+        let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
+        analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
+        stack.addArrangedSubview(analyticsCheckbox)
+        
+        // Description
+        let description = NSTextField(wrappingLabelWithString: "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
+        description.font = NSFont.systemFont(ofSize: 11)
+        description.textColor = .secondaryLabelColor
+        description.preferredMaxLayoutWidth = 420
+        stack.addArrangedSubview(description)
+        
+        return stack
+    }
+    
+    private func createClickableLink(text: String, action: Selector) -> NSTextField {
+        let textField = NSTextField(labelWithString: text)
+        textField.font = NSFont.systemFont(ofSize: 12)
+        textField.textColor = .linkColor
+        textField.isBordered = false
+        textField.isEditable = false
+        textField.isSelectable = false
+        textField.alignment = .center
+        
+        // Add click gesture
+        let clickGesture = NSClickGestureRecognizer(target: self, action: action)
+        textField.addGestureRecognizer(clickGesture)
+        
+        return textField
+    }
+    
+    private func createAboutButtons() -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .horizontal
+        stack.spacing = 12
+        stack.distribution = .fillEqually
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        
+        let whatsNewButton = NSButton(title: "What's New", target: self, action: #selector(showWhatsNew))
+        whatsNewButton.bezelStyle = .rounded
+        
+        let websiteButton = NSButton(title: "Visit our Website", target: self, action: #selector(openWebsite))
+        websiteButton.bezelStyle = .rounded
+        
+        let contactButton = NSButton(title: "Contact Us", target: self, action: #selector(contactUs))
+        contactButton.bezelStyle = .rounded
+        
+        stack.addArrangedSubview(whatsNewButton)
+        stack.addArrangedSubview(websiteButton)
+        stack.addArrangedSubview(contactButton)
+        
+        return stack
     }
     
     // MARK: - UI Section Setup Helpers
@@ -644,13 +810,135 @@ class SettingsWindow: NSWindowController {
         }
     }
     
+    // MARK: - About Tab Actions
+    
+    @objc func checkForUpdates() {
+        logger.info("Check for updates clicked from Settings About tab")
+        SentryManager.shared.trackUserAction("settings_check_updates")
+        
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.checkForUpdatesRequested()
+        }
+    }
+    
+    @objc func toggleAutoUpdate(_ sender: NSButton) {
+        let enabled = sender.state == .on
+        UserDefaults.standard.set(enabled, forKey: "SUEnableAutomaticChecks")
+        logger.info("Auto-update toggled: \(enabled)")
+        SentryManager.shared.trackUserAction("settings_toggle_auto_update", data: ["enabled": enabled])
+    }
+    
+    @objc func toggleAnalyticsInSettings(_ sender: NSButton) {
+        let enabled = sender.state == .on
+        AnalyticsManager.shared.setAnalyticsEnabled(enabled)
+        logger.info("Analytics toggled: \(enabled)")
+        SentryManager.shared.trackUserAction("settings_toggle_analytics", data: ["enabled": enabled])
+    }
+    
+    @objc func showAcknowledgments() {
+        logger.info("Acknowledgments clicked")
+        SentryManager.shared.trackUserAction("settings_acknowledgments")
+        
+        let alert = NSAlert()
+        alert.messageText = "Acknowledgments"
+        alert.informativeText = """
+        Clnbrd uses the following open-source libraries:
+        
+        • Sparkle - Software update framework
+          by Andy Matuschak and contributors
+          
+        • Sentry - Crash reporting and monitoring
+          by Sentry Team
+          
+        • LetsMove - Application mover
+          by Potion Factory
+        
+        Thank you to all contributors and the open-source community!
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+    
+    @objc func showWhatsNew() {
+        logger.info("What's New clicked")
+        SentryManager.shared.trackUserAction("settings_whats_new")
+        
+        let alert = NSAlert()
+        alert.messageText = "What's New in Clnbrd \(VersionManager.fullVersion)"
+        alert.informativeText = """
+        New in Build 51:
+        
+        ✨ Automatic "Move to Applications" prompt
+           • App automatically offers to move to Applications folder
+           • Ensures Launch at Login and updates work reliably
+        
+        🎨 Simplified menu bar interface
+           • Cleaner, more focused menu
+           • Better organized actions
+        
+        ⚙️ Tabbed Settings window
+           • General tab for all cleaning rules
+           • About tab with app info and preferences
+        
+        🔧 Improved user experience
+           • Fewer prompts and dialogs
+           • Streamlined settings
+        
+        For full changelog, visit our GitHub releases page.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "View on GitHub")
+        
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            if let url = URL(string: "https://github.com/oliveoi1/Clnbrd/releases") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+    
+    @objc func openWebsite() {
+        logger.info("Visit Website clicked")
+        SentryManager.shared.trackUserAction("settings_visit_website")
+        
+        if let url = URL(string: "https://github.com/oliveoi1/Clnbrd") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    @objc func contactUs() {
+        logger.info("Contact Us clicked")
+        SentryManager.shared.trackUserAction("settings_contact_us")
+        
+        // Create mailto link
+        let email = "olivedesignstudios@gmail.com"
+        let subject = "Clnbrd Feedback - v\(VersionManager.fullVersion)"
+        let body = """
+        
+        
+        ---
+        App Version: \(VersionManager.fullVersion)
+        macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        """
+        
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        
+        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
     /*
+    // Removed functions from old Settings layout
     @objc func showAnalytics() {
-        // Removed: Analytics now in About window
+        // Removed: Analytics now in About tab
     }
     
     @objc func toggleAnalytics(_ sender: NSButton) {
-        // Removed: Analytics toggle now in About window
+        // Removed: Analytics toggle now in About tab
     }
     
     @objc func shareApp() {
