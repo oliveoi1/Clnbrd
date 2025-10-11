@@ -912,38 +912,39 @@ class SettingsWindow: NSWindowController {
         SentryManager.shared.trackUserAction("settings_whats_new")
         
         let alert = NSAlert()
-        alert.messageText = "What's New in Clnbrd \(VersionManager.fullVersion)"
+        alert.messageText = "New in Clnbrd X"
         alert.informativeText = """
-        New in Build 51:
+        \(VersionManager.fullVersion)
         
-        ✨ Automatic "Move to Applications" prompt
-           • App automatically offers to move to Applications folder
-           • Ensures Launch at Login and updates work reliably
+        — Automatic "Move to Applications" prompt
+        — Simplified menu bar interface
+        — Tabbed Settings window (Rules and About)
+        — Improved user experience with streamlined settings
+        — Better window resizing and layout
         
-        🎨 Simplified menu bar interface
-           • Cleaner, more focused menu
-           • Better organized actions
+        \(VersionManager.version) (Build 50)
         
-        ⚙️ Tabbed Settings window
-           • General tab for all cleaning rules
-           • About tab with app info and preferences
+        — Fully notarized for macOS Sequoia
+        — Fixed notarization issues with clean-room build process
+        — No security warnings on macOS 15.0+
+        — Enhanced auto-update system
         
-        🔧 Improved user experience
-           • Fewer prompts and dialogs
-           • Streamlined settings
-        
-        For full changelog, visit our GitHub releases page.
+        For full changelog, visit our website.
         """
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "View on GitHub")
+        
+        // Add checkbox for "Show changelog after each update"
+        let checkbox = NSButton(checkboxWithTitle: "Show the changelog after each update", target: nil, action: nil)
+        checkbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
+        alert.accessoryView = checkbox
+        
+        alert.addButton(withTitle: "Close")
         
         let response = alert.runModal()
-        if response == .alertSecondButtonReturn {
-            if let url = URL(string: "https://github.com/oliveoi1/Clnbrd/releases") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        
+        // Save checkbox state
+        let showChangelog = checkbox.state == .on
+        UserDefaults.standard.set(showChangelog, forKey: "ShowChangelogAfterUpdate")
     }
     
     @objc func openWebsite() {
