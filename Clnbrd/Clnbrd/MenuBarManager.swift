@@ -23,19 +23,16 @@ class MenuBarManager {
         
         menu = NSMenu()
         
+        // Main actions
         let pasteItem = NSMenuItem(title: "Paste Cleaned (⌘⌥V)", action: #selector(cleanAndPaste), keyEquivalent: "")
         pasteItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Paste cleaned text")
         pasteItem.target = self
         menu.addItem(pasteItem)
         
-        menu.addItem(NSMenuItem.separator())
-        
         let cleanItem = NSMenuItem(title: "Clean Clipboard Now", action: #selector(cleanClipboardManually), keyEquivalent: "c")
         cleanItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: "Clean clipboard")
         cleanItem.target = self
         menu.addItem(cleanItem)
-        
-        menu.addItem(NSMenuItem.separator())
         
         let autoCleanItem = NSMenuItem(title: "Auto-clean on Copy", action: #selector(toggleAutoClean), keyEquivalent: "")
         autoCleanItem.image = NSImage(systemSymbolName: "arrow.clockwise.circle", accessibilityDescription: "Auto-clean toggle")
@@ -51,50 +48,16 @@ class MenuBarManager {
         
         menu.addItem(NSMenuItem.separator())
         
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: "Settings")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-        
-        let samplesItem = NSMenuItem(title: "View Samples", action: #selector(showSamples), keyEquivalent: "")
-        samplesItem.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "View samples")
-        samplesItem.target = self
-        menu.addItem(samplesItem)
-        
-        let versionHistoryItem = NSMenuItem(title: "Version History", action: #selector(showVersionHistory), keyEquivalent: "")
-        versionHistoryItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Version history")
-        versionHistoryItem.target = self
-        menu.addItem(versionHistoryItem)
-        
+        // Secondary actions
         let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(checkForUpdatesManually), keyEquivalent: "u")
         updateItem.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Check for updates")
         updateItem.target = self
         menu.addItem(updateItem)
         
-        let reportItem = NSMenuItem(title: "Report Issue", action: #selector(reportIssue), keyEquivalent: "")
-        reportItem.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Report issue")
-        reportItem.target = self
-        menu.addItem(reportItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
         let shareAppItem = NSMenuItem(title: "Share Clnbrd", action: #selector(shareApp), keyEquivalent: "")
         shareAppItem.image = NSImage(systemSymbolName: "square.and.arrow.up", accessibilityDescription: "Share app")
         shareAppItem.target = self
         menu.addItem(shareAppItem)
-        
-        // Debug: Test Sentry (only visible when holding Option key)
-        let testSentryItem = NSMenuItem(title: "Test Crash Reporting", action: #selector(testSentry), keyEquivalent: "")
-        testSentryItem.image = NSImage(systemSymbolName: "ladybug", accessibilityDescription: "Test Sentry")
-        testSentryItem.target = self
-        testSentryItem.isAlternate = true  // Only shows when Option key is held
-        testSentryItem.keyEquivalentModifierMask = [.option]
-        menu.addItem(testSentryItem)
-        
-        let guideItem = NSMenuItem(title: "Installation Guide", action: #selector(showInstallationGuide), keyEquivalent: "")
-        guideItem.image = NSImage(systemSymbolName: "book", accessibilityDescription: "Installation guide")
-        guideItem.target = self
-        menu.addItem(guideItem)
         
         let aboutItem = NSMenuItem(title: "About Clnbrd", action: #selector(openAbout), keyEquivalent: "")
         aboutItem.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "About")
@@ -102,6 +65,13 @@ class MenuBarManager {
         menu.addItem(aboutItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        // Settings and Quit
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: "Settings")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         statusItem?.menu = menu
@@ -231,6 +201,15 @@ class MenuBarManager {
         delegate?.checkForUpdatesRequested()
     }
     
+    @objc func openAbout() {
+        SentryManager.shared.trackUserAction("about_opened")
+        delegate?.openAboutRequested()
+    }
+    
+    // MARK: - Removed Menu Items (Build 51 - Menu Simplification)
+    // These methods are kept for reference but are no longer in the menu
+    
+    /*
     @objc func showInstallationGuide() {
         SentryManager.shared.trackUserAction("installation_guide_opened")
         delegate?.showInstallationGuideRequested()
@@ -246,11 +225,6 @@ class MenuBarManager {
         delegate?.testSentryRequested()
     }
     
-    @objc func openAbout() {
-        SentryManager.shared.trackUserAction("about_opened")
-        delegate?.openAboutRequested()
-    }
-    
     @objc func showSamples() {
         SentryManager.shared.trackUserAction("samples_opened")
         delegate?.showSamplesRequested()
@@ -260,6 +234,7 @@ class MenuBarManager {
         SentryManager.shared.trackUserAction("version_history_opened")
         delegate?.showVersionHistoryRequested()
     }
+    */
     
     @objc func shareApp() {
         SentryManager.shared.trackUserAction("share_app_triggered")
