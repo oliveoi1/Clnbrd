@@ -111,3 +111,5 @@ CleanPaste/
 .sparkle_keys/
 Distribution-Clean/
 *.backup*
+# Screenshot working directory (originals copied to screenshots/)
+Clnbrd/Screenshots/

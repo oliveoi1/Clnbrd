@@ -15,7 +15,8 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
-DISTRIBUTION_DIR="./Distribution-Clean"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DISTRIBUTION_DIR="${SCRIPT_DIR}/Distribution-Clean"
 APP_PATH="${DISTRIBUTION_DIR}/App/Clnbrd.app"
 
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -89,7 +90,7 @@ else
     echo -e "${RED}❌ Failed to create Sparkle ZIP${NC}"
 fi
 
-cd "${PROJECT_DIR}"
+cd "${SCRIPT_DIR}"
 
 # Step 4: Create DMG
 echo -e "${YELLOW}📀 Step 4/4: Creating DMG installer...${NC}"
