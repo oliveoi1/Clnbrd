@@ -6,7 +6,7 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 
 ## 📥 Download
 
-**[⬇️ Download Latest Version (Clnbrd 1.3 Build 51)](https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.51/Clnbrd-1.3-Build-51-Notarized.dmg)**
+**[⬇️ Download Latest Version (Clnbrd 1.3 Build 52)](https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.52/Clnbrd-1.3-Build-52-Notarized.dmg)**
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
@@ -15,6 +15,22 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 This app is **officially notarized by Apple** and will install without any security warnings on **macOS Sequoia (15.0)** and later. Just download, open the DMG, and drag to Applications!
 
 **No bypassing Gatekeeper required** - it's signed with a Developer ID and approved by Apple's notarization service.
+
+---
+
+## 📸 Screenshots
+
+### Menu Bar Interface
+![Menu Bar Dropdown](screenshots/menubar-dropdown.png)
+
+### About Window
+![About Window](screenshots/about-window.png)
+
+### Rules Configuration
+![Rules Configuration](screenshots/rules-window.png)
+
+### System Permissions
+![Privacy & Security Settings](screenshots/permissions-setup.png)
 
 ---
 
@@ -199,16 +215,21 @@ See `Clnbrd/SOLUTION_SUMMARY.md` for complete details.
 
 ## 📋 Version History
 
-### v1.3 (Build 51) - Current - Fully Notarized
+### v1.3 (Build 52) - Current - Fully Notarized
 - **Fully Notarized by Apple** - Approved October 11, 2025
-- **macOS Sequoia (15.0) Compatible** - No security warnings
+- **Fixed:** Removed app sandboxing to enable Sparkle auto-updates
+- **Fixed:** Auto-update installer now works correctly
 - Added "Move to Applications" prompt for first-time installations
-- Improved onboarding experience for new users
 - Compacted About tab layout for better space efficiency
 - Improved alignment and spacing throughout settings
 - Added separator line in menu before Quit option
 - Cleaned up Rules section headers
-- Fixed version number display format
+- More professional share text
+
+### v1.3 (Build 51) - Fully Notarized
+- Initial LetsMove integration
+- UI improvements and refinements
+- Note: Auto-update had installer issues (fixed in Build 52)
 
 ### v1.3 (Build 50) - Fully Notarized
 - **Fully Notarized by Apple** - Approved October 9, 2025
