@@ -310,7 +310,7 @@ class AboutWindow: NSWindowController {
         logger.info("Visit Website clicked")
         SentryManager.shared.trackUserAction("about_visit_website")
         
-        if let url = URL(string: "https://github.com/oliveoi1/Clnbrd") {
+        if let url = URL(string: "http://olvbrd.x10.network/wp/") {
             NSWorkspace.shared.open(url)
         }
     }

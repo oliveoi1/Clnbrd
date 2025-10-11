@@ -351,7 +351,7 @@ class SettingsWindow: NSWindowController {
         let whatsNewButton = NSButton(title: "What's New", target: self, action: #selector(showWhatsNew))
         whatsNewButton.bezelStyle = .rounded
         
-        let websiteButton = NSButton(title: "Visit our Website", target: self, action: #selector(openWebsite))
+        let websiteButton = NSButton(title: "Visit Website", target: self, action: #selector(openWebsite))
         websiteButton.bezelStyle = .rounded
         
         let contactButton = NSButton(title: "Contact Us", target: self, action: #selector(contactUs))
@@ -947,7 +947,7 @@ class SettingsWindow: NSWindowController {
         logger.info("Visit Website clicked")
         SentryManager.shared.trackUserAction("settings_visit_website")
         
-        if let url = URL(string: "https://github.com/oliveoi1/Clnbrd") {
+        if let url = URL(string: "http://olvbrd.x10.network/wp/") {
             NSWorkspace.shared.open(url)
         }
     }
