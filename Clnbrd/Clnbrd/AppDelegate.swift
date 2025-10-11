@@ -588,14 +588,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func openAboutRequested() {
-        // Create or show existing about window
-        if aboutWindowController == nil {
-            aboutWindowController = AboutWindow()
-        }
-        
-        aboutWindowController?.showWindow(nil)
-        aboutWindowController?.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Open Settings window on About tab
+        openSettingsRequested()
+        settingsWindowController?.showWindow(withTab: "about")
     }
     
     @objc func openWebsite() {

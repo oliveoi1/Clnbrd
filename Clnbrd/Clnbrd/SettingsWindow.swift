@@ -50,6 +50,22 @@ class SettingsWindow: NSWindowController {
         scrollToTop()
     }
     
+    /// Show the window with a specific tab selected
+    func showWindow(withTab tabIdentifier: String) {
+        guard let window = window,
+              let tabView = window.contentView as? NSTabView else { return }
+        
+        // Find and select the tab
+        for item in tabView.tabViewItems {
+            if item.identifier as? String == tabIdentifier {
+                tabView.selectTabViewItem(item)
+                break
+            }
+        }
+        
+        showWindow(nil)
+    }
+    
     private func scrollToTop() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self = self, let scrollView = self.scrollView else { return }
@@ -1519,7 +1535,29 @@ extension SettingsWindow: NSWindowDelegate {
 extension SettingsWindow: NSTabViewDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         // Update window title based on selected tab
-        guard let tabViewItem = tabViewItem else { return }
-        window?.title = tabViewItem.label
+        guard let tabViewItem = tabViewItem, let window = window else { return }
+        window.title = tabViewItem.label
+        
+        // Adjust window size based on tab
+        let currentFrame = window.frame
+        let newHeight: CGFloat
+        
+        if tabViewItem.identifier as? String == "about" {
+            // About tab should be shorter
+            newHeight = 400
+        } else {
+            // Rules tab can be taller
+            newHeight = 550
+        }
+        
+        // Animate to new size if different
+        if abs(currentFrame.height - newHeight) > 10 {
+            var newFrame = currentFrame
+            newFrame.size.height = newHeight
+            // Keep the top-left corner in the same position
+            newFrame.origin.y = currentFrame.origin.y + (currentFrame.height - newHeight)
+            
+            window.setFrame(newFrame, display: true, animate: true)
+        }
     }
 }
