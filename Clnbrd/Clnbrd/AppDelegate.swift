@@ -150,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var dialogManager: DialogManager!
     var settingsWindowController: SettingsWindow?
     var autoCleanEnabled = false
-    private var aboutWindow: NSWindow?
+    private var aboutWindowController: AboutWindow?
     
     // Legacy properties for compatibility (will be removed in future versions)
     var lastClipboardChangeCount = 0
@@ -588,98 +588,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc func openAboutRequested() {
-        let aboutWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 350),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        aboutWindow.title = "About Clnbrd"
-        aboutWindow.center()
-        aboutWindow.isReleasedWhenClosed = false
-        
-        let stackView = NSStackView()
-        stackView.orientation = .vertical
-        stackView.alignment = .centerX
-        stackView.spacing = 12
-        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        
-        // App icon
-        let iconView = NSImageView()
-        if let appIcon = NSImage(named: "AppIcon") {
-            iconView.image = appIcon
-        } else {
-            iconView.image = NSImage(systemSymbolName: "doc.text.magnifyingglass", accessibilityDescription: "Clnbrd app icon")
+        // Create or show existing about window
+        if aboutWindowController == nil {
+            aboutWindowController = AboutWindow()
         }
-        iconView.imageScaling = .scaleProportionallyUpOrDown
-        iconView.frame = NSRect(x: 0, y: 0, width: 80, height: 80)
-        stackView.addArrangedSubview(iconView)
         
-        // App name
-        let nameLabel = NSTextField(labelWithString: "Clnbrd")
-        nameLabel.font = NSFont.boldSystemFont(ofSize: 28)
-        nameLabel.textColor = .controlTextColor
-        nameLabel.alignment = .center
-        stackView.addArrangedSubview(nameLabel)
-        
-        // Tagline
-        let taglineLabel = NSTextField(labelWithString: "Professional Clipboard Cleaning for macOS")
-        taglineLabel.font = NSFont.systemFont(ofSize: 14)
-        taglineLabel.textColor = .secondaryLabelColor
-        taglineLabel.alignment = .center
-        stackView.addArrangedSubview(taglineLabel)
-        
-        // Version info
-        let versionLabel = NSTextField(labelWithString: VersionManager.fullVersion)
-        versionLabel.font = NSFont.systemFont(ofSize: 12)
-        versionLabel.textColor = .tertiaryLabelColor
-        versionLabel.alignment = .center
-        stackView.addArrangedSubview(versionLabel)
-        
-        // Features section - split into two lines
-        let featuresLabel1 = NSTextField(labelWithString: "✨ Smart Text Cleaning • ⌘⌥V Hotkey • Auto-clean")
-        featuresLabel1.font = NSFont.systemFont(ofSize: 11)
-        featuresLabel1.textColor = .secondaryLabelColor
-        featuresLabel1.alignment = .center
-        stackView.addArrangedSubview(featuresLabel1)
-        
-        let featuresLabel2 = NSTextField(labelWithString: "Custom Rules • Privacy Analytics • Crash Reporting")
-        featuresLabel2.font = NSFont.systemFont(ofSize: 11)
-        featuresLabel2.textColor = .secondaryLabelColor
-        featuresLabel2.alignment = .center
-        stackView.addArrangedSubview(featuresLabel2)
-        
-        // Copyright
-        let copyrightLabel = NSTextField(labelWithString: "© 2025 Allan Alomes • All rights reserved")
-        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
-        copyrightLabel.textColor = .tertiaryLabelColor
-        copyrightLabel.alignment = .center
-        stackView.addArrangedSubview(copyrightLabel)
-        
-        // Buttons container
-        let buttonStack = NSStackView()
-        buttonStack.orientation = .horizontal
-        buttonStack.spacing = 12
-        buttonStack.distribution = .fillEqually
-        
-        // Website button
-        let websiteButton = NSButton(title: "Website", target: self, action: #selector(openWebsite))
-        websiteButton.bezelStyle = .rounded
-        buttonStack.addArrangedSubview(websiteButton)
-        
-        // Support button
-        let supportButton = NSButton(title: "Support", target: self, action: #selector(openSupport))
-        supportButton.bezelStyle = .rounded
-        buttonStack.addArrangedSubview(supportButton)
-        
-        stackView.addArrangedSubview(buttonStack)
-        
-        aboutWindow.contentView = stackView
-        aboutWindow.makeKeyAndOrderFront(nil)
+        aboutWindowController?.showWindow(nil)
+        aboutWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        
-        // Store reference to prevent deallocation
-        self.aboutWindow = aboutWindow
     }
     
     @objc func openWebsite() {
