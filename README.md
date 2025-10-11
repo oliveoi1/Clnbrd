@@ -6,7 +6,7 @@ A lightweight, menu bar utility that removes formatting from clipboard text (inc
 
 ## 📥 Download
 
-**[⬇️ Download Latest Version (Clnbrd 1.3 Build 50)](https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.50/Clnbrd-1.3.50.-Build-50-Notarized.dmg)**
+**[⬇️ Download Latest Version (Clnbrd 1.3 Build 51)](https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.51/Clnbrd-1.3-Build-51-Notarized.dmg)**
 
 *Or view [all releases](https://github.com/oliveoi1/Clnbrd/releases)*
 
@@ -199,9 +199,19 @@ See `Clnbrd/SOLUTION_SUMMARY.md` for complete details.
 
 ## 📋 Version History
 
-### v1.3 (Build 50) - Current ✅ Fully Notarized
-- **✅ Fully Notarized by Apple** - Approved October 9, 2025
-- **✅ macOS Sequoia (15.0) Compatible** - No security warnings
+### v1.3 (Build 51) - Current - Fully Notarized
+- **Fully Notarized by Apple** - Approved October 11, 2025
+- **macOS Sequoia (15.0) Compatible** - No security warnings
+- Added "Move to Applications" prompt for first-time installations
+- Improved onboarding experience for new users
+- Compacted About tab layout for better space efficiency
+- Improved alignment and spacing throughout settings
+- Added separator line in menu before Quit option
+- Cleaned up Rules section headers
+- Fixed version number display format
+
+### v1.3 (Build 50) - Fully Notarized
+- **Fully Notarized by Apple** - Approved October 9, 2025
 - Fixed notarization issues with new clean-room build process
 - Notarization ticket stapled to app bundle
 - Comprehensive build documentation added
