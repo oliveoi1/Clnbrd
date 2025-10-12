@@ -8,7 +8,6 @@ class ClipboardHistoryWindow: NSPanel {
     // UI Components
     private var scrollView: NSScrollView!
     private var stackView: NSStackView!
-    private var closeButton: NSButton!
     private var titleLabel: NSTextField!
     private var searchField: NSSearchField!
     
@@ -16,25 +15,25 @@ class ClipboardHistoryWindow: NSPanel {
     private var searchQuery: String = ""
     
     // Constants
-    private let windowHeight: CGFloat = 150
-    private let windowWidth: CGFloat = 900
-    private let cardWidth: CGFloat = 220
-    private let cardHeight: CGFloat = 100
-    private let padding: CGFloat = 16
+    private let windowHeight: CGFloat = 160
+    private let cardWidth: CGFloat = 180
+    private let cardHeight: CGFloat = 120
+    private let padding: CGFloat = 20
+    private var optionsButton: NSButton!
     
     init() {
-        // Create window at top of screen
+        // Create window at top of screen - FULL WIDTH like macOS screenshots
         let screenFrame = NSScreen.main?.frame ?? .zero
         let windowFrame = NSRect(
-            x: (screenFrame.width - windowWidth) / 2,
-            y: screenFrame.height - windowHeight - 40, // 40pt from top
-            width: windowWidth,
+            x: screenFrame.origin.x,
+            y: screenFrame.maxY - windowHeight, // Flush with top
+            width: screenFrame.width, // FULL screen width
             height: windowHeight
         )
         
         super.init(
             contentRect: windowFrame,
-            styleMask: [.titled, .closable, .nonactivatingPanel, .hudWindow],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -47,20 +46,20 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func setupWindow() {
-        // Window properties
+        // Window properties - like macOS screenshot preview
         self.isFloatingPanel = true
-        self.level = .floating
-        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        self.level = .statusBar // Higher level like screenshot preview
+        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         self.hidesOnDeactivate = false
-        self.isMovableByWindowBackground = true
-        self.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.95)
-        self.titleVisibility = .hidden
-        self.titlebarAppearsTransparent = true
+        self.isMovableByWindowBackground = false // Fixed at top
+        self.backgroundColor = NSColor.black.withAlphaComponent(0.85) // Dark translucent like screenshot preview
         self.isOpaque = false
         self.hasShadow = true
         
-        // Make window not activate app when shown
-        self.styleMask.insert(.nonactivatingPanel)
+        // Rounded corners at bottom
+        self.contentView?.wantsLayer = true
+        self.contentView?.layer?.cornerRadius = 12
+        self.contentView?.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner] // Bottom corners only
     }
     
     private func setupUI() {
@@ -71,32 +70,39 @@ class ClipboardHistoryWindow: NSPanel {
         containerView.autoresizingMask = [.width, .height]
         contentView.addSubview(containerView)
         
-        // Header view with title and close button
-        let headerView = NSView(frame: NSRect(x: 0, y: windowHeight - 30, width: windowWidth, height: 30))
+        // Header view with title and options button
+        let headerHeight: CGFloat = 36
+        let headerView = NSView(frame: NSRect(x: 0, y: windowHeight - headerHeight, width: contentView.bounds.width, height: headerHeight))
         headerView.autoresizingMask = [.width, .minYMargin]
         containerView.addSubview(headerView)
         
-        // Title label
+        // Title label (center-aligned like screenshot preview)
         titleLabel = NSTextField(labelWithString: "Clipboard History")
-        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = .secondaryLabelColor
-        titleLabel.frame = NSRect(x: padding, y: 6, width: 150, height: 18)
+        titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        titleLabel.textColor = .white
+        titleLabel.alignment = .center
+        titleLabel.frame = NSRect(x: 0, y: 8, width: contentView.bounds.width, height: 20)
+        titleLabel.autoresizingMask = [.width]
+        titleLabel.drawsBackground = false
+        titleLabel.isBordered = false
+        titleLabel.isEditable = false
         headerView.addSubview(titleLabel)
         
-        // Close button
-        closeButton = NSButton(frame: NSRect(x: windowWidth - 30, y: 4, width: 22, height: 22))
-        closeButton.bezelStyle = .inline
-        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")
-        closeButton.isBordered = false
-        closeButton.target = self
-        closeButton.action = #selector(closeWindow)
-        closeButton.autoresizingMask = [.minXMargin]
-        headerView.addSubview(closeButton)
+        // Options button (three dots) in top right - like screenshot preview
+        optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
+        optionsButton.bezelStyle = .rounded
+        optionsButton.image = NSImage(systemSymbolName: "ellipsis.circle.fill", accessibilityDescription: "Options")
+        optionsButton.contentTintColor = .white
+        optionsButton.isBordered = false
+        optionsButton.target = self
+        optionsButton.action = #selector(showOptionsMenu(_:))
+        optionsButton.autoresizingMask = [.minXMargin]
+        headerView.addSubview(optionsButton)
         
-        // Scroll view setup
-        let scrollFrame = NSRect(x: padding, y: padding, width: windowWidth - 2 * padding, height: windowHeight - 50)
+        // Scroll view setup - full width minus padding
+        let scrollFrame = NSRect(x: padding, y: padding, width: contentView.bounds.width - 2 * padding, height: windowHeight - headerHeight - padding * 2)
         scrollView = NSScrollView(frame: scrollFrame)
-        scrollView.hasHorizontalScroller = true
+        scrollView.hasHorizontalScroller = false // Hide scrollbar like screenshot preview
         scrollView.hasVerticalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.backgroundColor = .clear
@@ -104,6 +110,7 @@ class ClipboardHistoryWindow: NSPanel {
         scrollView.borderType = .noBorder
         scrollView.autoresizingMask = [.width, .height]
         scrollView.horizontalScrollElasticity = .allowed
+        scrollView.usesPredominantAxisScrolling = true
         containerView.addSubview(scrollView)
         
         // Stack view for history items
@@ -199,17 +206,18 @@ class ClipboardHistoryWindow: NSPanel {
     private func createHistoryCard(for item: ClipboardHistoryItem) -> NSView {
         let card = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight))
         card.wantsLayer = true
-        card.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        card.layer?.cornerRadius = 10
-        card.layer?.borderWidth = 1.5
-        card.layer?.borderColor = NSColor.separatorColor.cgColor
+        // Light card background like screenshot thumbnails
+        card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
+        card.layer?.cornerRadius = 8
+        card.layer?.borderWidth = 0.5
+        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
         
-        // Shadow for depth
+        // Subtle shadow like screenshot preview
         card.shadow = NSShadow()
         card.layer?.shadowColor = NSColor.black.cgColor
-        card.layer?.shadowOpacity = 0.1
-        card.layer?.shadowOffset = NSSize(width: 0, height: -2)
-        card.layer?.shadowRadius = 4
+        card.layer?.shadowOpacity = 0.3
+        card.layer?.shadowOffset = NSSize(width: 0, height: 2)
+        card.layer?.shadowRadius = 8
         
         // Make card clickable
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
@@ -233,11 +241,11 @@ class ClipboardHistoryWindow: NSPanel {
             card.addSubview(pinIcon)
         }
         
-        // Text preview (larger and more visible)
+        // Text preview (dark text on white card)
         let textLabel = NSTextField(labelWithString: item.preview)
         textLabel.frame = NSRect(x: 12, y: 32, width: cardWidth - 24, height: 52)
-        textLabel.font = NSFont.systemFont(ofSize: 12)
-        textLabel.textColor = .labelColor
+        textLabel.font = NSFont.systemFont(ofSize: 11)
+        textLabel.textColor = .black // Dark text on white card
         textLabel.lineBreakMode = .byWordWrapping
         textLabel.usesSingleLineMode = false
         textLabel.maximumNumberOfLines = 3
@@ -249,17 +257,19 @@ class ClipboardHistoryWindow: NSPanel {
         textLabel.cell?.isScrollable = false
         card.addSubview(textLabel)
         
-        // Bottom info bar background
-        let infoBar = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: 28))
+        // Bottom info bar background (light gray like screenshot preview)
+        let infoBar = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: 26))
         infoBar.wantsLayer = true
-        infoBar.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
+        infoBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.05).cgColor
+        infoBar.layer?.cornerRadius = 8
+        infoBar.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner] // Bottom corners only
         card.addSubview(infoBar)
         
         // Timestamp
         let timeLabel = NSTextField(labelWithString: item.displayTime)
-        timeLabel.frame = NSRect(x: 12, y: 8, width: 100, height: 14)
+        timeLabel.frame = NSRect(x: 12, y: 7, width: 100, height: 14)
         timeLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        timeLabel.textColor = .secondaryLabelColor
+        timeLabel.textColor = .darkGray
         timeLabel.isEditable = false
         timeLabel.isSelectable = false
         timeLabel.isBordered = false
@@ -269,9 +279,9 @@ class ClipboardHistoryWindow: NSPanel {
         // Character count badge
         if item.characterCount > 0 {
             let countLabel = NSTextField(labelWithString: "\(item.characterCount) chars")
-            countLabel.frame = NSRect(x: cardWidth - 80, y: 8, width: 68, height: 14)
+            countLabel.frame = NSRect(x: cardWidth - 80, y: 7, width: 68, height: 14)
             countLabel.font = NSFont.systemFont(ofSize: 10)
-            countLabel.textColor = .tertiaryLabelColor
+            countLabel.textColor = .gray
             countLabel.alignment = .right
             countLabel.isEditable = false
             countLabel.isSelectable = false
@@ -328,7 +338,49 @@ class ClipboardHistoryWindow: NSPanel {
         }
     }
     
-    @objc private func closeWindow() {
+    @objc private func showOptionsMenu(_ sender: NSButton) {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        
+        // Retention period options
+        menu.addItem(NSMenuItem(title: "Delete History After:", action: nil, keyEquivalent: ""))
+        menu.items.last?.isEnabled = false
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        for period in ClipboardHistoryManager.RetentionPeriod.allCases {
+            let item = NSMenuItem(title: period.rawValue, action: #selector(setRetentionPeriod(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = period
+            item.state = (ClipboardHistoryManager.shared.retentionPeriod == period) ? .on : .off
+            menu.addItem(item)
+        }
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // Clear history option
+        let clearItem = NSMenuItem(title: "Clear All History...", action: #selector(clearHistoryFromMenu), keyEquivalent: "")
+        clearItem.target = self
+        menu.addItem(clearItem)
+        
+        // Show menu below the button
+        let location = NSPoint(x: 0, y: sender.bounds.height + 4)
+        menu.popUp(positioning: nil, at: location, in: sender)
+    }
+    
+    @objc private func setRetentionPeriod(_ sender: NSMenuItem) {
+        guard let period = sender.representedObject as? ClipboardHistoryManager.RetentionPeriod else { return }
+        ClipboardHistoryManager.shared.retentionPeriod = period
+        logger.info("Retention period changed to: \(period.rawValue)")
+    }
+    
+    @objc private func clearHistoryFromMenu() {
+        ClipboardHistoryManager.shared.clearHistory()
+        reloadHistoryItems()
+        logger.info("History cleared from menu")
+    }
+    
+    private func closeWindow() {
         logger.debug("Closing history window")
         self.orderOut(nil)
         
@@ -348,13 +400,13 @@ class ClipboardHistoryWindow: NSPanel {
         // Reload items before showing
         reloadHistoryItems()
         
-        // Position at top center of current screen
+        // Position at top of current screen - FULL WIDTH
         if let screen = NSScreen.main {
             let screenFrame = screen.frame
             let windowFrame = NSRect(
-                x: (screenFrame.width - windowWidth) / 2,
-                y: screenFrame.height - windowHeight - 40,
-                width: windowWidth,
+                x: screenFrame.origin.x,
+                y: screenFrame.maxY - windowHeight, // Flush with top
+                width: screenFrame.width, // FULL screen width
                 height: windowHeight
             )
             self.setFrame(windowFrame, display: true)
