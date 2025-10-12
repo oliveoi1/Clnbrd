@@ -268,10 +268,9 @@ class ClipboardHistoryWindow: NSPanel {
             card.addSubview(appIconView)
         }
         
-        // Pin indicator (if pinned) - move to top-right if app icon is present
+        // Pin indicator (if pinned) - always in top-right corner
         if item.isPinned {
-            let xPos = item.sourceApp != nil ? cardWidth - 28 : cardWidth - 28
-            let pinIcon = NSImageView(frame: NSRect(x: xPos, y: cardHeight - 28, width: 18, height: 18))
+            let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 26, y: cardHeight - 26, width: 18, height: 18))
             pinIcon.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: "Pinned")
             pinIcon.contentTintColor = .systemYellow
             card.addSubview(pinIcon)
@@ -548,13 +547,13 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func createAppIconBadge(for appName: String) -> NSImageView {
-        let iconSize: CGFloat = 24
+        let iconSize: CGFloat = 32 // Slightly larger for better visibility
         let padding: CGFloat = 8
         
-        // Create image view
+        // Create image view - positioned in BOTTOM-RIGHT corner like screenshot preview
         let imageView = NSImageView(frame: NSRect(
-            x: padding,
-            y: cardHeight - iconSize - padding,
+            x: cardWidth - iconSize - padding,
+            y: padding,
             width: iconSize,
             height: iconSize
         ))
@@ -571,11 +570,15 @@ class ClipboardHistoryWindow: NSPanel {
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.wantsLayer = true
         
-        // Add subtle shadow for visibility
+        // Add circular background for badge effect (like macOS screenshot icons)
+        imageView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.9).cgColor
+        imageView.layer?.cornerRadius = iconSize / 2 // Circular
+        
+        // Add subtle shadow for depth
         imageView.layer?.shadowColor = NSColor.black.cgColor
-        imageView.layer?.shadowOpacity = 0.3
-        imageView.layer?.shadowOffset = NSSize(width: 0, height: -1)
-        imageView.layer?.shadowRadius = 2
+        imageView.layer?.shadowOpacity = 0.4
+        imageView.layer?.shadowOffset = NSSize(width: 0, height: 1)
+        imageView.layer?.shadowRadius = 3
         
         return imageView
     }
