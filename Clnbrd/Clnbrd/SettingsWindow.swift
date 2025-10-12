@@ -3,7 +3,8 @@ import os.log
 import ServiceManagement
 import UniformTypeIdentifiers
 
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable file_length
+// swiftlint:disable:next type_body_length
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
@@ -456,7 +457,7 @@ class SettingsWindow: NSWindowController {
         let jpegQualityStack = NSStackView()
         jpegQualityStack.orientation = .horizontal
         jpegQualityStack.spacing = 8
-        jpegQualityStack.tag = 1001 // Tag for finding later
+        jpegQualityStack.identifier = NSUserInterfaceItemIdentifier("jpegQualityStack")
         jpegQualityStack.isHidden = currentFormat != .jpeg
         
         let jpegQualityLabel = NSTextField(labelWithString: "JPEG quality:")
@@ -477,7 +478,7 @@ class SettingsWindow: NSWindowController {
         let jpegQualityValueLabel = NSTextField(
             labelWithString: "\(Int(ClipboardHistoryManager.shared.jpegExportQuality * 100))%"
         )
-        jpegQualityValueLabel.tag = 1002
+        jpegQualityValueLabel.identifier = NSUserInterfaceItemIdentifier("jpegQualityValueLabel")
         jpegQualityValueLabel.alignment = .left
         jpegQualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         jpegQualityStack.addArrangedSubview(jpegQualityValueLabel)
@@ -749,8 +750,10 @@ class SettingsWindow: NSWindowController {
         logger.info("Export format changed to: \(format.rawValue)")
         
         // Show/hide JPEG quality slider based on format
-        if let historyTab = self.mainTabView.tabViewItem(at: 2),
-           let jpegQualityStack = historyTab.view?.viewWithTag(1001) {
+        let historyTab = self.mainTabView.tabViewItem(at: 2)
+        if let jpegQualityStack = historyTab.view?.subviews.first(where: { 
+            $0.identifier?.rawValue == "jpegQualityStack" 
+        }) {
             jpegQualityStack.isHidden = (format != .jpeg)
         }
     }
@@ -774,9 +777,22 @@ class SettingsWindow: NSWindowController {
         let quality = sender.doubleValue
         ClipboardHistoryManager.shared.jpegExportQuality = quality
         
-        // Update the quality label
-        if let historyTab = self.mainTabView.tabViewItem(at: 2),
-           let qualityLabel = historyTab.view?.viewWithTag(1002) as? NSTextField {
+        // Update the quality label - find it recursively
+        let historyTab = self.mainTabView.tabViewItem(at: 2)
+        func findQualityLabel(in view: NSView) -> NSTextField? {
+            if let textField = view as? NSTextField,
+               textField.identifier?.rawValue == "jpegQualityValueLabel" {
+                return textField
+            }
+            for subview in view.subviews {
+                if let found = findQualityLabel(in: subview) {
+                    return found
+                }
+            }
+            return nil
+        }
+        
+        if let view = historyTab.view, let qualityLabel = findQualityLabel(in: view) {
             qualityLabel.stringValue = "\(Int(quality * 100))%"
         }
         

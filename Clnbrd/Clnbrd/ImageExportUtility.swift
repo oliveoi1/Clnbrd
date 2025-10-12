@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 import os.log
 
 /// Utility class for exporting images with various format and processing options
@@ -110,7 +111,7 @@ class ImageExportUtility {
         )
         scaledImage.unlockFocus()
         
-        logger.info("📏 Scaled retina image from \(size) to \(scaledSize)")
+        logger.info("📏 Scaled retina image from \(size.width)x\(size.height) to \(scaledSize.width)x\(scaledSize.height)")
         return scaledImage
     }
     
@@ -164,9 +165,8 @@ class ImageExportUtility {
         
         // Convert color space to sRGB if requested
         if convertToSRGB {
-            if let srgbColorSpace = NSColorSpace.sRGB {
-                bitmapRep = bitmapRep.converting(to: srgbColorSpace, renderingIntent: .default) ?? bitmapRep
-            }
+            let srgbColorSpace = NSColorSpace.sRGB
+            bitmapRep = bitmapRep.converting(to: srgbColorSpace, renderingIntent: .default) ?? bitmapRep
         }
         
         // Convert to requested format
@@ -185,7 +185,7 @@ class ImageExportUtility {
         case .tiff:
             imageData = bitmapRep.representation(
                 using: .tiff,
-                properties: [.compressionMethod: NSNumber(value: NSTIFFCompression.lzw.rawValue)]
+                properties: [.compressionMethod: NSNumber(value: NSBitmapImageRep.TIFFCompression.lzw.rawValue)]
             )
         }
         
