@@ -13,7 +13,8 @@ class ClipboardHistoryWindow: NSPanel {
     
     // State
     private var searchQuery: String = ""
-    private var clickOutsideMonitor: Any?
+    private var localClickMonitor: Any?
+    private var globalClickMonitor: Any?
     
     // Constants
     private let windowHeight: CGFloat = 180 // Increased to show full cards (120px + header + padding)
@@ -210,6 +211,7 @@ class ClipboardHistoryWindow: NSPanel {
         // Light card background like screenshot thumbnails
         card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
         card.layer?.cornerRadius = 8
+        card.layer?.masksToBounds = true // Ensure corners are clipped
         card.layer?.borderWidth = 0.5
         card.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
         
@@ -224,15 +226,6 @@ class ClipboardHistoryWindow: NSPanel {
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
         card.addGestureRecognizer(clickGesture)
         card.identifier = NSUserInterfaceItemIdentifier(item.id.uuidString)
-        
-        // Hover effect
-        let trackingArea = NSTrackingArea(
-            rect: card.bounds,
-            options: [.activeAlways, .mouseEnteredAndExited],
-            owner: self,
-            userInfo: ["cardView": card]
-        )
-        card.addTrackingArea(trackingArea)
         
         // Pin indicator (if pinned)
         if item.isPinned {
@@ -327,18 +320,6 @@ class ClipboardHistoryWindow: NSPanel {
         }, completionHandler: nil)
     }
     
-    override func mouseEntered(with event: NSEvent) {
-        if let cardView = event.trackingArea?.userInfo?["cardView"] as? NSView {
-            cardView.layer?.backgroundColor = NSColor.controlBackgroundColor.highlighted.cgColor
-        }
-    }
-    
-    override func mouseExited(with event: NSEvent) {
-        if let cardView = event.trackingArea?.userInfo?["cardView"] as? NSView {
-            cardView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        }
-    }
-    
     @objc private func showOptionsMenu(_ sender: NSButton) {
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -394,8 +375,8 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func startClickOutsideMonitor() {
-        // Monitor for clicks outside the window
-        clickOutsideMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+        // Monitor for clicks within the app (local monitor)
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             guard let self = self else { return event }
             
             // Get the click location in screen coordinates
@@ -404,19 +385,32 @@ class ClipboardHistoryWindow: NSPanel {
             
             // Check if click is outside our window
             if !windowFrame.contains(clickLocation) {
-                // Click is outside, close the window
+                // Click is outside our window but inside the app, close
                 self.closeWindow()
-                return nil // Consume the event
+                return event // Don't consume - let it pass through
             }
             
             return event
         }
+        
+        // Monitor for clicks outside the app (global monitor)
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Any click outside the app should close the window
+            self.closeWindow()
+        }
     }
     
     private func stopClickOutsideMonitor() {
-        if let monitor = clickOutsideMonitor {
+        if let monitor = localClickMonitor {
             NSEvent.removeMonitor(monitor)
-            clickOutsideMonitor = nil
+            localClickMonitor = nil
+        }
+        
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
         }
     }
     
