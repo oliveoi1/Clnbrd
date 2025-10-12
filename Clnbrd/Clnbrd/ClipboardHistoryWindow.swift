@@ -112,7 +112,20 @@ class ClipboardHistoryWindow: NSPanel {
         stackView.spacing = 10
         stackView.alignment = .centerY
         stackView.distribution = .fill
-        scrollView.documentView = stackView
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create a container for the stack view
+        let stackContainer = NSView()
+        stackContainer.addSubview(stackView)
+        scrollView.documentView = stackContainer
+        
+        // Pin stack view to container with height constraint
+        NSLayoutConstraint.activate([
+            stackView.leadingAnchor.constraint(equalTo: stackContainer.leadingAnchor),
+            stackView.topAnchor.constraint(equalTo: stackContainer.topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: stackContainer.bottomAnchor),
+            stackView.heightAnchor.constraint(equalToConstant: cardHeight)
+        ])
         
         // Initial load
         reloadHistoryItems()
@@ -153,12 +166,18 @@ class ClipboardHistoryWindow: NSPanel {
         // Add card for each item
         for item in items {
             let card = createHistoryCard(for: item)
+            // Ensure card has fixed width and height
+            card.translatesAutoresizingMaskIntoConstraints = false
+            card.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+            card.heightAnchor.constraint(equalToConstant: cardHeight).isActive = true
             stackView.addArrangedSubview(card)
         }
         
-        // Update stack view frame to fit content
-        let contentWidth = CGFloat(items.count) * (cardWidth + 10) - 10
-        stackView.frame = NSRect(x: 0, y: 0, width: max(contentWidth, scrollView.bounds.width), height: cardHeight)
+        // Update container frame to fit all cards horizontally
+        if let container = scrollView.documentView {
+            let contentWidth = CGFloat(items.count) * (cardWidth + 10) + 10
+            container.frame = NSRect(x: 0, y: 0, width: max(contentWidth, scrollView.bounds.width), height: cardHeight)
+        }
         
         logger.debug("Reloaded history with \(items.count) items")
     }
