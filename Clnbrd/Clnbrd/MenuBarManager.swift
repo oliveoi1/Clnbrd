@@ -42,6 +42,11 @@ class MenuBarManager {
         historyItem.target = self
         menu.addItem(historyItem)
         
+        let screenshotItem = NSMenuItem(title: "Capture Screenshot (⌘⌥C)", action: #selector(captureScreenshotToHistory), keyEquivalent: "")
+        screenshotItem.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Capture screenshot")
+        screenshotItem.target = self
+        menu.addItem(screenshotItem)
+        
         menu.addItem(NSMenuItem.separator())
         
         let autoCleanItem = NSMenuItem(title: "Auto-clean on Copy", action: #selector(toggleAutoClean), keyEquivalent: "")

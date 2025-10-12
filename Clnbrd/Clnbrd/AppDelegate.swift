@@ -433,6 +433,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
+    
+    func openSettingsToTab(_ tabIndex: Int) {
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindow(cleaningRules: clipboardManager.cleaningRules)
+        }
+        
+        settingsWindowController?.selectTab(tabIndex)
+        settingsWindowController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
     func toggleAutoCleanRequested() {
         autoCleanEnabled.toggle()
         preferencesManager.saveAutoCleanEnabled(autoCleanEnabled)

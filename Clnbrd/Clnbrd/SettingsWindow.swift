@@ -68,6 +68,12 @@ class SettingsWindow: NSWindowController {
         showWindow(nil)
     }
     
+    /// Select a specific tab by index
+    func selectTab(_ tabIndex: Int) {
+        guard tabIndex >= 0 && tabIndex < mainTabView.numberOfTabViewItems else { return }
+        mainTabView.selectTabViewItem(at: tabIndex)
+    }
+    
     private func scrollToTop() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             guard let self = self, let scrollView = self.scrollView else { return }

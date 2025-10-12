@@ -105,6 +105,17 @@ class ClipboardHistoryWindow: NSPanel {
         titleLabel.isEditable = false
         headerView.addSubview(titleLabel)
         
+        // Settings gear icon in top right
+        let settingsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 76, y: 6, width: 28, height: 24))
+        settingsButton.bezelStyle = .rounded
+        settingsButton.image = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: "Settings")
+        settingsButton.contentTintColor = .white
+        settingsButton.isBordered = false
+        settingsButton.target = self
+        settingsButton.action = #selector(openHistorySettings)
+        settingsButton.autoresizingMask = [.minXMargin]
+        headerView.addSubview(settingsButton)
+        
         // Options button (three dots) in top right - like screenshot preview
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
         optionsButton.bezelStyle = .rounded
@@ -660,6 +671,19 @@ class ClipboardHistoryWindow: NSPanel {
         ClipboardHistoryManager.shared.clearHistory()
         reloadHistoryItems()
         logger.info("History cleared from menu")
+    }
+    
+    @objc private func openHistorySettings() {
+        // Close the history window first
+        closeWindow()
+        
+        // Open settings to History tab (tab index 2)
+        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+            appDelegate.openSettingsToTab(2)
+        }
+        
+        logger.info("Opening History settings from strip")
+        AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
     }
     
     private func closeWindow() {
