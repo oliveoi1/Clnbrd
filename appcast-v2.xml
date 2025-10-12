@@ -7,9 +7,9 @@
         <language>en</language> <!-- Updated $(date) -->
         
         <item>
-            <title>⚠️ Version 1.4.0-beta.1 (Build 53) - BETA RELEASE</title>
+            <title>⚠️ Version 1.4.0-beta.1 (Build 54) - BETA RELEASE</title>
             <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.1</link>
-            <sparkle:version>53</sparkle:version>
+            <sparkle:version>54</sparkle:version>
             <sparkle:shortVersionString>1.4.0-beta.1</sparkle:shortVersionString>
             <description><![CDATA[
                 <h2>⚠️ BETA RELEASE - Clipboard History Feature</h2>
@@ -17,43 +17,51 @@
                 <p><strong style="color: orange;">This is a BETA release for testing the new clipboard history feature. 
                 Build 52 (v1.3) remains the stable release. You can roll back to Build 52 if needed.</strong></p>
                 
-                <h3>🆕 New Features - Clipboard History</h3>
+                <h3>🔧 Build 54 Updates</h3>
+                <ul>
+                    <li><strong>Fixed "Check for Updates" button</strong> - Now works correctly from About window</li>
+                    <li><strong>Updated "What's New" dialog</strong> - Accurate feature list for v1.4.0-beta.1</li>
+                    <li><strong>Improved update handling</strong> - Better compatibility with SwiftUI app delegate</li>
+                </ul>
+                
+                <h3>🆕 Clipboard History Features</h3>
                 <ul>
                     <li><strong>Clipboard History Strip</strong> - macOS-style floating panel at top of screen</li>
-                    <li><strong>⌘⇧H Hotkey</strong> - Show/hide clipboard history instantly</li>
+                    <li><strong>⌘⇧V Hotkey</strong> - Show/hide clipboard history instantly</li>
                     <li><strong>Formatted Text Support</strong> - Preserves RTF, HTML, bold, colors, fonts</li>
                     <li><strong>Image Support</strong> - Store and view images from clipboard</li>
                     <li><strong>⌘⌥C Screenshot Capture</strong> - Capture selected area directly to history</li>
-                    <li><strong>Search & Filter</strong> - Real-time search and filter by source app</li>
+                    <li><strong>Search & Filter</strong> - Real-time search and multi-select app filtering</li>
                     <li><strong>App Icons</strong> - See which app you copied from</li>
                     <li><strong>Encrypted Persistence</strong> - History saved securely between app restarts</li>
-                    <li><strong>Image Export</strong> - Save images to Desktop, Downloads, or custom location</li>
+                    <li><strong>Image Export</strong> - Save images as PNG, JPEG, or TIFF</li>
                     <li><strong>Smart Storage Management</strong> - Auto-cleanup with configurable limits</li>
                     <li><strong>Privacy Controls</strong> - Exclude password managers and sensitive apps</li>
                 </ul>
                 
-                <h3>⚙️ Settings</h3>
+                <h3>⚙️ Enhanced Settings</h3>
                 <ul>
+                    <li>Redesigned Settings tab with list-based app exclusions</li>
                     <li>Retention periods: 1 Day, 3 Days (default), 1 Week, 1 Month, Forever</li>
                     <li>Maximum items: 10 to 200</li>
-                    <li>Image compression settings</li>
-                    <li>Storage limits with auto-cleanup</li>
-                    <li>App exclusion list for privacy</li>
+                    <li>Image compression and export format settings</li>
+                    <li>Storage limits with usage statistics</li>
+                    <li>One-click "Clear Clipboard History" in menu bar</li>
                 </ul>
                 
                 <h3>🎨 UI Enhancements</h3>
                 <ul>
                     <li>Smooth fade-in/fade-out animations</li>
-                    <li>Keyboard navigation (arrow keys, Enter)</li>
-                    <li>Enhanced empty states with icons</li>
-                    <li>Performance optimizations (icon caching, 50-item display limit)</li>
-                    <li>Tooltips for better UX</li>
+                    <li>Keyboard navigation (arrow keys, Enter, ⌘F for search)</li>
+                    <li>Context-aware empty states with icons</li>
+                    <li>Performance optimizations (icon caching, efficient rendering)</li>
+                    <li>Settings gear icon in history strip</li>
                 </ul>
                 
                 <h3>⚠️ Beta Testing Notes</h3>
                 <ul>
                     <li>Please report any issues or bugs</li>
-                    <li>You can roll back to Build 52 (stable) at any time</li>
+                    <li>You can roll back to Build 52 (stable) at any time using "Revert to Stable Release"</li>
                     <li>History data is encrypted but stored locally</li>
                 </ul>
                 
@@ -64,12 +72,12 @@
                     <li>Compatible with macOS 15.5+</li>
                 </ul>
             ]]></description>
-            <pubDate>Sat, 12 Oct 2025 20:30:00 +0000</pubDate>
+            <pubDate>Sun, 13 Oct 2025 06:00:00 +0000</pubDate>
             <enclosure 
-                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.1/Clnbrd-v1.4.0-beta.1-Build53-notarized-stapled.zip" 
-                sparkle:version="53" 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.1/Clnbrd-v1.4.0-beta.1-Build54.dmg" 
+                sparkle:version="54" 
                 sparkle:shortVersionString="1.4.0-beta.1" 
-                length="2037123"
+                length="2508691"
                 type="application/octet-stream"
             />
         </item>

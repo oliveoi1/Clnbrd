@@ -421,9 +421,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    func checkForUpdatesRequested() {
-        // Use Sparkle's updater to check for updates
-        updaterController.updater.checkForUpdates()
+    @objc func checkForUpdatesRequested() {
+        logger.info("🔄 Check for updates requested")
+        
+        // Ensure we're on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Bring app to foreground first
+            NSApp.activate(ignoringOtherApps: true)
+            
+            // Use Sparkle's updater to check for updates
+            logger.info("🔄 Calling Sparkle checkForUpdates on updaterController: \(self.updaterController)")
+            self.updaterController.checkForUpdates(nil)
+            
+            logger.info("🔄 Sparkle checkForUpdates called successfully")
+        }
     }
     func openSettingsRequested() {
         if settingsWindowController == nil {
@@ -434,7 +447,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
     
-    @objc func openSettingsToTab(_ tabIndex: Int) {
+    @objc func openSettingsToTab(_ tabIndexNumber: NSNumber) {
+        let tabIndex = tabIndexNumber.intValue
         logger.info("📂 Opening settings to tab \(tabIndex)")
         
         if settingsWindowController == nil {

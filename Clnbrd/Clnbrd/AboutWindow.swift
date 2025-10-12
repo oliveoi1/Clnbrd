@@ -36,6 +36,7 @@ class AboutWindow: NSWindowController {
     
     // MARK: - UI Setup
     
+    // swiftlint:disable:next function_body_length
     private func setupUI() {
         guard let window = window else { return }
         
@@ -83,6 +84,12 @@ class AboutWindow: NSWindowController {
         
         mainStack.addArrangedSubview(centeredStack)
         
+        // Update buttons stack
+        let updateButtonsStack = NSStackView()
+        updateButtonsStack.orientation = .vertical
+        updateButtonsStack.spacing = 8
+        updateButtonsStack.alignment = .centerX
+        
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
         updateButton.bezelStyle = .rounded
@@ -90,7 +97,24 @@ class AboutWindow: NSWindowController {
         NSLayoutConstraint.activate([
             updateButton.widthAnchor.constraint(equalToConstant: 200)
         ])
-        mainStack.addArrangedSubview(updateButton)
+        updateButtonsStack.addArrangedSubview(updateButton)
+        
+        // Revert to Stable button (only show if on beta)
+        logger.info("Current version: \(VersionManager.version)")
+        if VersionManager.version.contains("beta") {
+            logger.info("Beta detected - showing Revert to Stable button")
+            let revertButton = NSButton(title: "Revert to Stable Release", target: self, action: #selector(revertToStable))
+            revertButton.bezelStyle = .rounded
+            revertButton.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                revertButton.widthAnchor.constraint(equalToConstant: 200)
+            ])
+            updateButtonsStack.addArrangedSubview(revertButton)
+        } else {
+            logger.info("Not a beta version - Revert button hidden")
+        }
+        
+        mainStack.addArrangedSubview(updateButtonsStack)
         
         // Separator
         let separator1 = createSeparator()
@@ -125,6 +149,13 @@ class AboutWindow: NSWindowController {
         // Bottom buttons
         let buttonStack = createBottomButtons()
         mainStack.addArrangedSubview(buttonStack)
+        
+        // Copyright label
+        let copyrightLabel = NSTextField(labelWithString: "© 2025 Olive Design Studios")
+        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
+        copyrightLabel.textColor = .tertiaryLabelColor
+        copyrightLabel.alignment = .center
+        mainStack.addArrangedSubview(copyrightLabel)
         
         // Constraints for main stack
         NSLayoutConstraint.activate([
@@ -228,6 +259,49 @@ class AboutWindow: NSWindowController {
         
         if let appDelegate = NSApp.delegate as? AppDelegate {
             appDelegate.checkForUpdatesRequested()
+        } else {
+            // Fallback using Objective-C runtime (needed when SwiftUI wraps the delegate)
+            if let delegate = NSApp.delegate {
+                let selector = #selector(AppDelegate.checkForUpdatesRequested)
+                if delegate.responds(to: selector) {
+                    delegate.perform(selector)
+                }
+            }
+        }
+    }
+    
+    @objc private func revertToStable() {
+        logger.info("Revert to Stable clicked from About window")
+        SentryManager.shared.trackUserAction("about_revert_to_stable")
+        
+        let alert = NSAlert()
+        alert.messageText = "Revert to Stable Release?"
+        alert.informativeText = """
+        This will download and install the latest stable version of Clnbrd (v1.3, Build 52).
+        
+        You can switch back to the beta at any time by checking for updates again.
+        
+        Would you like to continue?
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Revert to Stable")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Trigger update check - Sparkle will offer Build 52 as it has allowsDowngrades
+            logger.info("Triggering update check to revert to stable...")
+            if let appDelegate = NSApp.delegate as? AppDelegate {
+                appDelegate.checkForUpdatesRequested()
+            } else {
+                // Fallback using Objective-C runtime (needed when SwiftUI wraps the delegate)
+                if let delegate = NSApp.delegate {
+                    let selector = #selector(AppDelegate.checkForUpdatesRequested)
+                    if delegate.responds(to: selector) {
+                        delegate.perform(selector)
+                    }
+                }
+            }
         }
     }
     

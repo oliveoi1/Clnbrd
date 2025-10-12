@@ -17,6 +17,8 @@ class SettingsWindow: NSWindowController {
     var currentProfileId: UUID?
     var scrollView: NSScrollView!
     var mainTabView: NSTabView!
+    var appExclusionsTableView: NSTableView!
+    var appExclusionsData: [String] = []
     
     init(cleaningRules: CleaningRules) {
         // Load active profile
@@ -111,11 +113,11 @@ class SettingsWindow: NSWindowController {
         rulesTab.view = createGeneralTab()
         mainTabView.addTabViewItem(rulesTab)
         
-        // Tab 2: History
-        let historyTab = NSTabViewItem(identifier: "history")
-        historyTab.label = "History"
-        historyTab.view = createHistoryTab()
-        mainTabView.addTabViewItem(historyTab)
+        // Tab 2: Settings (formerly History)
+        let settingsTab = NSTabViewItem(identifier: "settings")
+        settingsTab.label = "Settings"
+        settingsTab.view = createHistoryTab()
+        mainTabView.addTabViewItem(settingsTab)
         
         // Tab 3: About
         let aboutTab = NSTabViewItem(identifier: "about")
@@ -222,7 +224,7 @@ class SettingsWindow: NSWindowController {
         scrollView.documentView = contentView
         
         // Header
-        let headerLabel = NSTextField(labelWithString: "Clipboard History")
+        let headerLabel = NSTextField(labelWithString: "Clipboard Settings")
         headerLabel.font = NSFont.systemFont(ofSize: 18, weight: .bold)
         stackView.addArrangedSubview(headerLabel)
         
@@ -241,32 +243,84 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
-        // Retention Period Section
-        let retentionLabel = NSTextField(labelWithString: "Delete History After:")
-        retentionLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        stackView.addArrangedSubview(retentionLabel)
+        // MARK: - App Exclusions Section (at top)
+        let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
+        exclusionsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        stackView.addArrangedSubview(exclusionsHeader)
         
-        let retentionPopup = NSPopUpButton()
-        retentionPopup.autoenablesItems = false
-        for period in ClipboardHistoryManager.RetentionPeriod.allCases {
-            retentionPopup.addItem(withTitle: period.rawValue)
-        }
-        retentionPopup.selectItem(withTitle: ClipboardHistoryManager.shared.retentionPeriod.rawValue)
-        retentionPopup.target = self
-        retentionPopup.action = #selector(retentionPeriodChanged(_:))
-        stackView.addArrangedSubview(retentionPopup)
+        let exclusionsDesc = NSTextField(labelWithString: "Prevent capturing clipboard from sensitive apps (e.g., password managers)")
+        exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
+        exclusionsDesc.textColor = .secondaryLabelColor
+        exclusionsDesc.lineBreakMode = .byWordWrapping
+        exclusionsDesc.maximumNumberOfLines = 2
+        exclusionsDesc.preferredMaxLayoutWidth = 480
+        stackView.addArrangedSubview(exclusionsDesc)
         
-        let retentionHint = NSTextField(labelWithString: "Older items are automatically removed based on this setting")
-        retentionHint.font = NSFont.systemFont(ofSize: 10)
-        retentionHint.textColor = .tertiaryLabelColor
-        stackView.addArrangedSubview(retentionHint)
+        // Table View for excluded apps
+        appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+        
+        let tableScrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 480, height: 150))
+        tableScrollView.hasVerticalScroller = true
+        tableScrollView.borderType = .bezelBorder
+        tableScrollView.autohidesScrollers = true
+        tableScrollView.translatesAutoresizingMaskIntoConstraints = false
+        
+        appExclusionsTableView = NSTableView(frame: tableScrollView.bounds)
+        appExclusionsTableView.dataSource = self
+        appExclusionsTableView.delegate = self
+        appExclusionsTableView.headerView = nil
+        appExclusionsTableView.allowsEmptySelection = true
+        appExclusionsTableView.allowsMultipleSelection = false
+        appExclusionsTableView.usesAlternatingRowBackgroundColors = true
+        appExclusionsTableView.rowSizeStyle = .medium
+        
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("appName"))
+        column.title = "App Name"
+        column.width = 460
+        appExclusionsTableView.addTableColumn(column)
+        
+        tableScrollView.documentView = appExclusionsTableView
+        tableScrollView.heightAnchor.constraint(equalToConstant: 150).isActive = true
+        tableScrollView.widthAnchor.constraint(equalToConstant: 480).isActive = true
+        
+        stackView.addArrangedSubview(tableScrollView)
+        
+        // Buttons for managing exclusions
+        let exclusionsButtonStack = NSStackView()
+        exclusionsButtonStack.orientation = .horizontal
+        exclusionsButtonStack.spacing = 8
+        
+        let addExclusionButton = NSButton(title: "Add App...", target: self, action: #selector(addExcludedApp))
+        addExclusionButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(addExclusionButton)
+        
+        let removeExclusionButton = NSButton(title: "Remove App", target: self, action: #selector(removeExcludedApp))
+        removeExclusionButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(removeExclusionButton)
+        
+        let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
+        resetExclusionsButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(resetExclusionsButton)
+        
+        stackView.addArrangedSubview(exclusionsButtonStack)
         
         stackView.addArrangedSubview(createSeparatorLine())
         
-        // Max Items Section
-        let maxItemsLabel = NSTextField(labelWithString: "Maximum Items:")
-        maxItemsLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        stackView.addArrangedSubview(maxItemsLabel)
+        // MARK: - History Section (all in one row)
+        let historySectionLabel = NSTextField(labelWithString: "History")
+        historySectionLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        stackView.addArrangedSubview(historySectionLabel)
+        
+        let historyControlStack = NSStackView()
+        historyControlStack.orientation = .horizontal
+        historyControlStack.spacing = 12
+        historyControlStack.alignment = .centerY
+        
+        // Max Items
+        let maxItemsLabel = NSTextField(labelWithString: "Maximum items:")
+        maxItemsLabel.font = NSFont.systemFont(ofSize: 13)
+        maxItemsLabel.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(maxItemsLabel)
         
         let maxItemsPopup = NSPopUpButton()
         maxItemsPopup.autoenablesItems = false
@@ -281,53 +335,48 @@ class SettingsWindow: NSWindowController {
         }
         maxItemsPopup.target = self
         maxItemsPopup.action = #selector(maxItemsChanged(_:))
-        stackView.addArrangedSubview(maxItemsPopup)
+        maxItemsPopup.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(maxItemsPopup)
         
-        stackView.addArrangedSubview(createSeparatorLine())
+        // Small spacer
+        let spacer1 = NSView()
+        spacer1.widthAnchor.constraint(equalToConstant: 8).isActive = true
+        spacer1.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(spacer1)
         
-        // Current Stats
-        let statsLabel = NSTextField(labelWithString: "Current Statistics:")
-        statsLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        stackView.addArrangedSubview(statsLabel)
+        // Retention Period
+        let retentionLabel = NSTextField(labelWithString: "Delete after:")
+        retentionLabel.font = NSFont.systemFont(ofSize: 13)
+        retentionLabel.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(retentionLabel)
         
-        let statsStack = NSStackView()
-        statsStack.orientation = .vertical
-        statsStack.alignment = .leading
-        statsStack.spacing = 4
-        
-        let totalItemsLabel = NSTextField(labelWithString: "Total items: \(ClipboardHistoryManager.shared.totalItems)")
-        totalItemsLabel.font = NSFont.systemFont(ofSize: 11)
-        totalItemsLabel.textColor = .secondaryLabelColor
-        statsStack.addArrangedSubview(totalItemsLabel)
-        
-        let pinnedItemsLabel = NSTextField(labelWithString: "Pinned items: \(ClipboardHistoryManager.shared.pinnedItemsCount)")
-        pinnedItemsLabel.font = NSFont.systemFont(ofSize: 11)
-        pinnedItemsLabel.textColor = .secondaryLabelColor
-        statsStack.addArrangedSubview(pinnedItemsLabel)
-        
-        if let oldestDate = ClipboardHistoryManager.shared.oldestItemDate {
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .full
-            let oldestText = formatter.localizedString(for: oldestDate, relativeTo: Date())
-            let oldestLabel = NSTextField(labelWithString: "Oldest item: \(oldestText)")
-            oldestLabel.font = NSFont.systemFont(ofSize: 11)
-            oldestLabel.textColor = .secondaryLabelColor
-            statsStack.addArrangedSubview(oldestLabel)
+        let retentionPopup = NSPopUpButton()
+        retentionPopup.autoenablesItems = false
+        for period in ClipboardHistoryManager.RetentionPeriod.allCases {
+            retentionPopup.addItem(withTitle: period.rawValue)
         }
+        retentionPopup.selectItem(withTitle: ClipboardHistoryManager.shared.retentionPeriod.rawValue)
+        retentionPopup.target = self
+        retentionPopup.action = #selector(retentionPeriodChanged(_:))
+        retentionPopup.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(retentionPopup)
         
-        // Storage usage
-        let storageText = ClipboardHistoryManager.shared.totalStorageSizeFormatted
-        let maxStorageText = ClipboardHistoryManager.shared.formatBytes(ClipboardHistoryManager.shared.maxStorageSize)
-        let storageLabel = NSTextField(labelWithString: "Storage: \(storageText) / \(maxStorageText)")
-        storageLabel.font = NSFont.systemFont(ofSize: 11)
-        storageLabel.textColor = .secondaryLabelColor
-        statsStack.addArrangedSubview(storageLabel)
+        // Flexible spacer
+        let spacer2 = NSView()
+        spacer2.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        historyControlStack.addArrangedSubview(spacer2)
         
-        stackView.addArrangedSubview(statsStack)
+        // Clear Button
+        let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
+        clearButton.bezelStyle = .rounded
+        clearButton.setContentHuggingPriority(.required, for: .horizontal)
+        historyControlStack.addArrangedSubview(clearButton)
+        
+        stackView.addArrangedSubview(historyControlStack)
         
         stackView.addArrangedSubview(createSeparatorLine())
         
-        // Image Compression Settings
+        // MARK: - Image Compression Section
         let compressionHeader = NSTextField(labelWithString: "Image Compression")
         compressionHeader.font = NSFont.boldSystemFont(ofSize: 13)
         stackView.addArrangedSubview(compressionHeader)
@@ -498,62 +547,40 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
-        // App Exclusions Section
-        let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
-        exclusionsHeader.font = NSFont.boldSystemFont(ofSize: 13)
-        stackView.addArrangedSubview(exclusionsHeader)
+        // MARK: - Statistics Section (at bottom)
+        let statsLabel = NSTextField(labelWithString: "Statistics")
+        statsLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        stackView.addArrangedSubview(statsLabel)
         
-        let exclusionsDesc = NSTextField(labelWithString: "Prevent capturing clipboard from sensitive apps (e.g., password managers)")
-        exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
-        exclusionsDesc.textColor = .secondaryLabelColor
-        exclusionsDesc.lineBreakMode = .byWordWrapping
-        exclusionsDesc.maximumNumberOfLines = 2
-        exclusionsDesc.preferredMaxLayoutWidth = 480
-        stackView.addArrangedSubview(exclusionsDesc)
+        let statsStack = NSStackView()
+        statsStack.orientation = .vertical
+        statsStack.alignment = .leading
+        statsStack.spacing = 4
         
-        // List of excluded apps
-        let excludedAppsList = NSTextField(wrappingLabelWithString: ClipboardHistoryManager.shared.excludedApps.sorted().joined(separator: ", "))
-        excludedAppsList.font = NSFont.systemFont(ofSize: 11)
-        excludedAppsList.textColor = .labelColor
-        excludedAppsList.lineBreakMode = .byWordWrapping
-        excludedAppsList.preferredMaxLayoutWidth = 480
-        excludedAppsList.backgroundColor = NSColor.textBackgroundColor
-        excludedAppsList.isBordered = true
-        excludedAppsList.isEditable = false
-        excludedAppsList.isSelectable = true
-        stackView.addArrangedSubview(excludedAppsList)
+        let totalItemsLabel = NSTextField(labelWithString: "Total items: \(ClipboardHistoryManager.shared.totalItems)")
+        totalItemsLabel.font = NSFont.systemFont(ofSize: 11)
+        totalItemsLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(totalItemsLabel)
         
-        // Buttons for managing exclusions
-        let exclusionsButtonStack = NSStackView()
-        exclusionsButtonStack.orientation = .horizontal
-        exclusionsButtonStack.spacing = 8
+        if let oldestDate = ClipboardHistoryManager.shared.oldestItemDate {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            let oldestText = formatter.localizedString(for: oldestDate, relativeTo: Date())
+            let oldestLabel = NSTextField(labelWithString: "Oldest item: \(oldestText)")
+            oldestLabel.font = NSFont.systemFont(ofSize: 11)
+            oldestLabel.textColor = .secondaryLabelColor
+            statsStack.addArrangedSubview(oldestLabel)
+        }
         
-        let addExclusionButton = NSButton(title: "Add App...", target: self, action: #selector(addExcludedApp))
-        addExclusionButton.bezelStyle = .rounded
-        exclusionsButtonStack.addArrangedSubview(addExclusionButton)
+        // Storage usage
+        let storageText = ClipboardHistoryManager.shared.totalStorageSizeFormatted
+        let maxStorageText = ClipboardHistoryManager.shared.formatBytes(ClipboardHistoryManager.shared.maxStorageSize)
+        let storageLabel = NSTextField(labelWithString: "Storage: \(storageText) / \(maxStorageText)")
+        storageLabel.font = NSFont.systemFont(ofSize: 11)
+        storageLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(storageLabel)
         
-        let removeExclusionButton = NSButton(title: "Remove App...", target: self, action: #selector(removeExcludedApp))
-        removeExclusionButton.bezelStyle = .rounded
-        exclusionsButtonStack.addArrangedSubview(removeExclusionButton)
-        
-        let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
-        resetExclusionsButton.bezelStyle = .rounded
-        exclusionsButtonStack.addArrangedSubview(resetExclusionsButton)
-        
-        stackView.addArrangedSubview(exclusionsButtonStack)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // Clear History Button
-        let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
-        clearButton.bezelStyle = .rounded
-        clearButton.keyEquivalent = ""
-        stackView.addArrangedSubview(clearButton)
-        
-        let clearHint = NSTextField(labelWithString: "This will delete all non-pinned items")
-        clearHint.font = NSFont.systemFont(ofSize: 10)
-        clearHint.textColor = .tertiaryLabelColor
-        stackView.addArrangedSubview(clearHint)
+        stackView.addArrangedSubview(statsStack)
         
         // Spacer
         let spacer = NSView()
@@ -679,17 +706,17 @@ class SettingsWindow: NSWindowController {
                 ClipboardHistoryManager.shared.excludedApps.insert(appName)
                 logger.info("Added excluded app: \(appName)")
                 
-                // Refresh the settings window to show the updated list
-                let historyTab = self.mainTabView.tabViewItem(at: 2)
-                historyTab.view = createHistoryTab()
+                // Refresh table view
+                appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+                appExclusionsTableView.reloadData()
             }
         }
     }
     
     @objc private func removeExcludedApp() {
-        let excludedApps = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+        let selectedRow = appExclusionsTableView.selectedRow
         
-        if excludedApps.isEmpty {
+        if appExclusionsData.isEmpty {
             let alert = NSAlert()
             alert.messageText = "No Excluded Apps"
             alert.informativeText = "There are no apps in the exclusion list."
@@ -699,24 +726,32 @@ class SettingsWindow: NSWindowController {
             return
         }
         
+        if selectedRow < 0 {
+            let alert = NSAlert()
+            alert.messageText = "No App Selected"
+            alert.informativeText = "Please select an app from the list to remove."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+        
+        let appName = appExclusionsData[selectedRow]
+        
         let alert = NSAlert()
-        alert.messageText = "Remove Excluded App"
-        alert.informativeText = "Select an app to remove from the exclusion list:"
+        alert.messageText = "Remove App?"
+        alert.informativeText = "Remove \"\(appName)\" from the exclusion list?"
+        alert.alertStyle = .warning
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
         
-        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 24), pullsDown: false)
-        popup.addItems(withTitles: excludedApps)
-        alert.accessoryView = popup
-        
-        if alert.runModal() == .alertFirstButtonReturn,
-           let selectedApp = popup.selectedItem?.title {
-            ClipboardHistoryManager.shared.excludedApps.remove(selectedApp)
-            logger.info("Removed excluded app: \(selectedApp)")
+        if alert.runModal() == .alertFirstButtonReturn {
+            ClipboardHistoryManager.shared.excludedApps.remove(appName)
+            logger.info("Removed excluded app: \(appName)")
             
-            // Refresh the settings window to show the updated list
-            let historyTab = self.mainTabView.tabViewItem(at: 2)
-            historyTab.view = createHistoryTab()
+            // Refresh table view
+            appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+            appExclusionsTableView.reloadData()
         }
     }
     
@@ -739,9 +774,9 @@ class SettingsWindow: NSWindowController {
             ])
             logger.info("Reset excluded apps to defaults")
             
-            // Refresh the settings window to show the updated list
-            let historyTab = self.mainTabView.tabViewItem(at: 2)
-            historyTab.view = createHistoryTab()
+            // Refresh table view
+            appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+            appExclusionsTableView.reloadData()
         }
     }
     
@@ -859,6 +894,12 @@ class SettingsWindow: NSWindowController {
         
         rightStack.addArrangedSubview(createSpacer(height: 8))
         
+        // Update buttons stack
+        let updateButtonsStack = NSStackView()
+        updateButtonsStack.orientation = .vertical
+        updateButtonsStack.spacing = 8
+        updateButtonsStack.alignment = .leading
+        
         // Horizontal stack for button + checkbox on same line
         let updateStack = NSStackView()
         updateStack.orientation = .horizontal
@@ -875,10 +916,19 @@ class SettingsWindow: NSWindowController {
         autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
         updateStack.addArrangedSubview(autoUpdateCheckbox)
         
-        rightStack.addArrangedSubview(updateStack)
+        updateButtonsStack.addArrangedSubview(updateStack)
+        
+        // Revert to Stable button (only show if on beta)
+        if VersionManager.version.contains("beta") {
+            let revertButton = NSButton(title: "Revert to Stable Release", target: self, action: #selector(revertToStable))
+            revertButton.bezelStyle = .rounded
+            updateButtonsStack.addArrangedSubview(revertButton)
+        }
+        
+        rightStack.addArrangedSubview(updateButtonsStack)
         
         // Copyright (very light grey) - aligned with app name
-        let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2020 All Rights Reserved.")
+        let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2025 All Rights Reserved.")
         copyrightLabel.font = NSFont.systemFont(ofSize: 10)
         copyrightLabel.textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.6)
         copyrightLabel.alignment = .left
@@ -1438,8 +1488,59 @@ class SettingsWindow: NSWindowController {
         logger.info("Check for updates clicked from Settings About tab")
         SentryManager.shared.trackUserAction("settings_check_updates")
         
+        logger.info("NSApp.delegate type: \(type(of: NSApp.delegate))")
+        
         if let appDelegate = NSApp.delegate as? AppDelegate {
+            logger.info("✅ Successfully cast to AppDelegate, calling checkForUpdatesRequested")
             appDelegate.checkForUpdatesRequested()
+        } else {
+            logger.error("❌ Failed to cast NSApp.delegate to AppDelegate")
+            
+            // Try using Objective-C runtime as fallback
+            if let delegate = NSApp.delegate {
+                let selector = #selector(AppDelegate.checkForUpdatesRequested)
+                if delegate.responds(to: selector) {
+                    logger.info("✅ Delegate responds to checkForUpdatesRequested, calling via performSelector")
+                    delegate.perform(selector)
+                } else {
+                    logger.error("❌ Delegate doesn't respond to checkForUpdatesRequested selector")
+                }
+            }
+        }
+    }
+    
+    @objc func revertToStable() {
+        logger.info("Revert to Stable clicked from Settings About tab")
+        SentryManager.shared.trackUserAction("settings_revert_to_stable")
+        
+        let alert = NSAlert()
+        alert.messageText = "Revert to Stable Release?"
+        alert.informativeText = """
+        This will download and install the latest stable version of Clnbrd (v1.3, Build 52).
+        
+        You can switch back to the beta at any time by checking for updates again.
+        
+        Would you like to continue?
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Revert to Stable")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Trigger update check - Sparkle will offer Build 52 as it has allowsDowngrades
+            logger.info("Triggering update check to revert to stable...")
+            if let appDelegate = NSApp.delegate as? AppDelegate {
+                appDelegate.checkForUpdatesRequested()
+            } else {
+                // Fallback using Objective-C runtime (needed when SwiftUI wraps the delegate)
+                if let delegate = NSApp.delegate {
+                    let selector = #selector(AppDelegate.checkForUpdatesRequested)
+                    if delegate.responds(to: selector) {
+                        delegate.perform(selector)
+                    }
+                }
+            }
         }
     }
     
@@ -1487,22 +1588,37 @@ class SettingsWindow: NSWindowController {
         SentryManager.shared.trackUserAction("settings_whats_new")
         
         let alert = NSAlert()
-        alert.messageText = "New in Clnbrd X"
+        alert.messageText = "What's New in Clnbrd"
         alert.informativeText = """
         \(VersionManager.fullVersion)
         
-        — Automatic "Move to Applications" prompt
-        — Simplified menu bar interface
-        — Tabbed Settings window (Rules and About)
-        — Improved user experience with streamlined settings
-        — Better window resizing and layout
+        🎉 NEW: Clipboard History Manager
+        — Store up to 100 clipboard items (text & images)
+        — Quick access strip with ⌘⇧V hotkey
+        — Search and filter by app or content
+        — Screenshot capture with ⌘⌥C
+        — Encrypted local storage for privacy
+        — Image export (PNG, JPEG, TIFF)
+        — Smart retention policies
+        — Usage statistics
         
-        \(VersionManager.version) (Build 50)
+        ⚙️ Enhanced Settings
+        — Redesigned Settings tab with list-based exclusions
+        — Consolidated history options
+        — New image compression & export settings
+        — Improved layout and navigation
+        
+        🔄 Beta Release Features
+        — Check for updates from About window
+        — Roll back to stable release option
+        — Enhanced update notifications
+        
+        v1.3 (Build 52)
         
         — Fully notarized for macOS Sequoia
-        — Fixed notarization issues with clean-room build process
+        — Automatic "Move to Applications" prompt
+        — Simplified menu bar interface
         — No security warnings on macOS 15.0+
-        — Enhanced auto-update system
         
         For full changelog, visit our website.
         """
@@ -1510,7 +1626,7 @@ class SettingsWindow: NSWindowController {
         
         // Add checkbox for "Show changelog after each update"
         let checkbox = NSButton(checkboxWithTitle: "Show the changelog after each update", target: nil, action: nil)
-        checkbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
+        checkbox.state = UserDefaults.standard.bool(forKey: "ShowChangelogAfterUpdate") ? .on : .off
         alert.accessoryView = checkbox
         
         alert.addButton(withTitle: "Close")
@@ -2011,6 +2127,43 @@ extension SettingsWindow: NSTextFieldDelegate {
 
 // MARK: - NSWindowDelegate
 
+// MARK: - NSTableView DataSource & Delegate
+extension SettingsWindow: NSTableViewDataSource, NSTableViewDelegate {
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        return appExclusionsData.count
+    }
+    
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let identifier = NSUserInterfaceItemIdentifier("AppNameCell")
+        
+        var cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
+        
+        if cell == nil {
+            cell = NSTableCellView()
+            cell?.identifier = identifier
+            
+            let textField = NSTextField()
+            textField.isBordered = false
+            textField.isEditable = false
+            textField.backgroundColor = .clear
+            textField.translatesAutoresizingMaskIntoConstraints = false
+            
+            cell?.addSubview(textField)
+            cell?.textField = textField
+            
+            NSLayoutConstraint.activate([
+                textField.leadingAnchor.constraint(equalTo: cell!.leadingAnchor, constant: 4),
+                textField.trailingAnchor.constraint(equalTo: cell!.trailingAnchor, constant: -4),
+                textField.centerYAnchor.constraint(equalTo: cell!.centerYAnchor)
+            ])
+        }
+        
+        cell?.textField?.stringValue = appExclusionsData[row]
+        
+        return cell
+    }
+}
+
 extension SettingsWindow: NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         // Window became active, scroll to top
@@ -2024,6 +2177,18 @@ extension SettingsWindow: NSTabViewDelegate {
         // Update window title based on selected tab
         guard let tabViewItem = tabViewItem, let window = window else { return }
         window.title = tabViewItem.label
+        
+        // Scroll to top when Settings tab is selected
+        if tabViewItem.identifier as? String == "settings" {
+            // Find the scroll view in the Settings tab
+            if let tabView = tabViewItem.view,
+               let scrollView = findScrollView(in: tabView) {
+                DispatchQueue.main.async {
+                    scrollView.documentView?.scroll(NSPoint(x: 0, y: scrollView.documentView?.bounds.height ?? 0))
+                    scrollView.reflectScrolledClipView(scrollView.contentView)
+                }
+            }
+        }
         
         // Adjust window size based on tab
         let currentFrame = window.frame
@@ -2046,6 +2211,19 @@ extension SettingsWindow: NSTabViewDelegate {
             
             window.setFrame(newFrame, display: true, animate: true)
         }
+    }
+    
+    // Helper to find scroll view in view hierarchy
+    private func findScrollView(in view: NSView) -> NSScrollView? {
+        if let scrollView = view as? NSScrollView {
+            return scrollView
+        }
+        for subview in view.subviews {
+            if let scrollView = findScrollView(in: subview) {
+                return scrollView
+            }
+        }
+        return nil
     }
 }
 // swiftlint:enable type_body_length
