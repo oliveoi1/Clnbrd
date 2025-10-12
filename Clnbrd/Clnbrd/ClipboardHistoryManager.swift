@@ -96,11 +96,15 @@ class ClipboardHistoryManager: ObservableObject {
         // Start cleanup timer (runs every hour)
         startCleanupTimer()
         
+        // Load persisted history from disk
+        loadHistoryFromDisk()
+        
         logger.info("""
             ClipboardHistoryManager initialized - \
             Enabled: \(self.isEnabled), \
             Retention: \(self.retentionPeriod.rawValue), \
-            Max: \(self.maxItems)
+            Max: \(self.maxItems), \
+            Loaded items: \(self.items.count)
             """)
     }
     
@@ -140,6 +144,9 @@ class ClipboardHistoryManager: ObservableObject {
         
         // Enforce limits
         enforceMaxItems()
+        
+        // Save to disk
+        saveHistoryToDisk()
         
         // Notify observers that history changed
         NotificationCenter.default.post(name: NSNotification.Name("ClipboardHistoryDidChange"), object: nil)
@@ -204,6 +211,9 @@ class ClipboardHistoryManager: ObservableObject {
         items.removeAll { !$0.isPinned }
         let removedCount = beforeCount - items.count
         
+        // Save to disk
+        saveHistoryToDisk()
+        
         logger.info("Cleared \(removedCount) non-pinned history items")
         trackHistoryEvent("history_cleared", metadata: ["count": "\(removedCount)"])
     }
@@ -212,6 +222,10 @@ class ClipboardHistoryManager: ObservableObject {
     func clearAllHistory() {
         let count = items.count
         items.removeAll()
+        
+        // Save to disk (empty array)
+        saveHistoryToDisk()
+        
         logger.info("Cleared all \(count) history items")
         trackHistoryEvent("history_all_cleared", metadata: ["count": "\(count)"])
     }
@@ -236,6 +250,10 @@ class ClipboardHistoryManager: ObservableObject {
     }
     
     private func cleanupExpiredItems() {
+        enforceRetentionPolicy()
+    }
+    
+    private func enforceRetentionPolicy() {
         guard isEnabled else { return }
         guard let maxAge = retentionPeriod.timeInterval else { return } // Forever = no cleanup
         guard maxAge > 0 else {
@@ -254,6 +272,9 @@ class ClipboardHistoryManager: ObservableObject {
         
         let removedCount = beforeCount - items.count
         if removedCount > 0 {
+            // Save to disk after cleanup
+            saveHistoryToDisk()
+            
             logger.info("Cleaned up \(removedCount) expired history items")
             trackHistoryEvent("items_expired", metadata: ["count": "\(removedCount)"])
         }
@@ -273,6 +294,9 @@ class ClipboardHistoryManager: ObservableObject {
         items = (pinnedItems + trimmedUnpinned).sorted()
         
         if removedCount > 0 {
+            // Save to disk after trimming
+            saveHistoryToDisk()
+            
             logger.info("Enforced max items limit: removed \(removedCount) oldest items")
             trackHistoryEvent("items_trimmed", metadata: ["count": "\(removedCount)"])
         }
@@ -299,5 +323,35 @@ class ClipboardHistoryManager: ObservableObject {
     
     var oldestItemDate: Date? {
         return items.last?.timestamp
+    }
+    
+    // MARK: - Persistence
+    
+    /// Load history from encrypted disk storage
+    private func loadHistoryFromDisk() {
+        do {
+            let loadedItems = try ClipboardHistoryStorage.shared.loadHistory()
+            self.items = loadedItems
+            
+            // Apply retention policy and limits to loaded data
+            enforceRetentionPolicy()
+            enforceMaxItems()
+            
+            logger.info("✅ Loaded \(loadedItems.count) items from disk")
+        } catch {
+            logger.error("❌ Failed to load history from disk: \(error.localizedDescription)")
+            // Start with empty history if load fails
+            self.items = []
+        }
+    }
+    
+    /// Save history to encrypted disk storage
+    private func saveHistoryToDisk() {
+        do {
+            try ClipboardHistoryStorage.shared.saveHistory(items)
+            logger.debug("💾 Saved \(items.count) items to disk")
+        } catch {
+            logger.error("❌ Failed to save history to disk: \(error.localizedDescription)")
+        }
     }
 }
