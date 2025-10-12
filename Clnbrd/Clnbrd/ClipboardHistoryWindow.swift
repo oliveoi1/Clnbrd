@@ -24,12 +24,15 @@ class ClipboardHistoryWindow: NSPanel {
     private var optionsButton: NSButton!
     
     init() {
-        // Create window at top of screen - FULL WIDTH, below menu bar
+        // Create window at top of screen - with padding for floating appearance
         let screenFrame = NSScreen.main?.visibleFrame ?? .zero // visibleFrame excludes menu bar
+        let horizontalPadding: CGFloat = 20 // Inset from screen edges for floating look
+        let topPadding: CGFloat = 12 // Space below menu bar
+        
         let windowFrame = NSRect(
-            x: screenFrame.origin.x,
-            y: screenFrame.maxY - windowHeight, // Just below menu bar
-            width: screenFrame.width, // FULL screen width
+            x: screenFrame.origin.x + horizontalPadding,
+            y: screenFrame.maxY - windowHeight - topPadding, // Just below menu bar with gap
+            width: screenFrame.width - (horizontalPadding * 2), // Inset from both sides
             height: windowHeight
         )
         
@@ -54,14 +57,24 @@ class ClipboardHistoryWindow: NSPanel {
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         self.hidesOnDeactivate = false
         self.isMovableByWindowBackground = false // Fixed at top
-        self.backgroundColor = NSColor.black.withAlphaComponent(0.85) // Dark translucent like screenshot preview
+        self.backgroundColor = .clear // Clear for visual effect view
         self.isOpaque = false
         self.hasShadow = true
         
-        // Rounded corners at bottom
-        self.contentView?.wantsLayer = true
-        self.contentView?.layer?.cornerRadius = 12
-        self.contentView?.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner] // Bottom corners only
+        // Add visual effect view for proper translucent grey background
+        guard let contentView = self.contentView else { return }
+        
+        let visualEffect = NSVisualEffectView(frame: contentView.bounds)
+        visualEffect.autoresizingMask = [.width, .height]
+        visualEffect.material = .hudWindow // Dark grey translucent material
+        visualEffect.state = .active
+        visualEffect.blendingMode = .behindWindow
+        visualEffect.wantsLayer = true
+        visualEffect.layer?.cornerRadius = 16 // Rounded on all sides for floating appearance
+        visualEffect.layer?.masksToBounds = true
+        
+        // Insert as bottom-most view
+        contentView.addSubview(visualEffect, positioned: .below, relativeTo: nil)
     }
     
     private func setupUI() {
@@ -80,8 +93,8 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Title label (center-aligned like screenshot preview)
         titleLabel = NSTextField(labelWithString: "Clipboard History")
-        titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        titleLabel.textColor = .white
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = .white // White text on dark grey HUD
         titleLabel.alignment = .center
         titleLabel.frame = NSRect(x: 0, y: 8, width: contentView.bounds.width, height: 20)
         titleLabel.autoresizingMask = [.width]
@@ -426,13 +439,16 @@ class ClipboardHistoryWindow: NSPanel {
         // Reload items before showing
         reloadHistoryItems()
         
-        // Position at top of current screen - FULL WIDTH, below menu bar
+        // Position at top of current screen - with padding for floating appearance
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame // visibleFrame excludes menu bar
+            let horizontalPadding: CGFloat = 20 // Inset from screen edges for floating look
+            let topPadding: CGFloat = 12 // Space below menu bar
+            
             let windowFrame = NSRect(
-                x: screenFrame.origin.x,
-                y: screenFrame.maxY - windowHeight, // Just below menu bar
-                width: screenFrame.width, // FULL screen width
+                x: screenFrame.origin.x + horizontalPadding,
+                y: screenFrame.maxY - windowHeight - topPadding, // Just below menu bar with gap
+                width: screenFrame.width - (horizontalPadding * 2), // Inset from both sides
                 height: windowHeight
             )
             self.setFrame(windowFrame, display: true)
