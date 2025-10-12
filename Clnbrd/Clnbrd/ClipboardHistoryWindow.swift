@@ -264,6 +264,13 @@ class ClipboardHistoryWindow: NSPanel {
         card.addGestureRecognizer(clickGesture)
         card.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
         
+        // Add right-click context menu for images
+        if item.contentType == .image || item.contentType == .mixed {
+            let rightClickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardRightClicked(_:)))
+            rightClickGesture.buttonMask = 0x2 // Right mouse button
+            card.addGestureRecognizer(rightClickGesture)
+        }
+        
         // Pin indicator (if pinned) - always in top-right corner
         if item.isPinned {
             let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 26, y: cardHeight - 26, width: 18, height: 18))
@@ -418,6 +425,137 @@ class ClipboardHistoryWindow: NSPanel {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.closeWindow()
         }
+    }
+    
+    @objc private func cardRightClicked(_ gesture: NSClickGestureRecognizer) {
+        guard let card = gesture.view else { return }
+        guard let idString = card.identifier?.rawValue else { return }
+        
+        // Extract UUID from "card-{uuid}" format
+        let cardIdPrefix = "card-"
+        guard idString.hasPrefix(cardIdPrefix) else { return }
+        let uuidString = String(idString.dropFirst(cardIdPrefix.count))
+        guard let itemId = UUID(uuidString: uuidString) else { return }
+        
+        // Find the item
+        guard let item = ClipboardHistoryManager.shared.items.first(where: { $0.id == itemId }) else { return }
+        
+        // Only show menu for images
+        guard item.contentType == .image || item.contentType == .mixed else { return }
+        
+        // Show context menu
+        showImageContextMenu(for: item, at: card)
+    }
+    
+    private func showImageContextMenu(for item: ClipboardHistoryItem, at view: NSView) {
+        let menu = NSMenu()
+        
+        // Save to Desktop
+        let desktopItem = NSMenuItem(
+            title: "Save to Desktop",
+            action: #selector(saveImageToDesktop(_:)),
+            keyEquivalent: ""
+        )
+        desktopItem.representedObject = item
+        menu.addItem(desktopItem)
+        
+        // Save to Downloads
+        let downloadsItem = NSMenuItem(
+            title: "Save to Downloads",
+            action: #selector(saveImageToDownloads(_:)),
+            keyEquivalent: ""
+        )
+        downloadsItem.representedObject = item
+        menu.addItem(downloadsItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // Save As...
+        let saveAsItem = NSMenuItem(
+            title: "Save As...",
+            action: #selector(saveImageAs(_:)),
+            keyEquivalent: ""
+        )
+        saveAsItem.representedObject = item
+        menu.addItem(saveAsItem)
+        
+        // Show the menu
+        menu.popUp(positioning: nil, at: view.bounds.origin, in: view)
+    }
+    
+    @objc private func saveImageToDesktop(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem,
+              let image = item.image else { return }
+        
+        do {
+            let fileURL = try ImageExportUtility.saveToDesktop(image)
+            logger.info("✅ Saved image to Desktop: \(fileURL.lastPathComponent)")
+            
+            // Show notification
+            showNotification(title: "Image Saved", message: "Saved to Desktop: \(fileURL.lastPathComponent)")
+            
+            AnalyticsManager.shared.trackFeatureUsage("clipboard_history_save_desktop")
+        } catch {
+            logger.error("❌ Failed to save image to Desktop: \(error.localizedDescription)")
+            showErrorAlert("Failed to save image to Desktop", message: error.localizedDescription)
+        }
+    }
+    
+    @objc private func saveImageToDownloads(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem,
+              let image = item.image else { return }
+        
+        do {
+            let fileURL = try ImageExportUtility.saveToDownloads(image)
+            logger.info("✅ Saved image to Downloads: \(fileURL.lastPathComponent)")
+            
+            // Show notification
+            showNotification(title: "Image Saved", message: "Saved to Downloads: \(fileURL.lastPathComponent)")
+            
+            AnalyticsManager.shared.trackFeatureUsage("clipboard_history_save_downloads")
+        } catch {
+            logger.error("❌ Failed to save image to Downloads: \(error.localizedDescription)")
+            showErrorAlert("Failed to save image to Downloads", message: error.localizedDescription)
+        }
+    }
+    
+    @objc private func saveImageAs(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardHistoryItem,
+              let image = item.image else { return }
+        
+        ImageExportUtility.showSavePanel(suggestedName: "Screenshot") { [weak self] url in
+            guard let url = url else { return }
+            
+            do {
+                try ImageExportUtility.exportImage(image, to: url)
+                self?.logger.info("✅ Saved image to: \(url.lastPathComponent)")
+                
+                // Show notification
+                self?.showNotification(title: "Image Saved", message: "Saved to: \(url.lastPathComponent)")
+                
+                AnalyticsManager.shared.trackFeatureUsage("clipboard_history_save_as")
+            } catch {
+                self?.logger.error("❌ Failed to save image: \(error.localizedDescription)")
+                self?.showErrorAlert("Failed to save image", message: error.localizedDescription)
+            }
+        }
+    }
+    
+    private func showNotification(title: String, message: String) {
+        let notification = NSUserNotification()
+        notification.title = title
+        notification.informativeText = message
+        notification.soundName = nil
+        NSUserNotificationCenter.default.deliver(notification)
+    }
+    
+    private func showErrorAlert(_ title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
     
     private func updateSelection() {
