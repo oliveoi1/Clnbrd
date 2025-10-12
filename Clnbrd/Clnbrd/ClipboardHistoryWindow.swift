@@ -148,6 +148,7 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.action = #selector(openHistorySettings)
         settingsButton.isEnabled = true
         settingsButton.autoresizingMask = [.minXMargin]
+        settingsButton.toolTip = "Open History Settings"
         headerView.addSubview(settingsButton)
         
         // Options button (three dots) in top right - like screenshot preview
@@ -159,6 +160,7 @@ class ClipboardHistoryWindow: NSPanel {
         optionsButton.target = self
         optionsButton.action = #selector(showOptionsMenu(_:))
         optionsButton.autoresizingMask = [.minXMargin]
+        optionsButton.toolTip = "More Options"
         headerView.addSubview(optionsButton)
         
         // Scroll view setup - full width minus padding
@@ -280,21 +282,40 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func addEmptyStateView() {
+        // Create a container for the empty state
+        let emptyContainer = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+        
+        // Add icon
+        let iconView = NSImageView(frame: NSRect(x: 130, y: 50, width: 40, height: 40))
+        let iconName: String
+        if searchQuery.isEmpty && selectedAppFilter == nil {
+            iconName = "tray"
+        } else {
+            iconName = "magnifyingglass"
+        }
+        iconView.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+        iconView.contentTintColor = .tertiaryLabelColor
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        emptyContainer.addSubview(iconView)
+        
+        // Add message
         let message: String
         if searchQuery.isEmpty && selectedAppFilter == nil {
             message = "No clipboard history yet\nCopy something to get started!"
         } else {
-            message = "No results found"
+            message = "No results found\nTry adjusting your search or filters"
         }
         
         let emptyLabel = NSTextField(labelWithString: message)
         emptyLabel.font = NSFont.systemFont(ofSize: 12)
         emptyLabel.textColor = .tertiaryLabelColor
         emptyLabel.alignment = .center
-        emptyLabel.frame = NSRect(x: 0, y: 0, width: 300, height: 40)
+        emptyLabel.frame = NSRect(x: 0, y: 10, width: 300, height: 40)
         emptyLabel.usesSingleLineMode = false
         emptyLabel.maximumNumberOfLines = 2
-        stackView.addArrangedSubview(emptyLabel)
+        emptyContainer.addSubview(emptyLabel)
+        
+        stackView.addArrangedSubview(emptyContainer)
     }
     
     // swiftlint:disable:next function_body_length
@@ -759,13 +780,28 @@ class ClipboardHistoryWindow: NSPanel {
             return
         }
         
-        // Find and toggle the item
+        logger.debug("📌 Pin button clicked for item \(uuid)")
+        
+        // Toggle the pin status
         ClipboardHistoryManager.shared.togglePin(for: uuid)
         
-        // Reload to show updated state and re-sort (pinned items go to top)
+        logger.debug("📌 Pin toggled, reloading items...")
+        
+        // Reload to show updated state and re-sort (pinned items go to left)
         reloadHistoryItems()
         
-        logger.info("📌 Toggled pin for item \(uuid)")
+        // Find the new position of the item in the displayed (filtered) items
+        let allItems = ClipboardHistoryManager.shared.items
+        let filteredItems = filterItems(allItems)
+        let displayedItems = Array(filteredItems.prefix(maxDisplayedItems))
+        
+        if let newIndex = displayedItems.firstIndex(where: { $0.id == uuid }) {
+            // Update selection to the new position in the displayed items
+            selectedIndex = newIndex
+            updateSelection()
+            logger.info("📌 Item is now at index \(newIndex) in displayed items")
+        }
+        
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_pin_toggle")
     }
     
