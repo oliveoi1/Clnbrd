@@ -106,6 +106,18 @@ class ClipboardHistoryWindow: NSPanel {
         titleLabel.isEditable = false
         headerView.addSubview(titleLabel)
         
+        // Search field (positioned on left side of header)
+        let searchFieldWidth: CGFloat = 200
+        searchField = NSSearchField(frame: NSRect(x: 12, y: 6, width: searchFieldWidth, height: 24))
+        searchField.placeholderString = "Search history..."
+        searchField.font = NSFont.systemFont(ofSize: 12)
+        searchField.target = self
+        searchField.action = #selector(searchFieldChanged)
+        searchField.autoresizingMask = []
+        searchField.sendsSearchStringImmediately = true
+        searchField.sendsWholeSearchString = false
+        headerView.addSubview(searchField)
+        
         // Settings gear icon in top right
         let settingsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 76, y: 6, width: 28, height: 24))
         settingsButton.bezelStyle = .regularSquare
@@ -193,12 +205,15 @@ class ClipboardHistoryWindow: NSPanel {
         cardContainers.removeAll()
         
         // Get items (filtered by search if needed)
-        let items = searchQuery.isEmpty ?
-            ClipboardHistoryManager.shared.items :
-            ClipboardHistoryManager.shared.search(searchQuery)
+        let allItems = ClipboardHistoryManager.shared.items
+        let items = filterItems(allItems)
         
         // Update title with count
-        titleLabel.stringValue = "Clipboard History (\(items.count))"
+        if !searchQuery.isEmpty {
+            titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
+        } else {
+            titleLabel.stringValue = "Clipboard History (\(items.count))"
+        }
         
         if items.isEmpty {
             addEmptyStateView()
@@ -710,6 +725,66 @@ class ClipboardHistoryWindow: NSPanel {
         }
     }
     
+    // MARK: - Search
+    
+    @objc private func searchFieldChanged() {
+        let query = searchField.stringValue
+        searchQuery = query
+        logger.debug("🔍 Search query: '\(query)'")
+        reloadHistoryItems()
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_search")
+    }
+    
+    private func filterItems(_ items: [ClipboardHistoryItem]) -> [ClipboardHistoryItem] {
+        guard !searchQuery.isEmpty else {
+            return items
+        }
+        
+        let lowercasedQuery = searchQuery.lowercased()
+        return items.filter { item in
+            // Search in plain text
+            if let plainText = item.plainText,
+               plainText.lowercased().contains(lowercasedQuery) {
+                return true
+            }
+            
+            // Search in RTF text (extract plain text first)
+            if let rtfData = item.rtfData,
+               let attributedString = NSAttributedString(rtf: rtfData, documentAttributes: nil) {
+                if attributedString.string.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+            }
+            
+            // Search in HTML text (extract plain text first)
+            if let htmlData = item.htmlData,
+               let attributedString = try? NSAttributedString(
+                data: htmlData,
+                options: [.documentType: NSAttributedString.DocumentType.html],
+                documentAttributes: nil
+               ) {
+                if attributedString.string.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+            }
+            
+            // Search in source app name
+            if let sourceApp = item.sourceApp,
+               sourceApp.lowercased().contains(lowercasedQuery) {
+                return true
+            }
+            
+            return false
+        }
+    }
+    
+    private func clearSearch() {
+        searchField.stringValue = ""
+        searchQuery = ""
+        reloadHistoryItems()
+        logger.debug("🔍 Search cleared")
+    }
+    
     private func closeWindow() {
         logger.debug("Closing history window")
         
@@ -868,9 +943,20 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     override func keyDown(with event: NSEvent) {
+        // Check for ⌘F to focus search
+        if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "f" {
+            self.makeFirstResponder(searchField)
+            return
+        }
+        
         switch event.keyCode {
         case 53: // Escape key
-            closeWindow()
+            // If search has text, clear it first, otherwise close window
+            if !searchQuery.isEmpty {
+                clearSearch()
+            } else {
+                closeWindow()
+            }
             
         case 123: // Left arrow
             if selectedIndex > 0 {
@@ -879,14 +965,18 @@ class ClipboardHistoryWindow: NSPanel {
             }
             
         case 124: // Right arrow
-            if selectedIndex < cardContainers.count - 1 {
+            let allItems = ClipboardHistoryManager.shared.items
+            let filteredItems = filterItems(allItems)
+            if selectedIndex < filteredItems.count - 1 {
                 selectedIndex += 1
                 updateSelection()
             }
             
         case 36, 76: // Return or Enter - copy selected item
-            if selectedIndex < ClipboardHistoryManager.shared.items.count {
-                let item = ClipboardHistoryManager.shared.items[selectedIndex]
+            let allItems = ClipboardHistoryManager.shared.items
+            let filteredItems = filterItems(allItems)
+            if selectedIndex < filteredItems.count {
+                let item = filteredItems[selectedIndex]
                 item.restoreToClipboard()
                 logger.info("Restored clipboard item via keyboard: \(item.preview)")
                 AnalyticsManager.shared.trackFeatureUsage("clipboard_history_item_restored_keyboard")
