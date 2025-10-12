@@ -37,15 +37,17 @@ class MenuBarManager {
         cleanItem.target = self
         menu.addItem(cleanItem)
         
-        let historyItem = NSMenuItem(title: "Show Clipboard History (⌘⇧H)", action: #selector(showClipboardHistory), keyEquivalent: "")
-        historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Show clipboard history")
-        historyItem.target = self
-        menu.addItem(historyItem)
+        menu.addItem(NSMenuItem.separator())
         
         let screenshotItem = NSMenuItem(title: "Capture Screenshot (⌘⌥C)", action: #selector(captureScreenshotToHistory), keyEquivalent: "")
         screenshotItem.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Capture screenshot")
         screenshotItem.target = self
         menu.addItem(screenshotItem)
+        
+        let historyItem = NSMenuItem(title: "Show Clipboard History (⌘⇧H)", action: #selector(showClipboardHistory), keyEquivalent: "")
+        historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Show clipboard history")
+        historyItem.target = self
+        menu.addItem(historyItem)
         
         menu.addItem(NSMenuItem.separator())
         

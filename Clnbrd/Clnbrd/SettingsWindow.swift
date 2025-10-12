@@ -70,8 +70,13 @@ class SettingsWindow: NSWindowController {
     
     /// Select a specific tab by index
     func selectTab(_ tabIndex: Int) {
-        guard tabIndex >= 0 && tabIndex < mainTabView.numberOfTabViewItems else { return }
-        mainTabView.selectTabViewItem(at: tabIndex)
+        logger.info("📑 Selecting tab \(tabIndex) (total tabs: \(self.mainTabView.numberOfTabViewItems))")
+        guard tabIndex >= 0 && tabIndex < self.mainTabView.numberOfTabViewItems else {
+            logger.error("❌ Invalid tab index: \(tabIndex)")
+            return
+        }
+        self.mainTabView.selectTabViewItem(at: tabIndex)
+        logger.info("✅ Tab \(tabIndex) selected")
     }
     
     private func scrollToTop() {

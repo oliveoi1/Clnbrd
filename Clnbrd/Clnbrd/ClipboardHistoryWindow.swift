@@ -114,7 +114,10 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.target = self
         settingsButton.action = #selector(openHistorySettings)
         settingsButton.autoresizingMask = [.minXMargin]
+        settingsButton.wantsLayer = true
         headerView.addSubview(settingsButton)
+        
+        logger.debug("Settings button created at x:\(settingsButton.frame.origin.x)")
         
         // Options button (three dots) in top right - like screenshot preview
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
@@ -674,15 +677,19 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     @objc private func openHistorySettings() {
+        logger.info("⚙️ Settings button clicked!")
+        
         // Close the history window first
         closeWindow()
         
         // Open settings to History tab (tab index 2)
         if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+            logger.info("Opening settings to History tab...")
             appDelegate.openSettingsToTab(2)
+        } else {
+            logger.error("Could not get AppDelegate!")
         }
         
-        logger.info("Opening History settings from strip")
         AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
     }
     
