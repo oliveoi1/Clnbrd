@@ -1,11 +1,26 @@
 # Clnbrd Development Roadmap
 
-**Last Updated:** October 11, 2025  
-**Current Version:** 1.3 (Build 52 - Latest Release) ✅
+**Last Updated:** October 12, 2025  
+**Current Version:** 1.4 (Build 53 - Latest Release) ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 50-52)
+## 🎉 Recent Accomplishments (Build 50-53)
+
+### ✅ Build 53 - Clipboard History Phase 1 MVP (October 2025)
+- [x] **Clipboard History System - Phase 1 Complete!**
+  - Horizontal floating strip at top of screen (macOS style)
+  - Formatted text display (preserves bold, colors, fonts, RTF, HTML)
+  - Selection system with blue border and "Copy" pill badge
+  - App icon badges showing source application
+  - Keyboard navigation (←→ arrows, Enter to copy, Escape to close)
+  - Settings tab with enable/disable, retention policies, max items
+  - Global hotkey (⌘⇧H) to show/hide
+  - Click card to select, click again to copy and close
+  - Click outside to close
+  - In-memory storage with auto-cleanup
+  - **Status:** ✅ Complete
+  - **Impact:** Major feature - full clipboard manager UI!
 
 ### ✅ Build 52 - Auto-Update Fix (October 2025)
 - [x] **Fixed Sparkle Auto-Update Installer**
@@ -90,20 +105,41 @@
 
 ---
 
-## 🎯 Immediate Priority (Build 53-55)
+## 🎯 Immediate Priority (Build 54-55)
 
 ### Major Feature: Clipboard History
-- [ ] **Clipboard History System** (Build 53-55) 🚀 *IN RESEARCH*
-  - Horizontal floating strip at top of screen (like macOS screenshot thumbnails)
-  - Store original clipboard content before cleaning (text, images, formatting)
-  - ⌘⇧H hotkey to show/hide history strip
-  - Click item to restore to clipboard and close strip
-  - **Phase 1 (Build 53):** Basic text history, in-memory only (3-4 days)
-  - **Phase 2 (Build 54):** Persistence, encryption, images + screenshot capture (5-6 days)
-  - **Phase 3 (Build 55):** Search, pinning, polish (3-4 days)
-  - **Status:** Research complete, ready for implementation
-  - **Total Effort:** 12-15 days across 3 builds
-  - **Impact:** Major feature - clipboard manager + screenshot tool capabilities
+- [x] **Phase 1 (Build 53):** Basic text history ✅ **COMPLETE!**
+  - ✅ In-memory storage with formatted text (RTF, HTML, plain)
+  - ✅ Horizontal floating strip UI (macOS style)
+  - ✅ Selection system with keyboard navigation
+  - ✅ Settings tab with retention policies
+  - ✅ App icon badges
+  - ✅ Global hotkey (⌘⇧H)
+  - **Status:** ✅ Complete (October 12, 2025)
+  - **Actual Effort:** 3-4 days
+  - **Impact:** Exceeded goals - full UI + formatted text!
+
+- [ ] **Phase 2 (Build 54):** Persistence + Images 🚀 **IN PROGRESS**
+  - [ ] Encrypted persistence using CryptoKit
+  - [ ] Save/load history to disk between app restarts
+  - [ ] Image capture and storage
+  - [ ] Image thumbnail generation
+  - [ ] **⌘⌥C hotkey for area screenshot capture**
+  - [ ] Image compression settings
+  - [ ] Storage management (size limits)
+  - [ ] App exclusions (privacy controls)
+  - **Status:** Starting now
+  - **Target Effort:** 5-6 days
+  - **Impact:** Persistent history + screenshot tool!
+
+- [ ] **Phase 3 (Build 55):** Search + Polish
+  - [ ] Search/filter by text content
+  - [ ] Pinning feature (keep important items)
+  - [ ] Performance optimization (memory management)
+  - [ ] UI animations and polish
+  - **Status:** Planned
+  - **Effort:** 3-4 days
+  - **Impact:** Power user features!
   
 **Features confirmed:**
   - ✅ Store exactly as copied (preserves all formatting: RTF, HTML, plain text)
