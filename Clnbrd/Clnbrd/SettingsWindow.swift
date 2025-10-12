@@ -391,6 +391,101 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
+        // Image Export Settings Section
+        let exportHeader = NSTextField(labelWithString: "Image Export Settings")
+        exportHeader.font = NSFont.boldSystemFont(ofSize: 13)
+        stackView.addArrangedSubview(exportHeader)
+        
+        let exportDesc = NSTextField(labelWithString: "Configure how images are exported when saved from history")
+        exportDesc.font = NSFont.systemFont(ofSize: 11)
+        exportDesc.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(exportDesc)
+        
+        // File Format
+        let formatStack = NSStackView()
+        formatStack.orientation = .horizontal
+        formatStack.spacing = 8
+        
+        let formatLabel = NSTextField(labelWithString: "File format:")
+        formatLabel.alignment = .right
+        formatLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        formatStack.addArrangedSubview(formatLabel)
+        
+        let formatPopup = NSPopUpButton()
+        formatPopup.addItems(withTitles: ["PNG", "JPEG", "TIFF"])
+        let currentFormat = ClipboardHistoryManager.shared.imageExportFormat
+        switch currentFormat {
+        case .png: formatPopup.selectItem(at: 0)
+        case .jpeg: formatPopup.selectItem(at: 1)
+        case .tiff: formatPopup.selectItem(at: 2)
+        }
+        formatPopup.target = self
+        formatPopup.action = #selector(exportFormatChanged)
+        formatStack.addArrangedSubview(formatPopup)
+        
+        stackView.addArrangedSubview(formatStack)
+        
+        // Retina Scaling
+        let retinaCheckbox = NSButton(
+            checkboxWithTitle: "Scale Retina screenshots to 1x",
+            target: self,
+            action: #selector(toggleScaleRetina)
+        )
+        retinaCheckbox.state = ClipboardHistoryManager.shared.scaleRetinaTo1x ? .on : .off
+        stackView.addArrangedSubview(retinaCheckbox)
+        
+        // sRGB Conversion
+        let srgbCheckbox = NSButton(
+            checkboxWithTitle: "Convert to sRGB profile",
+            target: self,
+            action: #selector(toggleConvertSRGB)
+        )
+        srgbCheckbox.state = ClipboardHistoryManager.shared.convertToSRGB ? .on : .off
+        stackView.addArrangedSubview(srgbCheckbox)
+        
+        // Border
+        let borderCheckbox = NSButton(
+            checkboxWithTitle: "Add 1px border to all screenshots",
+            target: self,
+            action: #selector(toggleAddBorder)
+        )
+        borderCheckbox.state = ClipboardHistoryManager.shared.addBorderToScreenshots ? .on : .off
+        stackView.addArrangedSubview(borderCheckbox)
+        
+        // JPEG Quality (only visible when JPEG is selected)
+        let jpegQualityStack = NSStackView()
+        jpegQualityStack.orientation = .horizontal
+        jpegQualityStack.spacing = 8
+        jpegQualityStack.tag = 1001 // Tag for finding later
+        jpegQualityStack.isHidden = currentFormat != .jpeg
+        
+        let jpegQualityLabel = NSTextField(labelWithString: "JPEG quality:")
+        jpegQualityLabel.alignment = .right
+        jpegQualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        jpegQualityStack.addArrangedSubview(jpegQualityLabel)
+        
+        let jpegQualitySlider = NSSlider(
+            value: ClipboardHistoryManager.shared.jpegExportQuality,
+            minValue: 0.5,
+            maxValue: 1.0,
+            target: self,
+            action: #selector(jpegExportQualityChanged)
+        )
+        jpegQualitySlider.numberOfTickMarks = 0
+        jpegQualityStack.addArrangedSubview(jpegQualitySlider)
+        
+        let jpegQualityValueLabel = NSTextField(
+            labelWithString: "\(Int(ClipboardHistoryManager.shared.jpegExportQuality * 100))%"
+        )
+        jpegQualityValueLabel.tag = 1002
+        jpegQualityValueLabel.alignment = .left
+        jpegQualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        jpegQualityStack.addArrangedSubview(jpegQualityValueLabel)
+        
+        stackView.addArrangedSubview(jpegQualityStack)
+        
+        stackView.addArrangedSubview(createSeparatorLine())
+        
         // App Exclusions Section
         let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
         exclusionsHeader.font = NSFont.boldSystemFont(ofSize: 13)
@@ -637,6 +732,55 @@ class SettingsWindow: NSWindowController {
             let historyTab = self.mainTabView.tabViewItem(at: 2)
             historyTab.view = createHistoryTab()
         }
+    }
+    
+    @objc private func exportFormatChanged(_ sender: NSPopUpButton) {
+        let selectedIndex = sender.indexOfSelectedItem
+        let format: ClipboardHistoryManager.ImageExportFormat
+        
+        switch selectedIndex {
+        case 0: format = .png
+        case 1: format = .jpeg
+        case 2: format = .tiff
+        default: format = .png
+        }
+        
+        ClipboardHistoryManager.shared.imageExportFormat = format
+        logger.info("Export format changed to: \(format.rawValue)")
+        
+        // Show/hide JPEG quality slider based on format
+        if let historyTab = self.mainTabView.tabViewItem(at: 2),
+           let jpegQualityStack = historyTab.view?.viewWithTag(1001) {
+            jpegQualityStack.isHidden = (format != .jpeg)
+        }
+    }
+    
+    @objc private func toggleScaleRetina(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.scaleRetinaTo1x = (sender.state == .on)
+        logger.info("Scale retina to 1x: \(sender.state == .on)")
+    }
+    
+    @objc private func toggleConvertSRGB(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.convertToSRGB = (sender.state == .on)
+        logger.info("Convert to sRGB: \(sender.state == .on)")
+    }
+    
+    @objc private func toggleAddBorder(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.addBorderToScreenshots = (sender.state == .on)
+        logger.info("Add border to screenshots: \(sender.state == .on)")
+    }
+    
+    @objc private func jpegExportQualityChanged(_ sender: NSSlider) {
+        let quality = sender.doubleValue
+        ClipboardHistoryManager.shared.jpegExportQuality = quality
+        
+        // Update the quality label
+        if let historyTab = self.mainTabView.tabViewItem(at: 2),
+           let qualityLabel = historyTab.view?.viewWithTag(1002) as? NSTextField {
+            qualityLabel.stringValue = "\(Int(quality * 100))%"
+        }
+        
+        logger.info("JPEG export quality changed to: \(Int(quality * 100))%")
     }
     
     // swiftlint:disable:next function_body_length
