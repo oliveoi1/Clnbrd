@@ -16,6 +16,7 @@ class SettingsWindow: NSWindowController {
     var profileDropdown: NSPopUpButton!
     var currentProfileId: UUID?
     var scrollView: NSScrollView!
+    var mainTabView: NSTabView!
     
     init(cleaningRules: CleaningRules) {
         // Load active profile
@@ -89,9 +90,10 @@ class SettingsWindow: NSWindowController {
         guard let window = window else { return }
         
         // Create tab view
-        let tabView = NSTabView()
-        tabView.translatesAutoresizingMaskIntoConstraints = false
-        tabView.delegate = self
+        mainTabView = NSTabView()
+        mainTabView.translatesAutoresizingMaskIntoConstraints = false
+        mainTabView.delegate = self
+        let tabView = mainTabView
         
         // Tab 1: Rules (Cleaning Rules)
         let rulesTab = NSTabViewItem(identifier: "rules")
@@ -494,7 +496,7 @@ class SettingsWindow: NSWindowController {
         }()
         
         ClipboardHistoryManager.shared.retentionPeriod = period
-        logger.info("Retention period changed to: \(period)")
+        logger.info("Retention period changed to: \(period.rawValue)")
     }
     
     @objc private func maxItemsChanged(_ sender: NSPopUpButton) {
@@ -574,7 +576,7 @@ class SettingsWindow: NSWindowController {
                 logger.info("Added excluded app: \(appName)")
                 
                 // Refresh the settings window to show the updated list
-                if let historyTab = tabView.tabViewItem(at: 2) {
+                if let historyTab = self.mainTabView.tabViewItem(at: 2) {
                     historyTab.view = createHistoryTab()
                 }
             }
@@ -610,7 +612,7 @@ class SettingsWindow: NSWindowController {
             logger.info("Removed excluded app: \(selectedApp)")
             
             // Refresh the settings window to show the updated list
-            if let historyTab = tabView.tabViewItem(at: 2) {
+            if let historyTab = self.mainTabView.tabViewItem(at: 2) {
                 historyTab.view = createHistoryTab()
             }
         }
@@ -636,7 +638,7 @@ class SettingsWindow: NSWindowController {
             logger.info("Reset excluded apps to defaults")
             
             // Refresh the settings window to show the updated list
-            if let historyTab = tabView.tabViewItem(at: 2) {
+            if let historyTab = self.mainTabView.tabViewItem(at: 2) {
                 historyTab.view = createHistoryTab()
             }
         }
@@ -1841,54 +1843,6 @@ extension SettingsWindow: NSTextFieldDelegate {
         }
     }
     
-    // MARK: - History Settings Actions
-    
-    @objc private func toggleHistoryEnabled(_ sender: NSButton) {
-        ClipboardHistoryManager.shared.isEnabled = (sender.state == .on)
-        logger.info("Clipboard history \(sender.state == .on ? "enabled" : "disabled")")
-    }
-    
-    @objc private func retentionPeriodChanged(_ sender: NSPopUpButton) {
-        guard let selectedTitle = sender.selectedItem?.title,
-              let period = ClipboardHistoryManager.RetentionPeriod(rawValue: selectedTitle) else { return }
-        
-        ClipboardHistoryManager.shared.retentionPeriod = period
-        logger.info("History retention period changed to: \(period.rawValue)")
-    }
-    
-    @objc private func maxItemsChanged(_ sender: NSPopUpButton) {
-        let maxItemsOptions = [10, 25, 50, 100, 200]
-        let selectedIndex = sender.indexOfSelectedItem
-        
-        if selectedIndex >= 0 && selectedIndex < maxItemsOptions.count {
-            let maxItems = maxItemsOptions[selectedIndex]
-            ClipboardHistoryManager.shared.maxItems = maxItems
-            logger.info("History max items changed to: \(maxItems)")
-        }
-    }
-    
-    @objc private func clearHistoryClicked() {
-        let alert = NSAlert()
-        alert.messageText = "Clear Clipboard History?"
-        alert.informativeText = "This will delete all non-pinned items from your clipboard history. This action cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Clear History")
-        alert.addButton(withTitle: "Cancel")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            ClipboardHistoryManager.shared.clearHistory()
-            logger.info("Clipboard history cleared")
-            
-            // Show confirmation
-            let confirmAlert = NSAlert()
-            confirmAlert.messageText = "History Cleared"
-            confirmAlert.informativeText = "Your clipboard history has been cleared."
-            confirmAlert.alertStyle = .informational
-            confirmAlert.addButton(withTitle: "OK")
-            confirmAlert.runModal()
-        }
-    }
 }
 
 // MARK: - NSWindowDelegate

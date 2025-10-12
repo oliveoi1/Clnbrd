@@ -425,14 +425,14 @@ class ClipboardHistoryManager: ObservableObject {
     private func enforceStorageLimit() {
         let currentSize = totalStorageSize
         guard currentSize > maxStorageSize else {
-            logger.debug("Storage within limits: \(totalStorageSizeFormatted) / \(formatBytes(maxStorageSize))")
+            logger.debug("Storage within limits: \(self.totalStorageSizeFormatted) / \(self.formatBytes(self.maxStorageSize))")
             return
         }
         
-        logger.info("Storage limit exceeded: \(totalStorageSizeFormatted) > \(formatBytes(maxStorageSize))")
+        logger.info("Storage limit exceeded: \(self.totalStorageSizeFormatted) > \(self.formatBytes(self.maxStorageSize))")
         
         // Separate pinned and unpinned items
-        var pinnedItems = items.filter { $0.isPinned }
+        let pinnedItems = items.filter { $0.isPinned }
         var unpinnedItems = items.filter { !$0.isPinned }
         
         // Sort unpinned by timestamp (oldest first for removal)
@@ -455,10 +455,10 @@ class ClipboardHistoryManager: ObservableObject {
             // Save to disk after cleanup
             saveHistoryToDisk()
             
-            logger.info("Enforced storage limit: removed \(removedCount) items, now \(totalStorageSizeFormatted)")
+            logger.info("Enforced storage limit: removed \(removedCount) items, now \(self.totalStorageSizeFormatted)")
             trackHistoryEvent("storage_limit_enforced", metadata: [
                 "removed_count": "\(removedCount)",
-                "final_size": "\(totalStorageSize)"
+                "final_size": "\(self.totalStorageSize)"
             ])
         }
     }
@@ -520,7 +520,7 @@ class ClipboardHistoryManager: ObservableObject {
     private func saveHistoryToDisk() {
         do {
             try ClipboardHistoryStorage.shared.saveHistory(items)
-            logger.debug("💾 Saved \(items.count) items to disk")
+            logger.debug("💾 Saved \(self.items.count) items to disk")
         } catch {
             logger.error("❌ Failed to save history to disk: \(error.localizedDescription)")
         }
