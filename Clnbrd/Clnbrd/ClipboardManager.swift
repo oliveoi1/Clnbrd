@@ -273,12 +273,17 @@ class ClipboardManager {
     
     private func captureToHistory(_ pasteboard: NSPasteboard) {
         // Only capture if history is enabled
-        guard ClipboardHistoryManager.shared.isEnabled else { return }
+        guard ClipboardHistoryManager.shared.isEnabled else {
+            logger.debug("🚫 History disabled, not capturing")
+            return
+        }
         
         // Extract all available formats
         let plainText = pasteboard.string(forType: .string)
         let rtfData = pasteboard.data(forType: .rtf)
         let htmlData = pasteboard.data(forType: .html)
+        
+        logger.info("📋 Capturing clipboard - Text: \(plainText != nil), RTF: \(rtfData != nil), HTML: \(htmlData != nil)")
         
         // Get source app
         let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
@@ -294,6 +299,30 @@ class ClipboardManager {
         // Add to history
         ClipboardHistoryManager.shared.addItem(historyItem)
         
-        logger.debug("Captured clipboard to history: \(historyItem.preview)")
+        logger.info("✅ Captured clipboard to history: \(historyItem.preview)")
+    }
+    
+    // MARK: - Clipboard History Monitoring
+    
+    /// Start monitoring clipboard changes for history capture
+    func startHistoryMonitoring() {
+        // Monitor clipboard changes every 0.5 seconds for history
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            guard ClipboardHistoryManager.shared.isEnabled else { return }
+            
+            let currentChangeCount = NSPasteboard.general.changeCount
+            if currentChangeCount != self.lastClipboardChangeCount {
+                self.lastClipboardChangeCount = currentChangeCount
+                
+                // Capture to history on ANY clipboard change
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.captureToHistory(NSPasteboard.general)
+                }
+            }
+        }
+        
+        logger.info("📋 Clipboard history monitoring started")
     }
 }
+

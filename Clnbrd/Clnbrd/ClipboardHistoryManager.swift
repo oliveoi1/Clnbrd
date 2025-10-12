@@ -67,16 +67,23 @@ class ClipboardHistoryManager: ObservableObject {
     
     // MARK: - Initialization
     private init() {
-        // Load settings from UserDefaults
-        self.isEnabled = UserDefaults.standard.bool(forKey: "ClipboardHistory.Enabled")
+        // Load settings from UserDefaults (default to enabled if not set)
+        let enabledKey = "ClipboardHistory.Enabled"
+        if UserDefaults.standard.object(forKey: enabledKey) == nil {
+            // First time - enable by default
+            self.isEnabled = true
+            UserDefaults.standard.set(true, forKey: enabledKey)
+        } else {
+            self.isEnabled = UserDefaults.standard.bool(forKey: enabledKey)
+        }
         
         let savedPeriodKey = "ClipboardHistory.RetentionPeriod"
         if let savedPeriod = UserDefaults.standard.string(forKey: savedPeriodKey),
            let period = RetentionPeriod(rawValue: savedPeriod) {
             self.retentionPeriod = period
         } else {
-            self.retentionPeriod = .threeDays // Default
-            UserDefaults.standard.set(RetentionPeriod.threeDays.rawValue, forKey: "ClipboardHistory.RetentionPeriod")
+            self.retentionPeriod = .oneDay // Default to 1 day
+            UserDefaults.standard.set(RetentionPeriod.oneDay.rawValue, forKey: "ClipboardHistory.RetentionPeriod")
         }
         
         let savedMaxItems = UserDefaults.standard.integer(forKey: "ClipboardHistory.MaxItems")
@@ -105,7 +112,10 @@ class ClipboardHistoryManager: ObservableObject {
     
     /// Adds a new item to clipboard history
     func addItem(_ item: ClipboardHistoryItem) {
-        guard isEnabled else { return }
+        guard isEnabled else {
+            logger.debug("History disabled, not adding item")
+            return
+        }
         
         // Don't add empty items
         guard item.hasContent else {
@@ -125,10 +135,14 @@ class ClipboardHistoryManager: ObservableObject {
         // Add to beginning of array (newest first)
         items.insert(item, at: 0)
         
-        logger.info("Added clipboard history item: \(item.preview)")
+        logger.info("✅ Added clipboard history item: \(item.preview)")
+        logger.info("📊 Total history items: \(items.count)")
         
         // Enforce limits
         enforceMaxItems()
+        
+        // Notify observers that history changed
+        NotificationCenter.default.post(name: NSNotification.Name("ClipboardHistoryDidChange"), object: nil)
         
         // Track analytics
         trackHistoryEvent("item_added")

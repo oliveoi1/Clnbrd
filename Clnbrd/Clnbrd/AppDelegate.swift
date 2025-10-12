@@ -207,6 +207,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             clipboardManager.startClipboardMonitoring()
         }
         
+        // Always start history monitoring if history is enabled
+        if ClipboardHistoryManager.shared.isEnabled {
+            clipboardManager.startHistoryMonitoring()
+        }
+        
         // Sparkle will handle update checking automatically based on Info.plist settings
         logger.info("Sparkle updater initialized - automatic updates enabled")
     }
