@@ -118,15 +118,7 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.action = #selector(openHistorySettings)
         settingsButton.isEnabled = true
         settingsButton.autoresizingMask = [.minXMargin]
-        settingsButton.wantsLayer = true
-        
-        // Add visible border temporarily for debugging
-        settingsButton.layer?.borderColor = NSColor.yellow.cgColor
-        settingsButton.layer?.borderWidth = 2
-        
         headerView.addSubview(settingsButton)
-        
-        logger.debug("Settings button created: frame=\(NSStringFromRect(settingsButton.frame)), enabled=\(settingsButton.isEnabled), target=\(String(describing: settingsButton.target)), action=\(String(describing: settingsButton.action))")
         
         // Options button (three dots) in top right - like screenshot preview
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
@@ -695,16 +687,20 @@ class ClipboardHistoryWindow: NSPanel {
     @objc private func openHistorySettings() {
         logger.info("⚙️ Settings button clicked!")
         
+        // Get AppDelegate reference BEFORE closing window
+        guard let appDelegate = NSApp.delegate as? AppDelegate else {
+            logger.error("❌ Could not get AppDelegate! Delegate type: \(type(of: NSApp.delegate))")
+            closeWindow()
+            return
+        }
+        
+        logger.info("✅ Got AppDelegate, opening settings to History tab...")
+        
         // Close the history window first
         closeWindow()
         
         // Open settings to History tab (tab index 2)
-        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-            logger.info("Opening settings to History tab...")
-            appDelegate.openSettingsToTab(2)
-        } else {
-            logger.error("Could not get AppDelegate!")
-        }
+        appDelegate.openSettingsToTab(2)
         
         AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
     }
@@ -730,17 +726,13 @@ class ClipboardHistoryWindow: NSPanel {
             let clickLocation = NSEvent.mouseLocation
             let windowFrame = self.frame
             
-            self.logger.debug("🖱️ Click detected at: \(NSStringFromPoint(clickLocation)), window frame: \(NSStringFromRect(windowFrame))")
-            
             // Check if click is outside our window
             if !windowFrame.contains(clickLocation) {
                 // Click is outside our window but inside the app, close
-                self.logger.info("Click outside window, closing")
                 self.closeWindow()
                 return event // Don't consume - let it pass through
             }
             
-            self.logger.debug("Click inside window, passing through")
             return event
         }
         
