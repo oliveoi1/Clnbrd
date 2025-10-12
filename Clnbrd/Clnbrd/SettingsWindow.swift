@@ -3,8 +3,7 @@ import os.log
 import ServiceManagement
 import UniformTypeIdentifiers
 
-// swiftlint:disable:next file_length
-// swiftlint:disable:next type_body_length
+// swiftlint:disable file_length type_body_length
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
@@ -93,28 +92,27 @@ class SettingsWindow: NSWindowController {
         mainTabView = NSTabView()
         mainTabView.translatesAutoresizingMaskIntoConstraints = false
         mainTabView.delegate = self
-        let tabView = mainTabView
         
         // Tab 1: Rules (Cleaning Rules)
         let rulesTab = NSTabViewItem(identifier: "rules")
         rulesTab.label = "Rules"
         rulesTab.view = createGeneralTab()
-        tabView.addTabViewItem(rulesTab)
+        mainTabView.addTabViewItem(rulesTab)
         
         // Tab 2: History
         let historyTab = NSTabViewItem(identifier: "history")
         historyTab.label = "History"
         historyTab.view = createHistoryTab()
-        tabView.addTabViewItem(historyTab)
+        mainTabView.addTabViewItem(historyTab)
         
         // Tab 3: About
         let aboutTab = NSTabViewItem(identifier: "about")
         aboutTab.label = "About"
         aboutTab.view = createAboutTab()
-        tabView.addTabViewItem(aboutTab)
+        mainTabView.addTabViewItem(aboutTab)
         
         // Add tab view to window
-        window.contentView = tabView
+        window.contentView = mainTabView
         
         // Set initial window title
         window.title = "Rules"
@@ -576,9 +574,8 @@ class SettingsWindow: NSWindowController {
                 logger.info("Added excluded app: \(appName)")
                 
                 // Refresh the settings window to show the updated list
-                if let historyTab = self.mainTabView.tabViewItem(at: 2) {
-                    historyTab.view = createHistoryTab()
-                }
+                let historyTab = self.mainTabView.tabViewItem(at: 2)
+                historyTab.view = createHistoryTab()
             }
         }
     }
@@ -612,9 +609,8 @@ class SettingsWindow: NSWindowController {
             logger.info("Removed excluded app: \(selectedApp)")
             
             // Refresh the settings window to show the updated list
-            if let historyTab = self.mainTabView.tabViewItem(at: 2) {
-                historyTab.view = createHistoryTab()
-            }
+            let historyTab = self.mainTabView.tabViewItem(at: 2)
+            historyTab.view = createHistoryTab()
         }
     }
     
@@ -638,9 +634,8 @@ class SettingsWindow: NSWindowController {
             logger.info("Reset excluded apps to defaults")
             
             // Refresh the settings window to show the updated list
-            if let historyTab = self.mainTabView.tabViewItem(at: 2) {
-                historyTab.view = createHistoryTab()
-            }
+            let historyTab = self.mainTabView.tabViewItem(at: 2)
+            historyTab.view = createHistoryTab()
         }
     }
     
@@ -1842,7 +1837,6 @@ extension SettingsWindow: NSTextFieldDelegate {
             }
         }
     }
-    
 }
 
 // MARK: - NSWindowDelegate
