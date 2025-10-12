@@ -262,9 +262,16 @@ class ClipboardHistoryWindow: NSPanel {
         card.addGestureRecognizer(clickGesture)
         card.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
         
-        // Pin indicator (if pinned)
+        // App icon badge (shows which app it was copied from)
+        if let sourceApp = item.sourceApp, !sourceApp.isEmpty {
+            let appIconView = createAppIconBadge(for: sourceApp)
+            card.addSubview(appIconView)
+        }
+        
+        // Pin indicator (if pinned) - move to top-right if app icon is present
         if item.isPinned {
-            let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 28, y: cardHeight - 28, width: 18, height: 18))
+            let xPos = item.sourceApp != nil ? cardWidth - 28 : cardWidth - 28
+            let pinIcon = NSImageView(frame: NSRect(x: xPos, y: cardHeight - 28, width: 18, height: 18))
             pinIcon.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: "Pinned")
             pinIcon.contentTintColor = .systemYellow
             card.addSubview(pinIcon)
@@ -538,6 +545,71 @@ class ClipboardHistoryWindow: NSPanel {
             NSEvent.removeMonitor(monitor)
             globalClickMonitor = nil
         }
+    }
+    
+    private func createAppIconBadge(for appName: String) -> NSImageView {
+        let iconSize: CGFloat = 24
+        let padding: CGFloat = 8
+        
+        // Create image view
+        let imageView = NSImageView(frame: NSRect(
+            x: padding,
+            y: cardHeight - iconSize - padding,
+            width: iconSize,
+            height: iconSize
+        ))
+        
+        // Get app icon from NSWorkspace
+        if let appIcon = getAppIcon(for: appName) {
+            imageView.image = appIcon
+        } else {
+            // Fallback to generic document icon
+            imageView.image = NSImage(systemSymbolName: "doc.text.fill", accessibilityDescription: "Document")
+            imageView.contentTintColor = .systemGray
+        }
+        
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.wantsLayer = true
+        
+        // Add subtle shadow for visibility
+        imageView.layer?.shadowColor = NSColor.black.cgColor
+        imageView.layer?.shadowOpacity = 0.3
+        imageView.layer?.shadowOffset = NSSize(width: 0, height: -1)
+        imageView.layer?.shadowRadius = 2
+        
+        return imageView
+    }
+    
+    private func getAppIcon(for appName: String) -> NSImage? {
+        let workspace = NSWorkspace.shared
+        
+        // Try to find running app by name
+        if let app = workspace.runningApplications.first(where: { app in
+            app.localizedName == appName ||
+            app.bundleIdentifier?.contains(appName.lowercased()) == true
+        }) {
+            return app.icon
+        }
+        
+        // Try to find app by bundle identifier or path
+        if let appURL = workspace.urlForApplication(withBundleIdentifier: appName) {
+            return workspace.icon(forFile: appURL.path)
+        }
+        
+        // Try common app paths
+        let appPaths = [
+            "/Applications/\(appName).app",
+            "/System/Applications/\(appName).app",
+            "/Applications/Utilities/\(appName).app"
+        ]
+        
+        for path in appPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                return workspace.icon(forFile: path)
+            }
+        }
+        
+        return nil
     }
     
     func toggle() {
