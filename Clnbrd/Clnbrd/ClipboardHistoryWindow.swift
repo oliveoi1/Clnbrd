@@ -15,6 +15,8 @@ class ClipboardHistoryWindow: NSPanel {
     private var searchQuery: String = ""
     private var localClickMonitor: Any?
     private var globalClickMonitor: Any?
+    private var selectedIndex: Int = 0 // Currently selected card index
+    private var cardContainers: [NSView] = [] // Keep references to card containers
     
     // Constants
     private let windowHeight: CGFloat = 200 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
@@ -173,6 +175,7 @@ class ClipboardHistoryWindow: NSPanel {
     private func reloadHistoryItems() {
         // Remove all existing views
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        cardContainers.removeAll()
         
         // Get items (filtered by search if needed)
         let items = searchQuery.isEmpty ?
@@ -187,21 +190,29 @@ class ClipboardHistoryWindow: NSPanel {
             return
         }
         
+        // Container height includes card + spacing + timestamp
+        let containerHeight: CGFloat = cardHeight + 6 + 18
+        
         // Add card for each item
         for item in items {
-            let card = createHistoryCard(for: item)
-            // Ensure card has fixed width and height
-            card.translatesAutoresizingMaskIntoConstraints = false
-            card.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
-            card.heightAnchor.constraint(equalToConstant: cardHeight).isActive = true
-            stackView.addArrangedSubview(card)
+            let cardContainer = createHistoryCard(for: item)
+            // Ensure container has fixed width and height
+            cardContainer.translatesAutoresizingMaskIntoConstraints = false
+            cardContainer.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+            cardContainer.heightAnchor.constraint(equalToConstant: containerHeight).isActive = true
+            stackView.addArrangedSubview(cardContainer)
+            cardContainers.append(cardContainer)
         }
         
         // Update container frame to fit all cards horizontally
         if let container = scrollView.documentView {
             let contentWidth = CGFloat(items.count) * (cardWidth + 10) + 10
-            container.frame = NSRect(x: 0, y: 0, width: max(contentWidth, scrollView.bounds.width), height: cardHeight)
+            container.frame = NSRect(x: 0, y: 0, width: max(contentWidth, scrollView.bounds.width), height: containerHeight)
         }
+        
+        // Set initial selection to first card
+        selectedIndex = 0
+        updateSelection()
         
         logger.debug("Reloaded history with \(items.count) items")
     }
@@ -227,16 +238,17 @@ class ClipboardHistoryWindow: NSPanel {
         let containerHeight = cardHeight + spacing + timeHeight
         
         let container = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: containerHeight))
+        container.identifier = NSUserInterfaceItemIdentifier("container-\(item.id.uuidString)")
         
         // Create the card
         let card = NSView(frame: NSRect(x: 0, y: timeHeight + spacing, width: cardWidth, height: cardHeight))
         card.wantsLayer = true
         // Light card background like screenshot thumbnails
         card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
-        card.layer?.cornerRadius = 8 // 4 rounded corners
+        card.layer?.cornerRadius = 8 // 4 rounded corners (ALL SIDES)
         card.layer?.masksToBounds = true // Ensure corners are clipped
-        card.layer?.borderWidth = 0.5
-        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        card.layer?.borderWidth = 2 // Thicker for selection visibility
+        card.layer?.borderColor = NSColor.clear.cgColor // Default: no border (will be blue when selected)
         
         // Subtle shadow like screenshot preview
         card.shadow = NSShadow()
@@ -249,6 +261,7 @@ class ClipboardHistoryWindow: NSPanel {
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
         card.addGestureRecognizer(clickGesture)
         card.identifier = NSUserInterfaceItemIdentifier(item.id.uuidString)
+        card.tag = 1001 // Tag to identify as card view
         
         // Pin indicator (if pinned)
         if item.isPinned {
@@ -276,7 +289,7 @@ class ClipboardHistoryWindow: NSPanel {
         
         container.addSubview(card)
         
-        // Timestamp BELOW the card (independent floating text)
+        // Timestamp BELOW the card (will change to "Copy" when selected)
         let timeLabel = NSTextField(labelWithString: item.displayTime)
         timeLabel.frame = NSRect(x: 0, y: 0, width: cardWidth, height: timeHeight)
         timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
@@ -286,6 +299,7 @@ class ClipboardHistoryWindow: NSPanel {
         timeLabel.isSelectable = false
         timeLabel.isBordered = false
         timeLabel.drawsBackground = false
+        timeLabel.tag = 1002 // Tag to identify as timestamp label
         container.addSubview(timeLabel)
         
         return container
@@ -295,6 +309,15 @@ class ClipboardHistoryWindow: NSPanel {
         guard let card = gesture.view else { return }
         guard let idString = card.identifier?.rawValue,
               let itemId = UUID(uuidString: idString) else { return }
+        
+        // Find which index was clicked
+        if let clickedIndex = cardContainers.firstIndex(where: { container in
+            let cardView = container.viewWithTag(1001)
+            return cardView?.identifier?.rawValue == idString
+        }) {
+            selectedIndex = clickedIndex
+            updateSelection()
+        }
         
         // Find the item
         guard let item = ClipboardHistoryManager.shared.items.first(where: { $0.id == itemId }) else { return }
@@ -313,6 +336,42 @@ class ClipboardHistoryWindow: NSPanel {
         // Close window after short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.closeWindow()
+        }
+    }
+    
+    private func updateSelection() {
+        guard !cardContainers.isEmpty else { return }
+        guard selectedIndex >= 0 && selectedIndex < cardContainers.count else { return }
+        
+        // Update all cards
+        for (index, container) in cardContainers.enumerated() {
+            guard let card = container.viewWithTag(1001),
+                  let timeLabel = container.viewWithTag(1002) as? NSTextField else { continue }
+            
+            let isSelected = (index == selectedIndex)
+            
+            // Update border color
+            card.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
+            
+            // Update timestamp text
+            if isSelected {
+                timeLabel.stringValue = "Copy"
+                timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+            } else {
+                // Get original timestamp from item
+                if let items = stackView.arrangedSubviews as? [NSView],
+                   index < ClipboardHistoryManager.shared.items.count {
+                    let item = ClipboardHistoryManager.shared.items[index]
+                    timeLabel.stringValue = item.displayTime
+                    timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+                }
+            }
+        }
+        
+        // Scroll selected card into view
+        if selectedIndex < cardContainers.count {
+            let container = cardContainers[selectedIndex]
+            scrollView.contentView.scrollToVisible(container.frame)
         }
     }
     
@@ -426,6 +485,10 @@ class ClipboardHistoryWindow: NSPanel {
         }
     }
     
+    override var canBecomeKey: Bool {
+        return true // Allow window to receive keyboard events
+    }
+    
     func show() {
         // Reload items before showing
         reloadHistoryItems()
@@ -456,10 +519,32 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     override func keyDown(with event: NSEvent) {
-        // Close on Escape key
-        if event.keyCode == 53 { // Escape key
+        switch event.keyCode {
+        case 53: // Escape key
             closeWindow()
-        } else {
+            
+        case 123: // Left arrow
+            if selectedIndex > 0 {
+                selectedIndex -= 1
+                updateSelection()
+            }
+            
+        case 124: // Right arrow
+            if selectedIndex < cardContainers.count - 1 {
+                selectedIndex += 1
+                updateSelection()
+            }
+            
+        case 36, 76: // Return or Enter - copy selected item
+            if selectedIndex < ClipboardHistoryManager.shared.items.count {
+                let item = ClipboardHistoryManager.shared.items[selectedIndex]
+                item.restoreToClipboard()
+                logger.info("Restored clipboard item via keyboard: \(item.preview)")
+                AnalyticsManager.shared.trackFeatureUsage("clipboard_history_item_restored_keyboard")
+                closeWindow()
+            }
+            
+        default:
             super.keyDown(with: event)
         }
     }
