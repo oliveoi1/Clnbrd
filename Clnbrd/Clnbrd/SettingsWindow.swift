@@ -3,6 +3,8 @@ import os.log
 import ServiceManagement
 import UniformTypeIdentifiers
 
+// swiftlint:disable file_length type_body_length
+
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
 /// Settings window for configuring cleaning rules and application preferences
@@ -181,6 +183,7 @@ class SettingsWindow: NSWindowController {
         return container
     }
     
+    // swiftlint:disable:next function_body_length
     private func createHistoryTab() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -328,6 +331,7 @@ class SettingsWindow: NSWindowController {
         return container
     }
     
+    // swiftlint:disable:next function_body_length
     private func createAboutTab() -> NSView {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false

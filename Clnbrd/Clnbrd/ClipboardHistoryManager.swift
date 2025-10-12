@@ -89,7 +89,12 @@ class ClipboardHistoryManager: ObservableObject {
         // Start cleanup timer (runs every hour)
         startCleanupTimer()
         
-        logger.info("ClipboardHistoryManager initialized - Enabled: \(self.isEnabled), Retention: \(self.retentionPeriod.rawValue), Max: \(self.maxItems)")
+        logger.info("""
+            ClipboardHistoryManager initialized - \
+            Enabled: \(self.isEnabled), \
+            Retention: \(self.retentionPeriod.rawValue), \
+            Max: \(self.maxItems)
+            """)
     }
     
     deinit {
