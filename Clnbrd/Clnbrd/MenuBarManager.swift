@@ -168,7 +168,7 @@ class MenuBarManager {
     }
     
     /// Captures a screenshot using interactive area selection and adds it to history
-    private func captureScreenshotToHistory() {
+    @objc private func captureScreenshotToHistory() {
         guard ClipboardHistoryManager.shared.isEnabled else {
             logger.debug("🚫 History disabled, not capturing screenshot")
             return
@@ -230,7 +230,6 @@ class MenuBarManager {
             
             // Track analytics
             AnalyticsManager.shared.trackFeatureUsage("screenshot_capture")
-            
         } catch {
             logger.error("❌ Failed to process screenshot: \(error.localizedDescription)")
         }

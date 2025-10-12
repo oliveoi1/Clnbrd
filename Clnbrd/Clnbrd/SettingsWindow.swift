@@ -4,7 +4,7 @@ import ServiceManagement
 import UniformTypeIdentifiers
 
 // swiftlint:disable file_length
-// swiftlint:disable:next type_body_length
+// swiftlint:disable type_body_length
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
