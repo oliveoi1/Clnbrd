@@ -99,15 +99,16 @@
   - ⌘⇧H hotkey to show/hide history strip
   - Click item to restore to clipboard and close strip
   - **Phase 1 (Build 53):** Basic text history, in-memory only (3-4 days)
-  - **Phase 2 (Build 54):** Persistence, encryption, images (4-5 days)
+  - **Phase 2 (Build 54):** Persistence, encryption, images + screenshot capture (5-6 days)
   - **Phase 3 (Build 55):** Search, pinning, polish (3-4 days)
   - **Status:** Research complete, ready for implementation
-  - **Total Effort:** 11-14 days across 3 builds
-  - **Impact:** Major feature - clipboard manager capabilities
+  - **Total Effort:** 12-15 days across 3 builds
+  - **Impact:** Major feature - clipboard manager + screenshot tool capabilities
   
 **Features confirmed:**
   - ✅ Store exactly as copied (preserves all formatting: RTF, HTML, plain text)
   - ✅ Support text AND images
+  - ✅ **⌘⌥C hotkey to capture area screenshot** (directly to history)
   - ✅ Encrypted storage using CryptoKit
   - ✅ Default 3-day retention (configurable: never/1d/3d/1w/1m/forever)
   - ✅ Search/filter by text
@@ -437,13 +438,14 @@
 **Focus:** Clipboard History - Phase 2 (Enhanced)
 - [ ] Encrypted persistence (save between app restarts)
 - [ ] Image support (capture, thumbnail, full-size storage)
+- [ ] **⌘⌥C hotkey for area screenshot capture** (directly to history)
 - [ ] Search/filter functionality
 - [ ] Storage management (size limits, cleanup)
 - [ ] Image compression settings
 - [ ] Privacy: app exclusions (password managers)
 
 **Target:** December 2025  
-**Effort:** 4-5 days
+**Effort:** 5-6 days
 
 ### Version 1.5 (Build 55)
 **Focus:** Clipboard History - Phase 3 (Polish) + UI/UX
@@ -524,6 +526,7 @@
 ## 📝 Notes
 
 ### Decision Log
+- **Oct 11, 2025:** 📸 Added ⌘⌥C hotkey for area screenshot capture (Build 54)
 - **Oct 11, 2025:** 🚀 Completed research for Clipboard History feature (Build 53-55)
 - **Oct 11, 2025:** 📋 Confirmed 3-phase implementation approach for clipboard history
 - **Oct 11, 2025:** 🔒 Decided on CryptoKit for history encryption (privacy-first)
