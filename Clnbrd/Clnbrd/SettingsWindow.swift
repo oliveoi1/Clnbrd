@@ -335,7 +335,7 @@ class SettingsWindow: NSWindowController {
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            stackView.widthAnchor.constraint(equalToConstant: 500)
+            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 540)
         ])
         
         return container
