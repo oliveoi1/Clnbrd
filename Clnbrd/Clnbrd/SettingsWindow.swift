@@ -256,7 +256,7 @@ class SettingsWindow: NSWindowController {
         retentionPopup.action = #selector(retentionPeriodChanged(_:))
         stackView.addArrangedSubview(retentionPopup)
         
-        let retentionHint = NSTextField(labelWithString: "Pinned items are never deleted")
+        let retentionHint = NSTextField(labelWithString: "Older items are automatically removed based on this setting")
         retentionHint.font = NSFont.systemFont(ofSize: 10)
         retentionHint.textColor = .tertiaryLabelColor
         stackView.addArrangedSubview(retentionHint)
@@ -590,11 +590,10 @@ class SettingsWindow: NSWindowController {
         
         let period: ClipboardHistoryManager.RetentionPeriod = {
             switch title {
-            case "Never": return .never
-            case "1 day": return .oneDay
-            case "3 days": return .threeDays
-            case "1 week": return .oneWeek
-            case "1 month": return .oneMonth
+            case "1 Day": return .oneDay
+            case "3 Days": return .threeDays
+            case "1 Week": return .oneWeek
+            case "1 Month": return .oneMonth
             case "Forever": return .forever
             default: return .threeDays
             }

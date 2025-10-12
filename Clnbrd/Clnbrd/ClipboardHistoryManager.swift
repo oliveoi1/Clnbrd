@@ -22,7 +22,6 @@ class ClipboardHistoryManager: ObservableObject {
     
     // MARK: - Settings
     enum RetentionPeriod: String, CaseIterable, Codable {
-        case never = "Never"
         case oneDay = "1 Day"
         case threeDays = "3 Days"
         case oneWeek = "1 Week"
@@ -31,8 +30,6 @@ class ClipboardHistoryManager: ObservableObject {
         
         var timeInterval: TimeInterval? {
             switch self {
-            case .never:
-                return 0
             case .oneDay:
                 return 24 * 60 * 60
             case .threeDays:
@@ -395,11 +392,6 @@ class ClipboardHistoryManager: ObservableObject {
     private func enforceRetentionPolicy() {
         guard isEnabled else { return }
         guard let maxAge = retentionPeriod.timeInterval else { return } // Forever = no cleanup
-        guard maxAge > 0 else {
-            // "Never" = clear all immediately
-            clearHistory()
-            return
-        }
         
         let cutoffDate = Date().addingTimeInterval(-maxAge)
         let beforeCount = items.count
