@@ -283,7 +283,26 @@ class ClipboardManager {
         let rtfData = pasteboard.data(forType: .rtf)
         let htmlData = pasteboard.data(forType: .html)
         
-        logger.info("📋 Capturing clipboard - Text: \(plainText != nil), RTF: \(rtfData != nil), HTML: \(htmlData != nil)")
+        // Check for images
+        var imageData: Data?
+        if let types = pasteboard.types, types.contains(.tiff) || types.contains(.png) {
+            // Try TIFF first (most common for screenshots/copied images)
+            if let tiffData = pasteboard.data(forType: .tiff) {
+                imageData = tiffData
+                logger.debug("📸 Found TIFF image on clipboard")
+            } else if let pngData = pasteboard.data(forType: .png) {
+                imageData = pngData
+                logger.debug("📸 Found PNG image on clipboard")
+            }
+        }
+        
+        logger.info("""
+            📋 Capturing clipboard - \
+            Text: \(plainText != nil), \
+            RTF: \(rtfData != nil), \
+            HTML: \(htmlData != nil), \
+            Image: \(imageData != nil)
+            """)
         
         // Get source app
         let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
@@ -293,6 +312,7 @@ class ClipboardManager {
             plainText: plainText,
             rtfData: rtfData,
             htmlData: htmlData,
+            imageData: imageData,
             sourceApp: sourceApp
         )
         
