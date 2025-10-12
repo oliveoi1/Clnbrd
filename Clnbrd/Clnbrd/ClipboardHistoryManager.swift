@@ -88,9 +88,18 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
     
+    // Storage management
+    var maxStorageSize: Int64 {
+        didSet {
+            UserDefaults.standard.set(maxStorageSize, forKey: "ClipboardHistory.MaxStorageSize")
+            enforceStorageLimit()
+        }
+    }
+    
     // MARK: - Private Properties
     private var cleanupTimer: Timer?
     private let maxItemsDefault = 100
+    private let maxStorageSizeDefault: Int64 = 100 * 1024 * 1024 // 100 MB default
     
     // MARK: - Initialization
     private init() {
@@ -161,6 +170,14 @@ class ClipboardHistoryManager: ObservableObject {
             UserDefaults.standard.set(Array(self.excludedApps), forKey: excludedAppsKey)
         }
         
+        // Load storage limit
+        let maxStorageSizeKey = "ClipboardHistory.MaxStorageSize"
+        let savedStorageSize = UserDefaults.standard.object(forKey: maxStorageSizeKey) as? Int64
+        self.maxStorageSize = savedStorageSize ?? maxStorageSizeDefault
+        if savedStorageSize == nil {
+            UserDefaults.standard.set(maxStorageSizeDefault, forKey: maxStorageSizeKey)
+        }
+        
         // Start cleanup timer (runs every hour)
         startCleanupTimer()
         
@@ -218,6 +235,7 @@ class ClipboardHistoryManager: ObservableObject {
         
         // Enforce limits
         enforceMaxItems()
+        enforceStorageLimit()
         
         // Save to disk
         saveHistoryToDisk()
@@ -379,6 +397,85 @@ class ClipboardHistoryManager: ObservableObject {
     private func trackHistoryEvent(_ eventName: String, metadata: [String: String] = [:]) {
         // Track history feature usage
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_\(eventName)")
+    }
+    
+    // MARK: - Storage Management
+    
+    /// Calculate total storage size of all history items
+    var totalStorageSize: Int64 {
+        return items.reduce(0) { $0 + $1.storageSize }
+    }
+    
+    /// Human-readable total storage size
+    var totalStorageSizeFormatted: String {
+        let bytes = Double(totalStorageSize)
+        
+        if bytes < 1024 {
+            return "\(Int(bytes)) bytes"
+        } else if bytes < 1024 * 1024 {
+            return String(format: "%.1f KB", bytes / 1024)
+        } else if bytes < 1024 * 1024 * 1024 {
+            return String(format: "%.1f MB", bytes / (1024 * 1024))
+        } else {
+            return String(format: "%.2f GB", bytes / (1024 * 1024 * 1024))
+        }
+    }
+    
+    /// Enforce storage limit by removing oldest non-pinned items
+    private func enforceStorageLimit() {
+        let currentSize = totalStorageSize
+        guard currentSize > maxStorageSize else {
+            logger.debug("Storage within limits: \(totalStorageSizeFormatted) / \(formatBytes(maxStorageSize))")
+            return
+        }
+        
+        logger.info("Storage limit exceeded: \(totalStorageSizeFormatted) > \(formatBytes(maxStorageSize))")
+        
+        // Separate pinned and unpinned items
+        var pinnedItems = items.filter { $0.isPinned }
+        var unpinnedItems = items.filter { !$0.isPinned }
+        
+        // Sort unpinned by timestamp (oldest first for removal)
+        unpinnedItems.sort { $0.timestamp < $1.timestamp }
+        
+        // Remove oldest unpinned items until we're under the limit
+        var currentTotalSize = currentSize
+        var removedCount = 0
+        
+        while currentTotalSize > maxStorageSize && !unpinnedItems.isEmpty {
+            let removed = unpinnedItems.removeFirst()
+            currentTotalSize -= removed.storageSize
+            removedCount += 1
+        }
+        
+        // Update items array
+        items = (pinnedItems + unpinnedItems).sorted()
+        
+        if removedCount > 0 {
+            // Save to disk after cleanup
+            saveHistoryToDisk()
+            
+            logger.info("Enforced storage limit: removed \(removedCount) items, now \(totalStorageSizeFormatted)")
+            trackHistoryEvent("storage_limit_enforced", metadata: [
+                "removed_count": "\(removedCount)",
+                "final_size": "\(totalStorageSize)"
+            ])
+        }
+    }
+    
+    /// Format bytes to human-readable string
+    func formatBytes(_ bytes: Int64) -> String {
+        let size = Double(bytes)
+        
+        if size < 1024 {
+            return "\(Int(size)) bytes"
+        } else if size < 1024 * 1024 {
+            return String(format: "%.1f KB", size / 1024)
+        } else if size < 1024 * 1024 * 1024 {
+            return String(format: "%.1f MB", size / (1024 * 1024))
+        } else {
+            return String(format: "%.2f GB", size / (1024 * 1024 * 1024))
+        }
     }
     
     // MARK: - Stats

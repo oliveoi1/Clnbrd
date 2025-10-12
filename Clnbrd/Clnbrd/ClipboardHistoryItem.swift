@@ -138,6 +138,41 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         return NSImage(data: data)
     }
     
+    /// Calculate total storage size of this item in bytes
+    var storageSize: Int64 {
+        var size: Int64 = 0
+        
+        // Text content
+        size += Int64(plainText?.utf8.count ?? 0)
+        size += Int64(rtfData?.count ?? 0)
+        size += Int64(htmlData?.count ?? 0)
+        
+        // Image content
+        size += Int64(imageData?.count ?? 0)
+        size += Int64(thumbnailData?.count ?? 0)
+        
+        // Metadata (approximate)
+        size += Int64(sourceApp?.utf8.count ?? 0)
+        size += 50 // UUID, timestamp, other overhead
+        
+        return size
+    }
+    
+    /// Human-readable storage size (e.g., "1.2 MB", "345 KB")
+    var storageSizeFormatted: String {
+        let bytes = Double(storageSize)
+        
+        if bytes < 1024 {
+            return "\(Int(bytes)) bytes"
+        } else if bytes < 1024 * 1024 {
+            return String(format: "%.1f KB", bytes / 1024)
+        } else if bytes < 1024 * 1024 * 1024 {
+            return String(format: "%.1f MB", bytes / (1024 * 1024))
+        } else {
+            return String(format: "%.2f GB", bytes / (1024 * 1024 * 1024))
+        }
+    }
+    
     /// Returns the best available text representation
     var bestText: String {
         if let plain = plainText, !plain.isEmpty {

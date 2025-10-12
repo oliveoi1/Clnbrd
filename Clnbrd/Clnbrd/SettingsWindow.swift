@@ -303,6 +303,14 @@ class SettingsWindow: NSWindowController {
             statsStack.addArrangedSubview(oldestLabel)
         }
         
+        // Storage usage
+        let storageText = ClipboardHistoryManager.shared.totalStorageSizeFormatted
+        let maxStorageText = ClipboardHistoryManager.shared.formatBytes(ClipboardHistoryManager.shared.maxStorageSize)
+        let storageLabel = NSTextField(labelWithString: "Storage: \(storageText) / \(maxStorageText)")
+        storageLabel.font = NSFont.systemFont(ofSize: 11)
+        storageLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(storageLabel)
+        
         stackView.addArrangedSubview(statsStack)
         
         stackView.addArrangedSubview(createSeparatorLine())
