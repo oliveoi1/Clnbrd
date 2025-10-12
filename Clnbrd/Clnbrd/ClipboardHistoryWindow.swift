@@ -272,46 +272,73 @@ class ClipboardHistoryWindow: NSPanel {
             card.addSubview(pinIcon)
         }
         
-        // Text preview - centered in card with FORMATTED TEXT (preserves bold, colors, fonts, etc.)
-        let textLabel = NSTextField(frame: NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24))
-        
-        // Try to load formatted text (RTF or HTML), fallback to plain text
-        if let rtfData = item.rtfData,
-           let attributedString = NSAttributedString(rtf: rtfData, documentAttributes: nil) {
-            // Use RTF formatted text (preserves ALL formatting)
-            let mutableAttr = NSMutableAttributedString(attributedString: attributedString)
+        // Content area - show image or text based on content type
+        if let thumbnail = item.thumbnail {
+            // IMAGE CONTENT - Show thumbnail
+            let imageView = NSImageView(frame: NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24))
+            imageView.image = thumbnail
+            imageView.imageScaling = .scaleProportionallyUpOrDown
+            imageView.imageAlignment = .alignCenter
+            imageView.wantsLayer = true
+            imageView.layer?.cornerRadius = 4
+            imageView.layer?.masksToBounds = true
+            card.addSubview(imageView)
             
-            // Scale down font slightly for preview if needed
-            let range = NSRange(location: 0, length: mutableAttr.length)
-            mutableAttr.enumerateAttribute(.font, in: range) { value, attrRange, _ in
-                if let font = value as? NSFont {
-                    let scaledFont = NSFont(descriptor: font.fontDescriptor, size: max(font.pointSize * 0.85, 9))
-                    mutableAttr.addAttribute(.font, value: scaledFont ?? font, range: attrRange)
+            // If mixed content (text + image), show small text badge
+            if item.contentType == .mixed, let plainText = item.plainText {
+                let textBadge = NSTextField(labelWithString: plainText.prefix(30) + "...")
+                textBadge.frame = NSRect(x: 8, y: 8, width: cardWidth - 16, height: 20)
+                textBadge.font = NSFont.systemFont(ofSize: 9)
+                textBadge.textColor = .white
+                textBadge.alignment = .center
+                textBadge.backgroundColor = NSColor.black.withAlphaComponent(0.6)
+                textBadge.wantsLayer = true
+                textBadge.layer?.cornerRadius = 4
+                textBadge.layer?.masksToBounds = true
+                card.addSubview(textBadge)
+            }
+        } else {
+            // TEXT CONTENT - Show formatted text
+            let textLabel = NSTextField(frame: NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24))
+            
+            // Try to load formatted text (RTF or HTML), fallback to plain text
+            if let rtfData = item.rtfData,
+               let attributedString = NSAttributedString(rtf: rtfData, documentAttributes: nil) {
+                // Use RTF formatted text (preserves ALL formatting)
+                let mutableAttr = NSMutableAttributedString(attributedString: attributedString)
+                
+                // Scale down font slightly for preview if needed
+                let range = NSRange(location: 0, length: mutableAttr.length)
+                mutableAttr.enumerateAttribute(.font, in: range) { value, attrRange, _ in
+                    if let font = value as? NSFont {
+                        let scaledFont = NSFont(descriptor: font.fontDescriptor, size: max(font.pointSize * 0.85, 9))
+                        mutableAttr.addAttribute(.font, value: scaledFont ?? font, range: attrRange)
+                    }
                 }
+                
+                textLabel.attributedStringValue = mutableAttr
+            } else if let htmlData = item.htmlData,
+                      let attributedString = NSAttributedString(html: htmlData, documentAttributes: nil) {
+                // Use HTML formatted text
+                textLabel.attributedStringValue = attributedString
+            } else {
+                // Fallback to plain text
+                textLabel.stringValue = item.preview
+                textLabel.font = NSFont.systemFont(ofSize: 11)
+                textLabel.textColor = .black
             }
             
-            textLabel.attributedStringValue = mutableAttr
-        } else if let htmlData = item.htmlData,
-                  let attributedString = NSAttributedString(html: htmlData, documentAttributes: nil) {
-            // Use HTML formatted text
-            textLabel.attributedStringValue = attributedString
-        } else {
-            // Fallback to plain text
-            textLabel.stringValue = item.preview
-            textLabel.font = NSFont.systemFont(ofSize: 11)
-            textLabel.textColor = .black
+            textLabel.lineBreakMode = .byWordWrapping
+            textLabel.usesSingleLineMode = false
+            textLabel.maximumNumberOfLines = 5 // More lines since we have more space
+            textLabel.isEditable = false
+            textLabel.isSelectable = false
+            textLabel.isBordered = false
+            textLabel.drawsBackground = false
+            textLabel.cell?.wraps = true
+            textLabel.cell?.isScrollable = false
+            card.addSubview(textLabel)
         }
-        
-        textLabel.lineBreakMode = .byWordWrapping
-        textLabel.usesSingleLineMode = false
-        textLabel.maximumNumberOfLines = 5 // More lines since we have more space
-        textLabel.isEditable = false
-        textLabel.isSelectable = false
-        textLabel.isBordered = false
-        textLabel.drawsBackground = false
-        textLabel.cell?.wraps = true
-        textLabel.cell?.isScrollable = false
-        card.addSubview(textLabel)
         
         container.addSubview(card)
         
