@@ -12,7 +12,7 @@ class ClipboardHistoryStorage {
     private let keyFileURL: URL
     
     // Encryption
-    private var encryptionKey: SymmetricKey
+    private let encryptionKey: SymmetricKey
     
     // Singleton
     static let shared = ClipboardHistoryStorage()
@@ -27,13 +27,21 @@ class ClipboardHistoryStorage {
         // Create directory if needed
         try? FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         
-        // Load or create encryption key
-        if let existingKey = loadEncryptionKey() {
-            encryptionKey = existingKey
+        // Load or create encryption key (static method to avoid using self)
+        if let keyData = try? Data(contentsOf: keyFileURL) {
+            encryptionKey = SymmetricKey(data: keyData)
             logger.info("📂 Loaded existing encryption key")
         } else {
             encryptionKey = SymmetricKey(size: .bits256)
-            saveEncryptionKey(encryptionKey)
+            
+            // Save the new key
+            let keyData = encryptionKey.withUnsafeBytes { Data($0) }
+            try? keyData.write(to: keyFileURL, options: .completeFileProtection)
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: keyFileURL.path
+            )
+            
             logger.info("🔐 Generated new encryption key")
         }
     }
@@ -110,33 +118,6 @@ class ClipboardHistoryStorage {
         let decryptedData = try AES.GCM.open(sealedBox, using: encryptionKey)
         
         return decryptedData
-    }
-    
-    // MARK: - Encryption Key Management
-    
-    private func saveEncryptionKey(_ key: SymmetricKey) {
-        // Convert key to data
-        let keyData = key.withUnsafeBytes { Data($0) }
-        
-        // Save to keychain for extra security (best practice)
-        // For now, save to file with restricted permissions
-        try? keyData.write(to: keyFileURL, options: .completeFileProtection)
-        
-        // Set file permissions to user-only
-        try? FileManager.default.setAttributes(
-            [.posixPermissions: 0o600],
-            ofItemAtPath: keyFileURL.path
-        )
-        
-        logger.info("🔐 Saved encryption key to disk")
-    }
-    
-    private func loadEncryptionKey() -> SymmetricKey? {
-        guard let keyData = try? Data(contentsOf: keyFileURL) else {
-            return nil
-        }
-        
-        return SymmetricKey(data: keyData)
     }
     
     // MARK: - Storage Info
