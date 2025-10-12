@@ -734,7 +734,7 @@ class ClipboardHistoryWindow: NSPanel {
         logger.info("📋 Delegate class: \(String(describing: object_getClass(delegate)))")
         
         // Try to call openSettingsToTab using performSelector
-        let selector = Selector(("openSettingsToTab:"))
+        let selector = #selector(AppDelegate.openSettingsToTab(_:))
         if delegate.responds(to: selector) {
             logger.info("✅ Delegate responds to openSettingsToTab, calling it...")
             closeWindow()
