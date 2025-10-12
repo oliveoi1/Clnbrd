@@ -11,9 +11,11 @@ class ClipboardHistoryWindow: NSPanel {
     private var stackView: NSStackView!
     private var titleLabel: NSTextField!
     private var searchField: NSSearchField!
+    private var appFilterPopup: NSPopUpButton!
     
     // State
     private var searchQuery: String = ""
+    private var selectedAppFilter: String? // nil = "All Apps"
     private var localClickMonitor: Any?
     private var globalClickMonitor: Any?
     private var selectedIndex: Int = 0 // Currently selected card index
@@ -107,7 +109,7 @@ class ClipboardHistoryWindow: NSPanel {
         headerView.addSubview(titleLabel)
         
         // Search field (positioned on left side of header)
-        let searchFieldWidth: CGFloat = 200
+        let searchFieldWidth: CGFloat = 180
         searchField = NSSearchField(frame: NSRect(x: 12, y: 6, width: searchFieldWidth, height: 24))
         searchField.placeholderString = "Search history..."
         searchField.font = NSFont.systemFont(ofSize: 12)
@@ -117,6 +119,18 @@ class ClipboardHistoryWindow: NSPanel {
         searchField.sendsSearchStringImmediately = true
         searchField.sendsWholeSearchString = false
         headerView.addSubview(searchField)
+        
+        // App filter popup (next to search field)
+        let appFilterWidth: CGFloat = 140
+        appFilterPopup = NSPopUpButton(frame: NSRect(x: 12 + searchFieldWidth + 8, y: 6, width: appFilterWidth, height: 24))
+        appFilterPopup.font = NSFont.systemFont(ofSize: 12)
+        appFilterPopup.target = self
+        appFilterPopup.action = #selector(appFilterChanged)
+        appFilterPopup.autoresizingMask = []
+        headerView.addSubview(appFilterPopup)
+        
+        // Populate app filter (will be updated when items load)
+        updateAppFilter()
         
         // Settings gear icon in top right
         let settingsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 76, y: 6, width: 28, height: 24))
@@ -204,12 +218,15 @@ class ClipboardHistoryWindow: NSPanel {
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         cardContainers.removeAll()
         
-        // Get items (filtered by search if needed)
+        // Update app filter dropdown
+        updateAppFilter()
+        
+        // Get items (filtered by app and search)
         let allItems = ClipboardHistoryManager.shared.items
         let items = filterItems(allItems)
         
         // Update title with count
-        if !searchQuery.isEmpty {
+        if !searchQuery.isEmpty || selectedAppFilter != nil {
             titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
         } else {
             titleLabel.stringValue = "Clipboard History (\(items.count))"
@@ -248,10 +265,14 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func addEmptyStateView() {
-        let emptyLabel = NSTextField(labelWithString: searchQuery.isEmpty ?
-            "No clipboard history yet\nCopy something to get started!" :
-            "No results found"
-        )
+        let message: String
+        if searchQuery.isEmpty && selectedAppFilter == nil {
+            message = "No clipboard history yet\nCopy something to get started!"
+        } else {
+            message = "No results found"
+        }
+        
+        let emptyLabel = NSTextField(labelWithString: message)
         emptyLabel.font = NSFont.systemFont(ofSize: 12)
         emptyLabel.textColor = .tertiaryLabelColor
         emptyLabel.alignment = .center
@@ -725,7 +746,7 @@ class ClipboardHistoryWindow: NSPanel {
         }
     }
     
-    // MARK: - Search
+    // MARK: - Search & Filter
     
     @objc private func searchFieldChanged() {
         let query = searchField.stringValue
@@ -735,13 +756,67 @@ class ClipboardHistoryWindow: NSPanel {
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_search")
     }
     
+    @objc private func appFilterChanged() {
+        let selectedTitle = appFilterPopup.titleOfSelectedItem
+        selectedAppFilter = (selectedTitle == "All Apps") ? nil : selectedTitle
+        logger.debug("🎯 App filter: '\(self.selectedAppFilter ?? "All")'")
+        reloadHistoryItems()
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_app_filter")
+    }
+    
+    private func updateAppFilter() {
+        appFilterPopup.removeAllItems()
+        
+        // Add "All Apps" option
+        appFilterPopup.addItem(withTitle: "All Apps")
+        if let allAppsItem = appFilterPopup.menu?.item(at: 0) {
+            allAppsItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "All apps")
+        }
+        
+        // Get unique apps from history
+        let allItems = ClipboardHistoryManager.shared.items
+        let uniqueApps = Set(allItems.compactMap { $0.sourceApp }).sorted()
+        
+        if !uniqueApps.isEmpty {
+            appFilterPopup.menu?.addItem(NSMenuItem.separator())
+            
+            for appName in uniqueApps {
+                appFilterPopup.addItem(withTitle: appName)
+                
+                // Add app icon to menu item
+                if let menuItem = appFilterPopup.menu?.item(withTitle: appName),
+                   let appIcon = getAppIcon(for: appName) {
+                    menuItem.image = appIcon
+                    menuItem.image?.size = NSSize(width: 16, height: 16)
+                }
+            }
+        }
+        
+        // Restore previous selection if it still exists
+        if let selectedApp = selectedAppFilter,
+           appFilterPopup.itemTitles.contains(selectedApp) {
+            appFilterPopup.selectItem(withTitle: selectedApp)
+        } else {
+            appFilterPopup.selectItem(at: 0) // Select "All Apps"
+            selectedAppFilter = nil
+        }
+    }
+    
     private func filterItems(_ items: [ClipboardHistoryItem]) -> [ClipboardHistoryItem] {
+        var filteredItems = items
+        
+        // Apply app filter first
+        if let appFilter = selectedAppFilter {
+            filteredItems = filteredItems.filter { $0.sourceApp == appFilter }
+        }
+        
+        // Apply search query
         guard !searchQuery.isEmpty else {
-            return items
+            return filteredItems
         }
         
         let lowercasedQuery = searchQuery.lowercased()
-        return items.filter { item in
+        return filteredItems.filter { item in
             // Search in plain text
             if let plainText = item.plainText,
                plainText.lowercased().contains(lowercasedQuery) {
@@ -783,6 +858,15 @@ class ClipboardHistoryWindow: NSPanel {
         searchQuery = ""
         reloadHistoryItems()
         logger.debug("🔍 Search cleared")
+    }
+    
+    private func clearFilters() {
+        searchField.stringValue = ""
+        searchQuery = ""
+        selectedAppFilter = nil
+        appFilterPopup.selectItem(at: 0) // Select "All Apps"
+        reloadHistoryItems()
+        logger.debug("🔍 All filters cleared")
     }
     
     private func closeWindow() {
@@ -951,9 +1035,9 @@ class ClipboardHistoryWindow: NSPanel {
         
         switch event.keyCode {
         case 53: // Escape key
-            // If search has text, clear it first, otherwise close window
-            if !searchQuery.isEmpty {
-                clearSearch()
+            // If any filters are active, clear them first, otherwise close window
+            if !searchQuery.isEmpty || selectedAppFilter != nil {
+                clearFilters()
             } else {
                 closeWindow()
             }
