@@ -359,17 +359,37 @@ class ClipboardHistoryWindow: NSPanel {
             card.addGestureRecognizer(rightClickGesture)
         }
         
-        // Pin button - always visible, filled when pinned
-        let pinButton = NSButton(frame: NSRect(x: cardWidth - 26, y: cardHeight - 26, width: 20, height: 20))
+        // Pin button - Apple HIG compliant design
+        let pinButton = NSButton(frame: NSRect(x: cardWidth - 28, y: cardHeight - 28, width: 22, height: 22))
         pinButton.bezelStyle = .regularSquare
         pinButton.isBordered = false
         pinButton.setButtonType(.momentaryChange)
-        pinButton.image = NSImage(systemSymbolName: item.isPinned ? "pin.fill" : "pin", accessibilityDescription: "Pin")
-        pinButton.contentTintColor = item.isPinned ? .systemYellow : .secondaryLabelColor
+        
+        // Use SF Symbols with proper weights for Apple design standards
+        let pinIconName = item.isPinned ? "pin.fill" : "pin.slash"
+        let pinIcon = NSImage(systemSymbolName: pinIconName, accessibilityDescription: item.isPinned ? "Unpin" : "Pin")
+        
+        // Configure symbol for better visual hierarchy
+        if #available(macOS 11.0, *) {
+            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+            pinButton.image = pinIcon?.withSymbolConfiguration(config)
+        } else {
+            pinButton.image = pinIcon
+        }
+        
+        // Apple HIG color usage: Yellow for pinned (attention), tertiary for unpinned (subtle)
+        pinButton.contentTintColor = item.isPinned ? .systemYellow : .tertiaryLabelColor
         pinButton.imageScaling = .scaleProportionallyDown
+        
+        // Accessibility
+        pinButton.toolTip = item.isPinned ? "Unpin this item" : "Pin this item to keep it forever"
+        
+        // Action
         pinButton.target = self
         pinButton.action = #selector(togglePin(_:))
         pinButton.identifier = NSUserInterfaceItemIdentifier("pin-\(item.id.uuidString)")
+        
+        // Ensure button is above other content
         card.addSubview(pinButton)
         
         // Content area - show image or text based on content type
@@ -978,6 +998,14 @@ class ClipboardHistoryWindow: NSPanel {
         // Monitor for clicks within the app (local monitor)
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             guard let self = self else { return event }
+            
+            // Check if the click is on a UI control (button, etc.) inside our window
+            if let clickedView = event.window?.contentView?.hitTest(event.locationInWindow) {
+                // If it's a control (button, text field, etc.), don't close - let it handle the click
+                if clickedView is NSControl {
+                    return event // Let the control handle it, don't close
+                }
+            }
             
             // Get the click location in screen coordinates
             let clickLocation = NSEvent.mouseLocation
