@@ -139,6 +139,7 @@ class ClipboardHistoryManager: ObservableObject {
     private let maxStorageSizeDefault: Int64 = 100 * 1024 * 1024 // 100 MB default
     
     // MARK: - Initialization
+    // swiftlint:disable:next function_body_length
     private init() {
         // Load settings from UserDefaults (default to enabled if not set)
         let enabledKey = "ClipboardHistory.Enabled"

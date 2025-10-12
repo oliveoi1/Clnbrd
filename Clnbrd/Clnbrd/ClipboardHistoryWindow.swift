@@ -1,5 +1,6 @@
 import Cocoa
 import os.log
+import UserNotifications
 
 /// Floating window that displays clipboard history at the top of the screen
 class ClipboardHistoryWindow: NSPanel {
@@ -245,6 +246,7 @@ class ClipboardHistoryWindow: NSPanel {
         stackView.addArrangedSubview(emptyLabel)
     }
     
+    // swiftlint:disable:next function_body_length
     private func createHistoryCard(for item: ClipboardHistoryItem) -> NSView {
         // Container holds both card and timestamp below it
         let timeHeight: CGFloat = 18
@@ -556,11 +558,17 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func showNotification(title: String, message: String) {
-        let notification = NSUserNotification()
-        notification.title = title
-        notification.informativeText = message
-        notification.soundName = nil
-        NSUserNotificationCenter.default.deliver(notification)
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = message
+        content.sound = nil
+        
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                self.logger.error("Failed to show notification: \(error.localizedDescription)")
+            }
+        }
     }
     
     private func showErrorAlert(_ title: String, message: String) {
@@ -802,10 +810,8 @@ class ClipboardHistoryWindow: NSPanel {
             "/Applications/Utilities/\(appName).app"
         ]
         
-        for path in appPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                return workspace.icon(forFile: path)
-            }
+        for path in appPaths where FileManager.default.fileExists(atPath: path) {
+            return workspace.icon(forFile: path)
         }
         
         return nil
