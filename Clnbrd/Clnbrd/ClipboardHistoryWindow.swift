@@ -17,7 +17,7 @@ class ClipboardHistoryWindow: NSPanel {
     private var globalClickMonitor: Any?
     
     // Constants
-    private let windowHeight: CGFloat = 180 // Increased to show full cards (120px + header + padding)
+    private let windowHeight: CGFloat = 200 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
     private let cardWidth: CGFloat = 180
     private let cardHeight: CGFloat = 120
     private let padding: CGFloat = 16 // Reduced padding for better fit
@@ -142,11 +142,13 @@ class ClipboardHistoryWindow: NSPanel {
         scrollView.documentView = stackContainer
         
         // Pin stack view to container with height constraint
+        // Height includes card + spacing + timestamp (120 + 6 + 18 = 144)
+        let containerHeight: CGFloat = cardHeight + 6 + 18
         NSLayoutConstraint.activate([
             stackView.leadingAnchor.constraint(equalTo: stackContainer.leadingAnchor),
             stackView.topAnchor.constraint(equalTo: stackContainer.topAnchor),
             stackView.bottomAnchor.constraint(equalTo: stackContainer.bottomAnchor),
-            stackView.heightAnchor.constraint(equalToConstant: cardHeight)
+            stackView.heightAnchor.constraint(equalToConstant: containerHeight)
         ])
         
         // Initial load
@@ -219,11 +221,19 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func createHistoryCard(for item: ClipboardHistoryItem) -> NSView {
-        let card = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight))
+        // Container holds both card and timestamp below it
+        let timeHeight: CGFloat = 18
+        let spacing: CGFloat = 6
+        let containerHeight = cardHeight + spacing + timeHeight
+        
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: containerHeight))
+        
+        // Create the card
+        let card = NSView(frame: NSRect(x: 0, y: timeHeight + spacing, width: cardWidth, height: cardHeight))
         card.wantsLayer = true
         // Light card background like screenshot thumbnails
         card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
-        card.layer?.cornerRadius = 8
+        card.layer?.cornerRadius = 8 // 4 rounded corners
         card.layer?.masksToBounds = true // Ensure corners are clipped
         card.layer?.borderWidth = 0.5
         card.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
@@ -248,14 +258,14 @@ class ClipboardHistoryWindow: NSPanel {
             card.addSubview(pinIcon)
         }
         
-        // Text preview (dark text on white card)
+        // Text preview - centered in card (no bottom bar, clean design)
         let textLabel = NSTextField(labelWithString: item.preview)
-        textLabel.frame = NSRect(x: 12, y: 32, width: cardWidth - 24, height: 52)
+        textLabel.frame = NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24)
         textLabel.font = NSFont.systemFont(ofSize: 11)
         textLabel.textColor = .black // Dark text on white card
         textLabel.lineBreakMode = .byWordWrapping
         textLabel.usesSingleLineMode = false
-        textLabel.maximumNumberOfLines = 3
+        textLabel.maximumNumberOfLines = 5 // More lines since we have more space
         textLabel.isEditable = false
         textLabel.isSelectable = false
         textLabel.isBordered = false
@@ -264,40 +274,21 @@ class ClipboardHistoryWindow: NSPanel {
         textLabel.cell?.isScrollable = false
         card.addSubview(textLabel)
         
-        // Bottom info bar background (light gray like screenshot preview)
-        let infoBar = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: 26))
-        infoBar.wantsLayer = true
-        infoBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.05).cgColor
-        infoBar.layer?.cornerRadius = 8
-        infoBar.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner] // Bottom corners only
-        card.addSubview(infoBar)
+        container.addSubview(card)
         
-        // Timestamp
+        // Timestamp BELOW the card (independent floating text)
         let timeLabel = NSTextField(labelWithString: item.displayTime)
-        timeLabel.frame = NSRect(x: 12, y: 7, width: 100, height: 14)
-        timeLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        timeLabel.textColor = .darkGray
+        timeLabel.frame = NSRect(x: 0, y: 0, width: cardWidth, height: timeHeight)
+        timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+        timeLabel.textColor = .white // White text on dark HUD background
+        timeLabel.alignment = .center
         timeLabel.isEditable = false
         timeLabel.isSelectable = false
         timeLabel.isBordered = false
         timeLabel.drawsBackground = false
-        card.addSubview(timeLabel)
+        container.addSubview(timeLabel)
         
-        // Character count badge
-        if item.characterCount > 0 {
-            let countLabel = NSTextField(labelWithString: "\(item.characterCount) chars")
-            countLabel.frame = NSRect(x: cardWidth - 80, y: 7, width: 68, height: 14)
-            countLabel.font = NSFont.systemFont(ofSize: 10)
-            countLabel.textColor = .gray
-            countLabel.alignment = .right
-            countLabel.isEditable = false
-            countLabel.isSelectable = false
-            countLabel.isBordered = false
-            countLabel.drawsBackground = false
-            card.addSubview(countLabel)
-        }
-        
-        return card
+        return container
     }
     
     @objc private func cardClicked(_ gesture: NSClickGestureRecognizer) {
