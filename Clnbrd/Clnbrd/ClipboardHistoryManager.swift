@@ -70,7 +70,8 @@ class ClipboardHistoryManager: ObservableObject {
         // Load settings from UserDefaults
         self.isEnabled = UserDefaults.standard.bool(forKey: "ClipboardHistory.Enabled")
         
-        if let savedPeriod = UserDefaults.standard.string(forKey: "ClipboardHistory.RetentionPeriod"),
+        let savedPeriodKey = "ClipboardHistory.RetentionPeriod"
+        if let savedPeriod = UserDefaults.standard.string(forKey: savedPeriodKey),
            let period = RetentionPeriod(rawValue: savedPeriod) {
             self.retentionPeriod = period
         } else {
@@ -117,7 +118,7 @@ class ClipboardHistoryManager: ObservableObject {
         }
         
         // Add to beginning of array (newest first)
-        items.insert(item, 0)
+        items.insert(item, at: 0)
         
         logger.info("Added clipboard history item: \(item.preview)")
         
@@ -259,11 +260,8 @@ class ClipboardHistoryManager: ObservableObject {
     }
     
     private func trackHistoryEvent(_ eventName: String, metadata: [String: String] = [:]) {
-        var fullMetadata = metadata
-        fullMetadata["history_count"] = "\(items.count)"
-        fullMetadata["retention_period"] = retentionPeriod.rawValue
-        
-        AnalyticsManager.shared.trackEvent(eventName, metadata: fullMetadata)
+        // Track history feature usage
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_\(eventName)")
     }
     
     // MARK: - Stats
@@ -284,4 +282,3 @@ class ClipboardHistoryManager: ObservableObject {
         return items.last?.timestamp
     }
 }
-

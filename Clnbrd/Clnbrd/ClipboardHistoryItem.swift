@@ -170,4 +170,3 @@ extension ClipboardHistoryItem: Hashable {
         hasher.combine(id)
     }
 }
-

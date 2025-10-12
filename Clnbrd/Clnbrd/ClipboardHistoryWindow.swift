@@ -263,11 +263,7 @@ class ClipboardHistoryWindow: NSPanel {
         logger.info("Restored clipboard item: \(item.preview)")
         
         // Track analytics
-        AnalyticsManager.shared.trackEvent("history_item_restored", metadata: [
-            "character_count": "\(item.characterCount)",
-            "has_rtf": "\(item.rtfData != nil)",
-            "has_html": "\(item.htmlData != nil)"
-        ])
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_item_restored")
         
         // Show brief visual feedback
         animateCardSelection(card)
@@ -303,7 +299,7 @@ class ClipboardHistoryWindow: NSPanel {
         self.orderOut(nil)
         
         // Track analytics
-        AnalyticsManager.shared.trackEvent("history_window_closed")
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_closed")
     }
     
     func toggle() {
@@ -334,9 +330,7 @@ class ClipboardHistoryWindow: NSPanel {
         logger.info("Showing history window with \(ClipboardHistoryManager.shared.items.count) items")
         
         // Track analytics
-        AnalyticsManager.shared.trackEvent("history_window_opened", metadata: [
-            "item_count": "\(ClipboardHistoryManager.shared.items.count)"
-        ])
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_opened")
     }
     
     override func keyDown(with event: NSEvent) {
@@ -355,4 +349,3 @@ extension NSColor {
         return self.blended(withFraction: 0.1, of: .controlAccentColor) ?? self
     }
 }
-

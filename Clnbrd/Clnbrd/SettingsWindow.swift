@@ -218,7 +218,7 @@ class SettingsWindow: NSWindowController {
         enableCheckbox.state = ClipboardHistoryManager.shared.isEnabled ? .on : .off
         stackView.addArrangedSubview(enableCheckbox)
         
-        stackView.addArrangedSubview(createSeparator())
+        stackView.addArrangedSubview(createSeparatorLine())
         
         // Retention Period Section
         let retentionLabel = NSTextField(labelWithString: "Delete History After:")
@@ -240,7 +240,7 @@ class SettingsWindow: NSWindowController {
         retentionHint.textColor = .tertiaryLabelColor
         stackView.addArrangedSubview(retentionHint)
         
-        stackView.addArrangedSubview(createSeparator())
+        stackView.addArrangedSubview(createSeparatorLine())
         
         // Max Items Section
         let maxItemsLabel = NSTextField(labelWithString: "Maximum Items:")
@@ -262,7 +262,7 @@ class SettingsWindow: NSWindowController {
         maxItemsPopup.action = #selector(maxItemsChanged(_:))
         stackView.addArrangedSubview(maxItemsPopup)
         
-        stackView.addArrangedSubview(createSeparator())
+        stackView.addArrangedSubview(createSeparatorLine())
         
         // Current Stats
         let statsLabel = NSTextField(labelWithString: "Current Statistics:")
@@ -296,7 +296,7 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(statsStack)
         
-        stackView.addArrangedSubview(createSeparator())
+        stackView.addArrangedSubview(createSeparatorLine())
         
         // Clear History Button
         let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
