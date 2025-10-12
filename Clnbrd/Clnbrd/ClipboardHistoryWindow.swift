@@ -239,6 +239,8 @@ class ClipboardHistoryWindow: NSPanel {
         
         let container = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: containerHeight))
         container.identifier = NSUserInterfaceItemIdentifier("container-\(item.id.uuidString)")
+        container.wantsLayer = true
+        container.layer?.masksToBounds = false // Allow icon to overflow the container bounds
         
         // Create the card
         let card = NSView(frame: NSRect(x: 0, y: timeHeight + spacing, width: cardWidth, height: cardHeight))
@@ -261,12 +263,6 @@ class ClipboardHistoryWindow: NSPanel {
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
         card.addGestureRecognizer(clickGesture)
         card.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
-        
-        // App icon badge (shows which app it was copied from)
-        if let sourceApp = item.sourceApp, !sourceApp.isEmpty {
-            let appIconView = createAppIconBadge(for: sourceApp)
-            card.addSubview(appIconView)
-        }
         
         // Pin indicator (if pinned) - always in top-right corner
         if item.isPinned {
@@ -318,6 +314,13 @@ class ClipboardHistoryWindow: NSPanel {
         card.addSubview(textLabel)
         
         container.addSubview(card)
+        
+        // App icon badge (shows which app it was copied from)
+        // Positioned to float over the bottom-right corner of the card
+        if let sourceApp = item.sourceApp, !sourceApp.isEmpty {
+            let appIconView = createAppIconBadge(for: sourceApp, cardYPosition: timeHeight + spacing)
+            container.addSubview(appIconView)
+        }
         
         // Timestamp BELOW the card (will change to "Copy" pill when selected)
         let timeLabel = NSTextField(labelWithString: item.displayTime)
@@ -546,14 +549,14 @@ class ClipboardHistoryWindow: NSPanel {
         }
     }
     
-    private func createAppIconBadge(for appName: String) -> NSImageView {
-        let iconSize: CGFloat = 32 // Slightly larger for better visibility
-        let padding: CGFloat = 8
+    private func createAppIconBadge(for appName: String, cardYPosition: CGFloat) -> NSImageView {
+        let iconSize: CGFloat = 36 // Size for the badge
         
-        // Create image view - positioned in BOTTOM-RIGHT corner like screenshot preview
+        // Create image view - CENTERED on bottom-right corner of the card
+        // Half inside card, half outside (floating over the corner)
         let imageView = NSImageView(frame: NSRect(
-            x: cardWidth - iconSize - padding,
-            y: padding,
+            x: cardWidth - (iconSize / 2),        // Centered on right edge (half outside)
+            y: cardYPosition - (iconSize / 2),    // Centered on bottom edge (half below)
             width: iconSize,
             height: iconSize
         ))
