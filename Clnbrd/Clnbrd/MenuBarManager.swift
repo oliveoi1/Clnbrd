@@ -10,6 +10,7 @@ class MenuBarManager {
     var menu: NSMenu!
     var eventMonitor: Any?
     var historyEventMonitor: Any?
+    var screenshotEventMonitor: Any?
     var historyWindow: ClipboardHistoryWindow?
     
     weak var delegate: MenuBarManagerDelegate?
@@ -119,6 +120,9 @@ class MenuBarManager {
         
         // Register history hotkey (⌘⇧H)
         registerHistoryHotKey()
+        
+        // Register screenshot capture hotkey (⌘⌥C)
+        registerScreenshotHotKey()
     }
     
     func registerHistoryHotKey() {
@@ -139,6 +143,92 @@ class MenuBarManager {
         }
         
         logger.info("History hotkey registered: ⌘⇧H")
+    }
+    
+    func registerScreenshotHotKey() {
+        logger.info("🔍 Registering screenshot capture hotkey (⌘⌥C)...")
+        
+        // Register ⌘⌥C hotkey (Command+Option+C, keyCode 8 is 'C')
+        screenshotEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Check for ⌘⌥C (Command+Option+C)
+            if event.modifierFlags.contains([.command, .option]) && event.keyCode == 8 {
+                logger.info("🎯 ⌘⌥C detected! Starting screenshot capture...")
+                DispatchQueue.main.async {
+                    self?.captureScreenshotToHistory()
+                }
+            }
+        }
+        
+        logger.info("Screenshot hotkey registered: ⌘⌥C")
+    }
+    
+    /// Captures a screenshot using interactive area selection and adds it to history
+    private func captureScreenshotToHistory() {
+        guard ClipboardHistoryManager.shared.isEnabled else {
+            logger.debug("🚫 History disabled, not capturing screenshot")
+            return
+        }
+        
+        logger.info("📸 Starting interactive screenshot capture...")
+        
+        // Create temporary file for screenshot
+        let tempDir = FileManager.default.temporaryDirectory
+        let screenshotPath = tempDir.appendingPathComponent("clnbrd_screenshot_\(UUID().uuidString).png")
+        
+        // Use macOS screencapture command with interactive mode (-i)
+        // -i: Interactive mode (user selects area)
+        // -r: Do not add shadow (cleaner screenshots)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-i", "-r", screenshotPath.path]
+        
+        do {
+            try process.run()
+            
+            // Wait for screenshot capture to complete
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                process.waitUntilExit()
+                
+                DispatchQueue.main.async {
+                    // Check if screenshot was created (user might have cancelled)
+                    if FileManager.default.fileExists(atPath: screenshotPath.path) {
+                        self?.processScreenshot(at: screenshotPath)
+                    } else {
+                        logger.info("📸 Screenshot capture cancelled by user")
+                    }
+                }
+            }
+        } catch {
+            logger.error("❌ Failed to start screenshot capture: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Processes a captured screenshot and adds it to history
+    private func processScreenshot(at url: URL) {
+        do {
+            // Read screenshot data
+            let imageData = try Data(contentsOf: url)
+            
+            // Create history item directly
+            let historyItem = ClipboardHistoryItem(
+                imageData: imageData,
+                sourceApp: "Screenshot"
+            )
+            
+            // Add to history
+            ClipboardHistoryManager.shared.addItem(historyItem)
+            
+            logger.info("✅ Screenshot added to history: \(url.lastPathComponent)")
+            
+            // Clean up temporary file
+            try? FileManager.default.removeItem(at: url)
+            
+            // Track analytics
+            AnalyticsManager.shared.trackFeatureUsage("screenshot_capture")
+            
+        } catch {
+            logger.error("❌ Failed to process screenshot: \(error.localizedDescription)")
+        }
     }
     
     func updateAutoCleanState(_ enabled: Bool) {
