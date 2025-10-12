@@ -16,11 +16,11 @@ class ClipboardHistoryWindow: NSPanel {
     private var searchQuery: String = ""
     
     // Constants
-    private let windowHeight: CGFloat = 140
-    private let windowWidth: CGFloat = 800
-    private let cardWidth: CGFloat = 200
-    private let cardHeight: CGFloat = 80
-    private let padding: CGFloat = 12
+    private let windowHeight: CGFloat = 150
+    private let windowWidth: CGFloat = 900
+    private let cardWidth: CGFloat = 220
+    private let cardHeight: CGFloat = 100
+    private let padding: CGFloat = 16
     
     init() {
         // Create window at top of screen
@@ -181,9 +181,16 @@ class ClipboardHistoryWindow: NSPanel {
         let card = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight))
         card.wantsLayer = true
         card.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        card.layer?.cornerRadius = 8
-        card.layer?.borderWidth = 1
+        card.layer?.cornerRadius = 10
+        card.layer?.borderWidth = 1.5
         card.layer?.borderColor = NSColor.separatorColor.cgColor
+        
+        // Shadow for depth
+        card.shadow = NSShadow()
+        card.layer?.shadowColor = NSColor.black.cgColor
+        card.layer?.shadowOpacity = 0.1
+        card.layer?.shadowOffset = NSSize(width: 0, height: -2)
+        card.layer?.shadowRadius = 4
         
         // Make card clickable
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
@@ -201,31 +208,39 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Pin indicator (if pinned)
         if item.isPinned {
-            let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 24, y: cardHeight - 24, width: 16, height: 16))
+            let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 28, y: cardHeight - 28, width: 18, height: 18))
             pinIcon.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: "Pinned")
             pinIcon.contentTintColor = .systemYellow
             card.addSubview(pinIcon)
         }
         
-        // Text preview
+        // Text preview (larger and more visible)
         let textLabel = NSTextField(labelWithString: item.preview)
-        textLabel.frame = NSRect(x: 8, y: 28, width: cardWidth - 16, height: 40)
-        textLabel.font = NSFont.systemFont(ofSize: 11)
+        textLabel.frame = NSRect(x: 12, y: 32, width: cardWidth - 24, height: 52)
+        textLabel.font = NSFont.systemFont(ofSize: 12)
         textLabel.textColor = .labelColor
-        textLabel.lineBreakMode = .byTruncatingTail
+        textLabel.lineBreakMode = .byWordWrapping
         textLabel.usesSingleLineMode = false
-        textLabel.maximumNumberOfLines = 2
+        textLabel.maximumNumberOfLines = 3
         textLabel.isEditable = false
         textLabel.isSelectable = false
         textLabel.isBordered = false
         textLabel.drawsBackground = false
+        textLabel.cell?.wraps = true
+        textLabel.cell?.isScrollable = false
         card.addSubview(textLabel)
+        
+        // Bottom info bar background
+        let infoBar = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: 28))
+        infoBar.wantsLayer = true
+        infoBar.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
+        card.addSubview(infoBar)
         
         // Timestamp
         let timeLabel = NSTextField(labelWithString: item.displayTime)
-        timeLabel.frame = NSRect(x: 8, y: 8, width: cardWidth - 16, height: 14)
-        timeLabel.font = NSFont.systemFont(ofSize: 9)
-        timeLabel.textColor = .tertiaryLabelColor
+        timeLabel.frame = NSRect(x: 12, y: 8, width: 100, height: 14)
+        timeLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        timeLabel.textColor = .secondaryLabelColor
         timeLabel.isEditable = false
         timeLabel.isSelectable = false
         timeLabel.isBordered = false
@@ -235,9 +250,9 @@ class ClipboardHistoryWindow: NSPanel {
         // Character count badge
         if item.characterCount > 0 {
             let countLabel = NSTextField(labelWithString: "\(item.characterCount) chars")
-            countLabel.frame = NSRect(x: cardWidth - 70, y: 8, width: 62, height: 14)
-            countLabel.font = NSFont.systemFont(ofSize: 9)
-            countLabel.textColor = .secondaryLabelColor
+            countLabel.frame = NSRect(x: cardWidth - 80, y: 8, width: 68, height: 14)
+            countLabel.font = NSFont.systemFont(ofSize: 10)
+            countLabel.textColor = .tertiaryLabelColor
             countLabel.alignment = .right
             countLabel.isEditable = false
             countLabel.isSelectable = false

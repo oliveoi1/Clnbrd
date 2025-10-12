@@ -325,4 +325,3 @@ class ClipboardManager {
         logger.info("📋 Clipboard history monitoring started")
     }
 }
-

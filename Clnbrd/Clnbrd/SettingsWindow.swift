@@ -3,7 +3,8 @@ import os.log
 import ServiceManagement
 import UniformTypeIdentifiers
 
-// swiftlint:disable file_length type_body_length
+// swiftlint:disable:next file_length
+// swiftlint:disable:next type_body_length
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
@@ -186,22 +187,27 @@ class SettingsWindow: NSWindowController {
     // swiftlint:disable:next function_body_length
     private func createHistoryTab() -> NSView {
         let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
         
         let scrollView = NSScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(scrollView)
+        
+        let contentView = NSView()
+        contentView.translatesAutoresizingMaskIntoConstraints = false
         
         let stackView = NSStackView()
         stackView.orientation = .vertical
         stackView.alignment = .leading
         stackView.spacing = 20
+        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.documentView = stackView
+        contentView.addSubview(stackView)
+        
+        scrollView.documentView = contentView
         
         // Header
         let headerLabel = NSTextField(labelWithString: "Clipboard History")
@@ -320,12 +326,16 @@ class SettingsWindow: NSWindowController {
         
         // Layout constraints
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             
-            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
+            stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            stackView.widthAnchor.constraint(equalToConstant: 500)
         ])
         
         return container
