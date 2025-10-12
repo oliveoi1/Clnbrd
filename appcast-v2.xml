@@ -19,6 +19,10 @@
                 
                 <h3>🔧 Build 54 Updates</h3>
                 <ul>
+                    <li><strong>Modern Apple UI</strong> - Full "liquid glass" aesthetic with SF Pro Rounded typography</li>
+                    <li><strong>Light/Dark/Auto Mode</strong> - New appearance selector in settings</li>
+                    <li><strong>Enhanced History Strip</strong> - Smooth hover effects, dynamic badge counts, improved animations</li>
+                    <li><strong>Fixed copyright text visibility</strong> - Proper adaptive colors for dark mode</li>
                     <li><strong>Fixed "Check for Updates" button</strong> - Now works correctly from About window</li>
                     <li><strong>Updated "What's New" dialog</strong> - Accurate feature list for v1.4.0-beta.1</li>
                     <li><strong>Improved update handling</strong> - Better compatibility with SwiftUI app delegate</li>
@@ -72,12 +76,12 @@
                     <li>Compatible with macOS 15.5+</li>
                 </ul>
             ]]></description>
-            <pubDate>Sun, 13 Oct 2025 06:00:00 +0000</pubDate>
+            <pubDate>Sat, 12 Oct 2025 23:30:00 +0000</pubDate>
             <enclosure 
-                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.1/Clnbrd-v1.4.0-beta.1-Build54.dmg" 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.1/Clnbrd-1.4.0-beta.1-Build-54-NOTARIZED.zip" 
                 sparkle:version="54" 
                 sparkle:shortVersionString="1.4.0-beta.1" 
-                length="2508691"
+                length="2114797"
                 type="application/octet-stream"
             />
         </item>
