@@ -270,11 +270,36 @@ class ClipboardHistoryWindow: NSPanel {
             card.addSubview(pinIcon)
         }
         
-        // Text preview - centered in card (no bottom bar, clean design)
-        let textLabel = NSTextField(labelWithString: item.preview)
-        textLabel.frame = NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24)
-        textLabel.font = NSFont.systemFont(ofSize: 11)
-        textLabel.textColor = .black // Dark text on white card
+        // Text preview - centered in card with FORMATTED TEXT (preserves bold, colors, fonts, etc.)
+        let textLabel = NSTextField(frame: NSRect(x: 12, y: 12, width: cardWidth - 24, height: cardHeight - 24))
+        
+        // Try to load formatted text (RTF or HTML), fallback to plain text
+        if let rtfData = item.rtfData,
+           let attributedString = NSAttributedString(rtf: rtfData, documentAttributes: nil) {
+            // Use RTF formatted text (preserves ALL formatting)
+            let mutableAttr = NSMutableAttributedString(attributedString: attributedString)
+            
+            // Scale down font slightly for preview if needed
+            let range = NSRange(location: 0, length: mutableAttr.length)
+            mutableAttr.enumerateAttribute(.font, in: range) { value, attrRange, _ in
+                if let font = value as? NSFont {
+                    let scaledFont = NSFont(descriptor: font.fontDescriptor, size: max(font.pointSize * 0.85, 9))
+                    mutableAttr.addAttribute(.font, value: scaledFont ?? font, range: attrRange)
+                }
+            }
+            
+            textLabel.attributedStringValue = mutableAttr
+        } else if let htmlData = item.htmlData,
+                  let attributedString = NSAttributedString(html: htmlData, documentAttributes: nil) {
+            // Use HTML formatted text
+            textLabel.attributedStringValue = attributedString
+        } else {
+            // Fallback to plain text
+            textLabel.stringValue = item.preview
+            textLabel.font = NSFont.systemFont(ofSize: 11)
+            textLabel.textColor = .black
+        }
+        
         textLabel.lineBreakMode = .byWordWrapping
         textLabel.usesSingleLineMode = false
         textLabel.maximumNumberOfLines = 5 // More lines since we have more space
