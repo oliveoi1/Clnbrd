@@ -79,6 +79,51 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         }
     }
     
+    /// Creates a copy of this item with the isPinned flag toggled
+    func withPinToggled() -> ClipboardHistoryItem {
+        // Use a private init to preserve UUID and timestamp
+        return ClipboardHistoryItem(
+            id: self.id,
+            timestamp: self.timestamp,
+            plainText: self.plainText,
+            rtfData: self.rtfData,
+            htmlData: self.htmlData,
+            imageData: self.imageData,
+            thumbnailData: self.thumbnailData,
+            sourceApp: self.sourceApp,
+            characterCount: self.characterCount,
+            contentType: self.contentType,
+            isPinned: !self.isPinned
+        )
+    }
+    
+    /// Private initializer for copying with preserved UUID and timestamp
+    private init(
+        id: UUID,
+        timestamp: Date,
+        plainText: String?,
+        rtfData: Data?,
+        htmlData: Data?,
+        imageData: Data?,
+        thumbnailData: Data?,
+        sourceApp: String?,
+        characterCount: Int,
+        contentType: ContentType,
+        isPinned: Bool
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.plainText = plainText
+        self.rtfData = rtfData
+        self.htmlData = htmlData
+        self.imageData = imageData
+        self.thumbnailData = thumbnailData
+        self.sourceApp = sourceApp
+        self.characterCount = characterCount
+        self.contentType = contentType
+        self.isPinned = isPinned
+    }
+    
     /// Returns a truncated preview of the content
     var preview: String {
         // For images, return a description

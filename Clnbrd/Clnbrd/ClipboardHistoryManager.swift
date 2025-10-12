@@ -362,21 +362,15 @@ class ClipboardHistoryManager: ObservableObject {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         let item = items[index]
         
-        let pinnedItem = ClipboardHistoryItem(
-            plainText: item.plainText,
-            rtfData: item.rtfData,
-            htmlData: item.htmlData,
-            imageData: item.imageData != nil ? item.imageData : nil,
-            sourceApp: item.sourceApp,
-            isPinned: !item.isPinned
-        )
+        // Use withPinToggled() to preserve UUID and timestamp
+        let pinnedItem = item.withPinToggled()
         
         items[index] = pinnedItem
         items.sort() // Re-sort to move pinned items to top
         saveHistoryToDisk()
         
-        logger.info("Toggled pin for item: \(item.id) - Now pinned: \(!item.isPinned)")
-        trackHistoryEvent(item.isPinned ? "item_unpinned" : "item_pinned")
+        logger.info("Toggled pin for item: \(item.id) - Now pinned: \(pinnedItem.isPinned)")
+        trackHistoryEvent(pinnedItem.isPinned ? "item_pinned" : "item_unpinned")
     }
     
     /// Toggles pin status for an item
