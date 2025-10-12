@@ -260,8 +260,7 @@ class ClipboardHistoryWindow: NSPanel {
         // Make card clickable
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
         card.addGestureRecognizer(clickGesture)
-        card.identifier = NSUserInterfaceItemIdentifier(item.id.uuidString)
-        card.tag = 1001 // Tag to identify as card view
+        card.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
         
         // Pin indicator (if pinned)
         if item.isPinned {
@@ -299,7 +298,7 @@ class ClipboardHistoryWindow: NSPanel {
         timeLabel.isSelectable = false
         timeLabel.isBordered = false
         timeLabel.drawsBackground = false
-        timeLabel.tag = 1002 // Tag to identify as timestamp label
+        timeLabel.identifier = NSUserInterfaceItemIdentifier("time-\(item.id.uuidString)")
         container.addSubview(timeLabel)
         
         return container
@@ -307,13 +306,18 @@ class ClipboardHistoryWindow: NSPanel {
     
     @objc private func cardClicked(_ gesture: NSClickGestureRecognizer) {
         guard let card = gesture.view else { return }
-        guard let idString = card.identifier?.rawValue,
-              let itemId = UUID(uuidString: idString) else { return }
+        guard let idString = card.identifier?.rawValue else { return }
+        
+        // Extract UUID from "card-{uuid}" format
+        let cardIdPrefix = "card-"
+        guard idString.hasPrefix(cardIdPrefix) else { return }
+        let uuidString = String(idString.dropFirst(cardIdPrefix.count))
+        guard let itemId = UUID(uuidString: uuidString) else { return }
         
         // Find which index was clicked
         if let clickedIndex = cardContainers.firstIndex(where: { container in
-            let cardView = container.viewWithTag(1001)
-            return cardView?.identifier?.rawValue == idString
+            // Find card view by checking subviews
+            return container.subviews.contains(where: { $0.identifier?.rawValue == idString })
         }) {
             selectedIndex = clickedIndex
             updateSelection()
@@ -345,25 +349,35 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Update all cards
         for (index, container) in cardContainers.enumerated() {
-            guard let card = container.viewWithTag(1001),
-                  let timeLabel = container.viewWithTag(1002) as? NSTextField else { continue }
+            // Find card and timeLabel by checking subviews
+            var card: NSView?
+            var timeLabel: NSTextField?
+            
+            for subview in container.subviews {
+                if subview.identifier?.rawValue.hasPrefix("card-") == true {
+                    card = subview
+                } else if subview.identifier?.rawValue.hasPrefix("time-") == true {
+                    timeLabel = subview as? NSTextField
+                }
+            }
+            
+            guard let cardView = card, let timeLabelView = timeLabel else { continue }
             
             let isSelected = (index == selectedIndex)
             
             // Update border color
-            card.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
+            cardView.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
             
             // Update timestamp text
             if isSelected {
-                timeLabel.stringValue = "Copy"
-                timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+                timeLabelView.stringValue = "Copy"
+                timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
             } else {
                 // Get original timestamp from item
-                if let items = stackView.arrangedSubviews as? [NSView],
-                   index < ClipboardHistoryManager.shared.items.count {
+                if index < ClipboardHistoryManager.shared.items.count {
                     let item = ClipboardHistoryManager.shared.items[index]
-                    timeLabel.stringValue = item.displayTime
-                    timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+                    timeLabelView.stringValue = item.displayTime
+                    timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .regular)
                 }
             }
         }
