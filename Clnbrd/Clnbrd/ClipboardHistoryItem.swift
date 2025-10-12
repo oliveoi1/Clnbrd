@@ -11,19 +11,28 @@ struct ClipboardHistoryItem: Identifiable, Codable {
     let rtfData: Data?
     let htmlData: Data?
     
+    // Image content (Phase 2)
+    let imageData: Data?
+    let thumbnailData: Data?
+    
     // Metadata
     let sourceApp: String?
     let characterCount: Int
     let isPinned: Bool
     
-    // For future image support (Phase 2)
-    // let imageData: Data?
-    // let thumbnailData: Data?
+    // Content type
+    enum ContentType: String, Codable {
+        case text
+        case image
+        case mixed // Both text and image
+    }
+    let contentType: ContentType
     
     init(
         plainText: String? = nil,
         rtfData: Data? = nil,
         htmlData: Data? = nil,
+        imageData: Data? = nil,
         sourceApp: String? = nil,
         isPinned: Bool = false
     ) {
@@ -35,10 +44,48 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         self.sourceApp = sourceApp
         self.characterCount = plainText?.count ?? 0
         self.isPinned = isPinned
+        
+        // Generate thumbnail from image if present
+        if let imageData = imageData, let image = NSImage(data: imageData) {
+            self.imageData = imageData
+            self.thumbnailData = Self.generateThumbnail(from: image)
+        } else {
+            self.imageData = nil
+            self.thumbnailData = nil
+        }
+        
+        // Determine content type
+        let hasText = plainText != nil || rtfData != nil || htmlData != nil
+        let hasImage = self.imageData != nil
+        
+        if hasText && hasImage {
+            self.contentType = .mixed
+        } else if hasImage {
+            self.contentType = .image
+        } else {
+            self.contentType = .text
+        }
     }
     
-    /// Returns a truncated preview of the text content (first 100 characters)
+    /// Returns a truncated preview of the content
     var preview: String {
+        // For images, return a description
+        if contentType == .image {
+            return "[Image]"
+        }
+        
+        if contentType == .mixed {
+            if let text = plainText, !text.isEmpty {
+                let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .replacingOccurrences(of: "\n", with: " ")
+                    .replacingOccurrences(of: "\t", with: " ")
+                let truncated = cleaned.count <= 50 ? cleaned : String(cleaned.prefix(50)) + "..."
+                return "\(truncated) [+ Image]"
+            }
+            return "[Image]"
+        }
+        
+        // Text only
         guard let text = plainText, !text.isEmpty else {
             return "[Empty]"
         }
@@ -64,7 +111,19 @@ struct ClipboardHistoryItem: Identifiable, Codable {
     
     /// Returns true if this item has any content
     var hasContent: Bool {
-        return plainText != nil || rtfData != nil || htmlData != nil
+        return plainText != nil || rtfData != nil || htmlData != nil || imageData != nil
+    }
+    
+    /// Get thumbnail image if available
+    var thumbnail: NSImage? {
+        guard let data = thumbnailData else { return nil }
+        return NSImage(data: data)
+    }
+    
+    /// Get full-size image if available
+    var image: NSImage? {
+        guard let data = imageData else { return nil }
+        return NSImage(data: data)
     }
     
     /// Returns the best available text representation
@@ -123,24 +182,69 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         
-        var items: [NSPasteboardItem] = []
-        let item = NSPasteboardItem()
+        var pasteboardItems: [NSPasteboardWriting] = []
         
-        // Add all available formats
+        // Add text content if available
         if let plain = plainText {
+            let item = NSPasteboardItem()
             item.setString(plain, forType: .string)
+            
+            if let rtf = rtfData {
+                item.setData(rtf, forType: .rtf)
+            }
+            
+            if let html = htmlData {
+                item.setData(html, forType: .html)
+            }
+            
+            pasteboardItems.append(item)
         }
         
-        if let rtf = rtfData {
-            item.setData(rtf, forType: .rtf)
+        // Add image if available
+        if let imageData = imageData, let image = NSImage(data: imageData) {
+            pasteboardItems.append(image)
         }
         
-        if let html = htmlData {
-            item.setData(html, forType: .html)
+        pasteboard.writeObjects(pasteboardItems)
+    }
+    
+    // MARK: - Thumbnail Generation
+    
+    /// Generates a thumbnail from an image (max 200x200)
+    private static func generateThumbnail(from image: NSImage, maxSize: CGFloat = 200) -> Data? {
+        let imageSize = image.size
+        
+        // Calculate thumbnail size maintaining aspect ratio
+        var thumbnailSize: NSSize
+        if imageSize.width > imageSize.height {
+            let ratio = maxSize / imageSize.width
+            thumbnailSize = NSSize(width: maxSize, height: imageSize.height * ratio)
+        } else {
+            let ratio = maxSize / imageSize.height
+            thumbnailSize = NSSize(width: imageSize.width * ratio, height: maxSize)
         }
         
-        items.append(item)
-        pasteboard.writeObjects(items)
+        // Create thumbnail
+        let thumbnail = NSImage(size: thumbnailSize)
+        thumbnail.lockFocus()
+        
+        image.draw(
+            in: NSRect(origin: .zero, size: thumbnailSize),
+            from: NSRect(origin: .zero, size: imageSize),
+            operation: .copy,
+            fraction: 1.0
+        )
+        
+        thumbnail.unlockFocus()
+        
+        // Convert to PNG data
+        guard let tiffData = thumbnail.tiffRepresentation,
+              let bitmapRep = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
+            return nil
+        }
+        
+        return pngData
     }
 }
 
