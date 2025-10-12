@@ -136,7 +136,7 @@ class ClipboardHistoryManager: ObservableObject {
         items.insert(item, at: 0)
         
         logger.info("✅ Added clipboard history item: \(item.preview)")
-        logger.info("📊 Total history items: \(items.count)")
+        logger.info("📊 Total history items: \(self.items.count)")
         
         // Enforce limits
         enforceMaxItems()
