@@ -13,20 +13,21 @@ class ClipboardHistoryWindow: NSPanel {
     
     // State
     private var searchQuery: String = ""
+    private var clickOutsideMonitor: Any?
     
     // Constants
-    private let windowHeight: CGFloat = 160
+    private let windowHeight: CGFloat = 180 // Increased to show full cards (120px + header + padding)
     private let cardWidth: CGFloat = 180
     private let cardHeight: CGFloat = 120
-    private let padding: CGFloat = 20
+    private let padding: CGFloat = 16 // Reduced padding for better fit
     private var optionsButton: NSButton!
     
     init() {
-        // Create window at top of screen - FULL WIDTH like macOS screenshots
-        let screenFrame = NSScreen.main?.frame ?? .zero
+        // Create window at top of screen - FULL WIDTH, below menu bar
+        let screenFrame = NSScreen.main?.visibleFrame ?? .zero // visibleFrame excludes menu bar
         let windowFrame = NSRect(
             x: screenFrame.origin.x,
-            y: screenFrame.maxY - windowHeight, // Flush with top
+            y: screenFrame.maxY - windowHeight, // Just below menu bar
             width: screenFrame.width, // FULL screen width
             height: windowHeight
         )
@@ -382,10 +383,41 @@ class ClipboardHistoryWindow: NSPanel {
     
     private func closeWindow() {
         logger.debug("Closing history window")
+        
+        // Stop monitoring for clicks outside
+        stopClickOutsideMonitor()
+        
         self.orderOut(nil)
         
         // Track analytics
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_closed")
+    }
+    
+    private func startClickOutsideMonitor() {
+        // Monitor for clicks outside the window
+        clickOutsideMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self = self else { return event }
+            
+            // Get the click location in screen coordinates
+            let clickLocation = NSEvent.mouseLocation
+            let windowFrame = self.frame
+            
+            // Check if click is outside our window
+            if !windowFrame.contains(clickLocation) {
+                // Click is outside, close the window
+                self.closeWindow()
+                return nil // Consume the event
+            }
+            
+            return event
+        }
+    }
+    
+    private func stopClickOutsideMonitor() {
+        if let monitor = clickOutsideMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickOutsideMonitor = nil
+        }
     }
     
     func toggle() {
@@ -400,12 +432,12 @@ class ClipboardHistoryWindow: NSPanel {
         // Reload items before showing
         reloadHistoryItems()
         
-        // Position at top of current screen - FULL WIDTH
+        // Position at top of current screen - FULL WIDTH, below menu bar
         if let screen = NSScreen.main {
-            let screenFrame = screen.frame
+            let screenFrame = screen.visibleFrame // visibleFrame excludes menu bar
             let windowFrame = NSRect(
                 x: screenFrame.origin.x,
-                y: screenFrame.maxY - windowHeight, // Flush with top
+                y: screenFrame.maxY - windowHeight, // Just below menu bar
                 width: screenFrame.width, // FULL screen width
                 height: windowHeight
             )
@@ -414,6 +446,9 @@ class ClipboardHistoryWindow: NSPanel {
         
         self.makeKeyAndOrderFront(nil)
         logger.info("Showing history window with \(ClipboardHistoryManager.shared.items.count) items")
+        
+        // Start monitoring for clicks outside
+        startClickOutsideMonitor()
         
         // Track analytics
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_opened")
