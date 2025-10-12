@@ -702,7 +702,7 @@ class ClipboardHistoryWindow: NSPanel {
         if delegate.responds(to: selector) {
             logger.info("✅ Delegate responds to openSettingsToTab, calling it...")
             closeWindow()
-            _ = delegate.perform(selector, with: 2)
+            _ = delegate.perform(selector, with: 1)  // Tab 1 = History tab
             AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
         } else {
             logger.error("❌ Delegate does not respond to openSettingsToTab")
