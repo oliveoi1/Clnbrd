@@ -15,7 +15,7 @@ class ClipboardHistoryManager: ObservableObject {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: "ClipboardHistory.Enabled")
             if !isEnabled {
-                clearAllHistory()
+                clearHistory()
             }
         }
     }
@@ -357,42 +357,8 @@ class ClipboardHistoryManager: ObservableObject {
         trackHistoryEvent("item_removed")
     }
     
-    /// Toggles pin status for an item by UUID
-    func togglePin(for id: UUID) {
-        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        let item = items[index]
-        
-        // Use withPinToggled() to preserve UUID and timestamp
-        let pinnedItem = item.withPinToggled()
-        
-        items[index] = pinnedItem
-        items.sort() // Re-sort to move pinned items to top
-        saveHistoryToDisk()
-        
-        logger.info("Toggled pin for item: \(item.id) - Now pinned: \(pinnedItem.isPinned)")
-        trackHistoryEvent(pinnedItem.isPinned ? "item_pinned" : "item_unpinned")
-    }
-    
-    /// Toggles pin status for an item
-    func togglePin(_ item: ClipboardHistoryItem) {
-        togglePin(for: item.id)
-    }
-    
-    /// Clears all non-pinned history items
+    /// Clears all history items
     func clearHistory() {
-        let beforeCount = items.count
-        items.removeAll { !$0.isPinned }
-        let removedCount = beforeCount - items.count
-        
-        // Save to disk
-        saveHistoryToDisk()
-        
-        logger.info("Cleared \(removedCount) non-pinned history items")
-        trackHistoryEvent("history_cleared", metadata: ["count": "\(removedCount)"])
-    }
-    
-    /// Clears ALL history items (including pinned)
-    func clearAllHistory() {
         let count = items.count
         items.removeAll()
         
@@ -431,16 +397,16 @@ class ClipboardHistoryManager: ObservableObject {
         guard let maxAge = retentionPeriod.timeInterval else { return } // Forever = no cleanup
         guard maxAge > 0 else {
             // "Never" = clear all immediately
-            clearAllHistory()
+            clearHistory()
             return
         }
         
         let cutoffDate = Date().addingTimeInterval(-maxAge)
         let beforeCount = items.count
         
-        // Remove expired items (but keep pinned items)
+        // Remove expired items
         items.removeAll { item in
-            !item.isPinned && item.timestamp < cutoffDate
+            item.timestamp < cutoffDate
         }
         
         let removedCount = beforeCount - items.count
@@ -456,15 +422,9 @@ class ClipboardHistoryManager: ObservableObject {
     private func enforceMaxItems() {
         guard items.count > maxItems else { return }
         
-        // Keep pinned items + newest items up to maxItems
-        let pinnedItems = items.filter { $0.isPinned }
-        let unpinnedItems = items.filter { !$0.isPinned }
-        
-        let allowedUnpinned = max(0, maxItems - pinnedItems.count)
-        let trimmedUnpinned = Array(unpinnedItems.prefix(allowedUnpinned))
-        
-        let removedCount = items.count - (pinnedItems.count + trimmedUnpinned.count)
-        items = (pinnedItems + trimmedUnpinned).sorted()
+        // Keep only the newest items up to maxItems
+        let removedCount = items.count - maxItems
+        items = Array(items.prefix(maxItems))
         
         if removedCount > 0 {
             // Save to disk after trimming
@@ -502,7 +462,7 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
     
-    /// Enforce storage limit by removing oldest non-pinned items
+    /// Enforce storage limit by removing oldest items
     private func enforceStorageLimit() {
         let currentSize = totalStorageSize
         guard currentSize > maxStorageSize else {
@@ -512,25 +472,21 @@ class ClipboardHistoryManager: ObservableObject {
         
         logger.info("Storage limit exceeded: \(self.totalStorageSizeFormatted) > \(self.formatBytes(self.maxStorageSize))")
         
-        // Separate pinned and unpinned items
-        let pinnedItems = items.filter { $0.isPinned }
-        var unpinnedItems = items.filter { !$0.isPinned }
+        // Sort items by timestamp (oldest first for removal)
+        var sortedItems = items.sorted { $0.timestamp < $1.timestamp }
         
-        // Sort unpinned by timestamp (oldest first for removal)
-        unpinnedItems.sort { $0.timestamp < $1.timestamp }
-        
-        // Remove oldest unpinned items until we're under the limit
+        // Remove oldest items until we're under the limit
         var currentTotalSize = currentSize
         var removedCount = 0
         
-        while currentTotalSize > maxStorageSize && !unpinnedItems.isEmpty {
-            let removed = unpinnedItems.removeFirst()
+        while currentTotalSize > maxStorageSize && !sortedItems.isEmpty {
+            let removed = sortedItems.removeFirst()
             currentTotalSize -= removed.storageSize
             removedCount += 1
         }
         
-        // Update items array
-        items = (pinnedItems + unpinnedItems).sorted()
+        // Update items array (sorted by newest first)
+        items = sortedItems.sorted()
         
         if removedCount > 0 {
             // Save to disk after cleanup
