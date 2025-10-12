@@ -133,7 +133,7 @@ class ClipboardHistoryWindow: NSPanel {
         // Stack view for history items
         stackView = NSStackView()
         stackView.orientation = .horizontal
-        stackView.spacing = 10
+        stackView.spacing = 24 // Increased spacing to prevent icon overlap (icon is 36px, half extends)
         stackView.alignment = .centerY
         stackView.distribution = .fill
         stackView.translatesAutoresizingMaskIntoConstraints = false
@@ -206,7 +206,7 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Update container frame to fit all cards horizontally
         if let container = scrollView.documentView {
-            let contentWidth = CGFloat(items.count) * (cardWidth + 10) + 10
+            let contentWidth = CGFloat(items.count) * (cardWidth + 24) + 24 // Updated to match new spacing
             container.frame = NSRect(x: 0, y: 0, width: max(contentWidth, scrollView.bounds.width), height: containerHeight)
         }
         
@@ -573,15 +573,12 @@ class ClipboardHistoryWindow: NSPanel {
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.wantsLayer = true
         
-        // Add circular background for badge effect (like macOS screenshot icons)
-        imageView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.9).cgColor
-        imageView.layer?.cornerRadius = iconSize / 2 // Circular
-        
-        // Add subtle shadow for depth
+        // NO background - just the icon itself like macOS screenshot badges
+        // Add subtle shadow for depth so icon stands out
         imageView.layer?.shadowColor = NSColor.black.cgColor
-        imageView.layer?.shadowOpacity = 0.4
+        imageView.layer?.shadowOpacity = 0.5
         imageView.layer?.shadowOffset = NSSize(width: 0, height: 1)
-        imageView.layer?.shadowRadius = 3
+        imageView.layer?.shadowRadius = 4
         
         return imageView
     }
