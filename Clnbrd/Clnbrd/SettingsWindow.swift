@@ -383,6 +383,52 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
+        // App Exclusions Section
+        let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
+        exclusionsHeader.font = NSFont.boldSystemFont(ofSize: 13)
+        stackView.addArrangedSubview(exclusionsHeader)
+        
+        let exclusionsDesc = NSTextField(labelWithString: "Prevent capturing clipboard from sensitive apps (e.g., password managers)")
+        exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
+        exclusionsDesc.textColor = .secondaryLabelColor
+        exclusionsDesc.lineBreakMode = .byWordWrapping
+        exclusionsDesc.maximumNumberOfLines = 2
+        exclusionsDesc.preferredMaxLayoutWidth = 480
+        stackView.addArrangedSubview(exclusionsDesc)
+        
+        // List of excluded apps
+        let excludedAppsList = NSTextField(wrappingLabelWithString: ClipboardHistoryManager.shared.excludedApps.sorted().joined(separator: ", "))
+        excludedAppsList.font = NSFont.systemFont(ofSize: 11)
+        excludedAppsList.textColor = .labelColor
+        excludedAppsList.lineBreakMode = .byWordWrapping
+        excludedAppsList.preferredMaxLayoutWidth = 480
+        excludedAppsList.backgroundColor = NSColor.textBackgroundColor
+        excludedAppsList.isBordered = true
+        excludedAppsList.isEditable = false
+        excludedAppsList.isSelectable = true
+        stackView.addArrangedSubview(excludedAppsList)
+        
+        // Buttons for managing exclusions
+        let exclusionsButtonStack = NSStackView()
+        exclusionsButtonStack.orientation = .horizontal
+        exclusionsButtonStack.spacing = 8
+        
+        let addExclusionButton = NSButton(title: "Add App...", target: self, action: #selector(addExcludedApp))
+        addExclusionButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(addExclusionButton)
+        
+        let removeExclusionButton = NSButton(title: "Remove App...", target: self, action: #selector(removeExcludedApp))
+        removeExclusionButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(removeExclusionButton)
+        
+        let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
+        resetExclusionsButton.bezelStyle = .rounded
+        exclusionsButtonStack.addArrangedSubview(resetExclusionsButton)
+        
+        stackView.addArrangedSubview(exclusionsButtonStack)
+        
+        stackView.addArrangedSubview(createSeparatorLine())
+        
         // Clear History Button
         let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
         clearButton.bezelStyle = .rounded
@@ -497,6 +543,94 @@ class SettingsWindow: NSWindowController {
         if alert.runModal() == .alertFirstButtonReturn {
             ClipboardHistoryManager.shared.clearHistory()
             logger.info("Clipboard history cleared by user")
+        }
+    }
+    
+    @objc private func addExcludedApp() {
+        let alert = NSAlert()
+        alert.messageText = "Add Excluded App"
+        alert.informativeText = "Enter the exact name of the app to exclude from history capture:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+        
+        let inputTextField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        inputTextField.placeholderString = "e.g., 1Password"
+        alert.accessoryView = inputTextField
+        
+        alert.window.initialFirstResponder = inputTextField
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            let appName = inputTextField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !appName.isEmpty {
+                ClipboardHistoryManager.shared.excludedApps.insert(appName)
+                logger.info("Added excluded app: \(appName)")
+                
+                // Refresh the settings window to show the updated list
+                if let historyTab = tabView.tabViewItem(at: 2) {
+                    historyTab.view = createHistoryTab()
+                }
+            }
+        }
+    }
+    
+    @objc private func removeExcludedApp() {
+        let excludedApps = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+        
+        if excludedApps.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "No Excluded Apps"
+            alert.informativeText = "There are no apps in the exclusion list."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+        
+        let alert = NSAlert()
+        alert.messageText = "Remove Excluded App"
+        alert.informativeText = "Select an app to remove from the exclusion list:"
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 24), pullsDown: false)
+        popup.addItems(withTitles: excludedApps)
+        alert.accessoryView = popup
+        
+        if alert.runModal() == .alertFirstButtonReturn,
+           let selectedApp = popup.selectedItem?.title {
+            ClipboardHistoryManager.shared.excludedApps.remove(selectedApp)
+            logger.info("Removed excluded app: \(selectedApp)")
+            
+            // Refresh the settings window to show the updated list
+            if let historyTab = tabView.tabViewItem(at: 2) {
+                historyTab.view = createHistoryTab()
+            }
+        }
+    }
+    
+    @objc private func resetExcludedApps() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Exclusion List?"
+        alert.informativeText = "This will restore the default list of excluded apps (password managers)."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            ClipboardHistoryManager.shared.excludedApps = Set([
+                "1Password",
+                "Bitwarden",
+                "LastPass",
+                "Dashlane",
+                "Keeper Password Manager",
+                "Keychain Access"
+            ])
+            logger.info("Reset excluded apps to defaults")
+            
+            // Refresh the settings window to show the updated list
+            if let historyTab = tabView.tabViewItem(at: 2) {
+                historyTab.view = createHistoryTab()
+            }
         }
     }
     

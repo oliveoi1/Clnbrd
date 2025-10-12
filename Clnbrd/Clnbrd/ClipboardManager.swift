@@ -278,6 +278,13 @@ class ClipboardManager {
             return
         }
         
+        // Check if current app is excluded
+        let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
+        if ClipboardHistoryManager.shared.isAppExcluded(sourceApp) {
+            logger.debug("🚫 App '\(sourceApp ?? "")' is excluded from history capture")
+            return
+        }
+        
         // Extract all available formats
         let plainText = pasteboard.string(forType: .string)
         let rtfData = pasteboard.data(forType: .rtf)
@@ -304,10 +311,7 @@ class ClipboardManager {
             Image: \(imageData != nil)
             """)
         
-        // Get source app
-        let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
-        
-        // Create history item
+        // Create history item (sourceApp already retrieved above)
         let historyItem = ClipboardHistoryItem(
             plainText: plainText,
             rtfData: rtfData,

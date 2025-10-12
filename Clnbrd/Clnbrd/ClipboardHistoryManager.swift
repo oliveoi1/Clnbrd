@@ -80,6 +80,14 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
     
+    // App exclusions for privacy
+    var excludedApps: Set<String> {
+        didSet {
+            let array = Array(excludedApps)
+            UserDefaults.standard.set(array, forKey: "ClipboardHistory.ExcludedApps")
+        }
+    }
+    
     // MARK: - Private Properties
     private var cleanupTimer: Timer?
     private let maxItemsDefault = 100
@@ -136,6 +144,23 @@ class ClipboardHistoryManager: ObservableObject {
             UserDefaults.standard.set(0.8, forKey: compressionQualityKey)
         }
         
+        // Load excluded apps
+        let excludedAppsKey = "ClipboardHistory.ExcludedApps"
+        if let savedApps = UserDefaults.standard.array(forKey: excludedAppsKey) as? [String] {
+            self.excludedApps = Set(savedApps)
+        } else {
+            // Default exclusions for common sensitive apps
+            self.excludedApps = Set([
+                "1Password",
+                "Bitwarden",
+                "LastPass",
+                "Dashlane",
+                "Keeper Password Manager",
+                "Keychain Access"
+            ])
+            UserDefaults.standard.set(Array(self.excludedApps), forKey: excludedAppsKey)
+        }
+        
         // Start cleanup timer (runs every hour)
         startCleanupTimer()
         
@@ -156,6 +181,12 @@ class ClipboardHistoryManager: ObservableObject {
     }
     
     // MARK: - Public Methods
+    
+    /// Check if an app is excluded from history capture
+    func isAppExcluded(_ appName: String?) -> Bool {
+        guard let appName = appName else { return false }
+        return excludedApps.contains(appName)
+    }
     
     /// Adds a new item to clipboard history
     func addItem(_ item: ClipboardHistoryItem) {
