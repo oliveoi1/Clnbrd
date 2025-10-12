@@ -96,6 +96,43 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
     
+    // Image export settings
+    enum ImageExportFormat: String, Codable, CaseIterable {
+        case png = "PNG"
+        case jpeg = "JPEG"
+        case tiff = "TIFF"
+    }
+    
+    var imageExportFormat: ImageExportFormat {
+        didSet {
+            UserDefaults.standard.set(imageExportFormat.rawValue, forKey: "ClipboardHistory.ImageExportFormat")
+        }
+    }
+    
+    var scaleRetinaTo1x: Bool {
+        didSet {
+            UserDefaults.standard.set(scaleRetinaTo1x, forKey: "ClipboardHistory.ScaleRetinaTo1x")
+        }
+    }
+    
+    var convertToSRGB: Bool {
+        didSet {
+            UserDefaults.standard.set(convertToSRGB, forKey: "ClipboardHistory.ConvertToSRGB")
+        }
+    }
+    
+    var addBorderToScreenshots: Bool {
+        didSet {
+            UserDefaults.standard.set(addBorderToScreenshots, forKey: "ClipboardHistory.AddBorderToScreenshots")
+        }
+    }
+    
+    var jpegExportQuality: Double {
+        didSet {
+            UserDefaults.standard.set(jpegExportQuality, forKey: "ClipboardHistory.JPEGExportQuality")
+        }
+    }
+    
     // MARK: - Private Properties
     private var cleanupTimer: Timer?
     private let maxItemsDefault = 100
@@ -176,6 +213,47 @@ class ClipboardHistoryManager: ObservableObject {
         self.maxStorageSize = savedStorageSize ?? maxStorageSizeDefault
         if savedStorageSize == nil {
             UserDefaults.standard.set(maxStorageSizeDefault, forKey: maxStorageSizeKey)
+        }
+        
+        // Load image export settings
+        let exportFormatKey = "ClipboardHistory.ImageExportFormat"
+        if let savedFormat = UserDefaults.standard.string(forKey: exportFormatKey),
+           let format = ImageExportFormat(rawValue: savedFormat) {
+            self.imageExportFormat = format
+        } else {
+            self.imageExportFormat = .png // Default to PNG
+            UserDefaults.standard.set(ImageExportFormat.png.rawValue, forKey: exportFormatKey)
+        }
+        
+        let scaleRetinaKey = "ClipboardHistory.ScaleRetinaTo1x"
+        if UserDefaults.standard.object(forKey: scaleRetinaKey) == nil {
+            self.scaleRetinaTo1x = false // Default: keep retina resolution
+            UserDefaults.standard.set(false, forKey: scaleRetinaKey)
+        } else {
+            self.scaleRetinaTo1x = UserDefaults.standard.bool(forKey: scaleRetinaKey)
+        }
+        
+        let convertSRGBKey = "ClipboardHistory.ConvertToSRGB"
+        if UserDefaults.standard.object(forKey: convertSRGBKey) == nil {
+            self.convertToSRGB = true // Default: convert to sRGB
+            UserDefaults.standard.set(true, forKey: convertSRGBKey)
+        } else {
+            self.convertToSRGB = UserDefaults.standard.bool(forKey: convertSRGBKey)
+        }
+        
+        let addBorderKey = "ClipboardHistory.AddBorderToScreenshots"
+        if UserDefaults.standard.object(forKey: addBorderKey) == nil {
+            self.addBorderToScreenshots = false // Default: no border
+            UserDefaults.standard.set(false, forKey: addBorderKey)
+        } else {
+            self.addBorderToScreenshots = UserDefaults.standard.bool(forKey: addBorderKey)
+        }
+        
+        let jpegQualityKey = "ClipboardHistory.JPEGExportQuality"
+        let savedJPEGQuality = UserDefaults.standard.double(forKey: jpegQualityKey)
+        self.jpegExportQuality = savedJPEGQuality > 0 ? savedJPEGQuality : 0.9 // Default 90%
+        if savedJPEGQuality == 0 {
+            UserDefaults.standard.set(0.9, forKey: jpegQualityKey)
         }
         
         // Start cleanup timer (runs every hour)
