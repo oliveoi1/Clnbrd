@@ -108,17 +108,25 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Settings gear icon in top right
         let settingsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 76, y: 6, width: 28, height: 24))
-        settingsButton.bezelStyle = .rounded
+        settingsButton.bezelStyle = .regularSquare
+        settingsButton.isBordered = false
+        settingsButton.setButtonType(.momentaryChange)
         settingsButton.image = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: "Settings")
         settingsButton.contentTintColor = .white
-        settingsButton.isBordered = false
+        settingsButton.imageScaling = .scaleProportionallyDown
         settingsButton.target = self
         settingsButton.action = #selector(openHistorySettings)
+        settingsButton.isEnabled = true
         settingsButton.autoresizingMask = [.minXMargin]
         settingsButton.wantsLayer = true
+        
+        // Add visible border temporarily for debugging
+        settingsButton.layer?.borderColor = NSColor.yellow.cgColor
+        settingsButton.layer?.borderWidth = 2
+        
         headerView.addSubview(settingsButton)
         
-        logger.debug("Settings button created at x:\(settingsButton.frame.origin.x)")
+        logger.debug("Settings button created: frame=\(NSStringFromRect(settingsButton.frame)), enabled=\(settingsButton.isEnabled), target=\(String(describing: settingsButton.target)), action=\(String(describing: settingsButton.action))")
         
         // Options button (three dots) in top right - like screenshot preview
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
@@ -722,13 +730,17 @@ class ClipboardHistoryWindow: NSPanel {
             let clickLocation = NSEvent.mouseLocation
             let windowFrame = self.frame
             
+            self.logger.debug("🖱️ Click detected at: \(NSStringFromPoint(clickLocation)), window frame: \(NSStringFromRect(windowFrame))")
+            
             // Check if click is outside our window
             if !windowFrame.contains(clickLocation) {
                 // Click is outside our window but inside the app, close
+                self.logger.info("Click outside window, closing")
                 self.closeWindow()
                 return event // Don't consume - let it pass through
             }
             
+            self.logger.debug("Click inside window, passing through")
             return event
         }
         
