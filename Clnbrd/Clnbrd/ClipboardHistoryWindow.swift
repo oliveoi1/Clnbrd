@@ -19,7 +19,7 @@ class ClipboardHistoryWindow: NSPanel {
     private var cardContainers: [NSView] = [] // Keep references to card containers
     
     // Constants
-    private let windowHeight: CGFloat = 200 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
+    private let windowHeight: CGFloat = 220 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
     private let cardWidth: CGFloat = 180
     private let cardHeight: CGFloat = 120
     private let padding: CGFloat = 16 // Reduced padding for better fit
@@ -247,7 +247,7 @@ class ClipboardHistoryWindow: NSPanel {
         card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
         card.layer?.cornerRadius = 8 // 4 rounded corners (ALL SIDES)
         card.layer?.masksToBounds = true // Ensure corners are clipped
-        card.layer?.borderWidth = 2 // Thicker for selection visibility
+        card.layer?.borderWidth = 4 // Thicker border for better visibility when selected
         card.layer?.borderColor = NSColor.clear.cgColor // Default: no border (will be blue when selected)
         
         // Subtle shadow like screenshot preview
@@ -288,7 +288,7 @@ class ClipboardHistoryWindow: NSPanel {
         
         container.addSubview(card)
         
-        // Timestamp BELOW the card (will change to "Copy" when selected)
+        // Timestamp BELOW the card (will change to "Copy" pill when selected)
         let timeLabel = NSTextField(labelWithString: item.displayTime)
         timeLabel.frame = NSRect(x: 0, y: 0, width: cardWidth, height: timeHeight)
         timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
@@ -300,6 +300,22 @@ class ClipboardHistoryWindow: NSPanel {
         timeLabel.drawsBackground = false
         timeLabel.identifier = NSUserInterfaceItemIdentifier("time-\(item.id.uuidString)")
         container.addSubview(timeLabel)
+        
+        // "Copy" pill background (initially hidden)
+        let pillWidth: CGFloat = 60
+        let pillHeight: CGFloat = 20
+        let pillBackground = NSView(frame: NSRect(
+            x: (cardWidth - pillWidth) / 2,
+            y: (timeHeight - pillHeight) / 2,
+            width: pillWidth,
+            height: pillHeight
+        ))
+        pillBackground.wantsLayer = true
+        pillBackground.layer?.backgroundColor = NSColor.systemBlue.cgColor
+        pillBackground.layer?.cornerRadius = pillHeight / 2 // Fully rounded ends (lozenge)
+        pillBackground.isHidden = true // Hidden by default, shown when selected
+        pillBackground.identifier = NSUserInterfaceItemIdentifier("pill-\(item.id.uuidString)")
+        container.addSubview(pillBackground, positioned: .below, relativeTo: timeLabel)
         
         return container
     }
@@ -349,35 +365,43 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Update all cards
         for (index, container) in cardContainers.enumerated() {
-            // Find card and timeLabel by checking subviews
+            // Find card, timeLabel, and pill by checking subviews
             var card: NSView?
             var timeLabel: NSTextField?
+            var pill: NSView?
             
             for subview in container.subviews {
                 if subview.identifier?.rawValue.hasPrefix("card-") == true {
                     card = subview
                 } else if subview.identifier?.rawValue.hasPrefix("time-") == true {
                     timeLabel = subview as? NSTextField
+                } else if subview.identifier?.rawValue.hasPrefix("pill-") == true {
+                    pill = subview
                 }
             }
             
-            guard let cardView = card, let timeLabelView = timeLabel else { continue }
+            guard let cardView = card, let timeLabelView = timeLabel, let pillView = pill else { continue }
             
             let isSelected = (index == selectedIndex)
             
-            // Update border color
+            // Update border color (thicker now - 4px)
             cardView.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
             
-            // Update timestamp text
+            // Update timestamp text and pill visibility
             if isSelected {
+                // Show "Copy" in white text on blue pill
                 timeLabelView.stringValue = "Copy"
                 timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+                timeLabelView.textColor = .white // White text
+                pillView.isHidden = false // Show blue pill background
             } else {
-                // Get original timestamp from item
+                // Show timestamp in white text, no pill
                 if index < ClipboardHistoryManager.shared.items.count {
                     let item = ClipboardHistoryManager.shared.items[index]
                     timeLabelView.stringValue = item.displayTime
                     timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+                    timeLabelView.textColor = .white // White text on dark HUD
+                    pillView.isHidden = true // Hide pill
                 }
             }
         }
