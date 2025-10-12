@@ -646,8 +646,17 @@ class ClipboardHistoryWindow: NSPanel {
             
             let isSelected = (index == selectedIndex)
             
-            // Update border color (thicker now - 4px)
-            cardView.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
+            // Animate border color and selection state
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.15
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                
+                // Update border color (thicker now - 4px)
+                cardView.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
+                
+                // Update pill visibility with animation
+                pillView.animator().alphaValue = isSelected ? 1.0 : 0.0
+            })
             
             // Update timestamp text and pill visibility
             if isSelected {
@@ -900,7 +909,15 @@ class ClipboardHistoryWindow: NSPanel {
         // Stop monitoring for clicks outside
         stopClickOutsideMonitor()
         
-        self.orderOut(nil)
+        // Animate window disappearance
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            self.animator().alphaValue = 0
+        }, completionHandler: {
+            self.orderOut(nil)
+            self.alphaValue = 1.0 // Reset for next show
+        })
         
         // Track analytics
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_closed")
@@ -1041,7 +1058,16 @@ class ClipboardHistoryWindow: NSPanel {
             self.setFrame(windowFrame, display: true)
         }
         
+        // Animate window appearance
+        self.alphaValue = 0
         self.makeKeyAndOrderFront(nil)
+        
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            self.animator().alphaValue = 1.0
+        })
+        
         logger.info("Showing history window with \(ClipboardHistoryManager.shared.items.count) items")
         
         // Start monitoring for clicks outside
