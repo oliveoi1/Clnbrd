@@ -323,13 +323,18 @@ class ClipboardHistoryWindow: NSPanel {
             card.addGestureRecognizer(rightClickGesture)
         }
         
-        // Pin indicator (if pinned) - always in top-right corner
-        if item.isPinned {
-            let pinIcon = NSImageView(frame: NSRect(x: cardWidth - 26, y: cardHeight - 26, width: 18, height: 18))
-            pinIcon.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: "Pinned")
-            pinIcon.contentTintColor = .systemYellow
-            card.addSubview(pinIcon)
-        }
+        // Pin button - always visible, filled when pinned
+        let pinButton = NSButton(frame: NSRect(x: cardWidth - 26, y: cardHeight - 26, width: 20, height: 20))
+        pinButton.bezelStyle = .regularSquare
+        pinButton.isBordered = false
+        pinButton.setButtonType(.momentaryChange)
+        pinButton.image = NSImage(systemSymbolName: item.isPinned ? "pin.fill" : "pin", accessibilityDescription: "Pin")
+        pinButton.contentTintColor = item.isPinned ? .systemYellow : .secondaryLabelColor
+        pinButton.imageScaling = .scaleProportionallyDown
+        pinButton.target = self
+        pinButton.action = #selector(togglePin(_:))
+        pinButton.identifier = NSUserInterfaceItemIdentifier("pin-\(item.id.uuidString)")
+        card.addSubview(pinButton)
         
         // Content area - show image or text based on content type
         if let thumbnail = item.thumbnail {
@@ -720,6 +725,26 @@ class ClipboardHistoryWindow: NSPanel {
         logger.info("History cleared from menu")
     }
     
+    @objc private func togglePin(_ sender: NSButton) {
+        // Extract item ID from button identifier
+        guard let identifier = sender.identifier?.rawValue,
+              identifier.starts(with: "pin-"),
+              let uuidString = identifier.split(separator: "-").dropFirst().joined(separator: "-") as String?,
+              let uuid = UUID(uuidString: uuidString) else {
+            logger.error("Could not extract item ID from pin button")
+            return
+        }
+        
+        // Find and toggle the item
+        ClipboardHistoryManager.shared.togglePin(for: uuid)
+        
+        // Reload to show updated state and re-sort (pinned items go to top)
+        reloadHistoryItems()
+        
+        logger.info("📌 Toggled pin for item \(uuid)")
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_pin_toggle")
+    }
+    
     @objc private func openHistorySettings() {
         logger.info("⚙️ Settings button clicked!")
         
@@ -1030,6 +1055,20 @@ class ClipboardHistoryWindow: NSPanel {
         // Check for ⌘F to focus search
         if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "f" {
             self.makeFirstResponder(searchField)
+            return
+        }
+        
+        // Check for ⌘P to pin selected item
+        if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "p" {
+            let allItems = ClipboardHistoryManager.shared.items
+            let filteredItems = filterItems(allItems)
+            if selectedIndex < filteredItems.count {
+                let item = filteredItems[selectedIndex]
+                ClipboardHistoryManager.shared.togglePin(for: item.id)
+                reloadHistoryItems()
+                logger.info("📌 Pinned item via keyboard: \(item.preview)")
+                AnalyticsManager.shared.trackFeatureUsage("clipboard_history_pin_keyboard")
+            }
             return
         }
         

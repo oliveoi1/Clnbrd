@@ -357,23 +357,31 @@ class ClipboardHistoryManager: ObservableObject {
         trackHistoryEvent("item_removed")
     }
     
-    /// Toggles pin status for an item
-    func togglePin(_ item: ClipboardHistoryItem) {
-        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+    /// Toggles pin status for an item by UUID
+    func togglePin(for id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        let item = items[index]
         
         let pinnedItem = ClipboardHistoryItem(
             plainText: item.plainText,
             rtfData: item.rtfData,
             htmlData: item.htmlData,
+            imageData: item.imageData != nil ? item.imageData : nil,
             sourceApp: item.sourceApp,
             isPinned: !item.isPinned
         )
         
         items[index] = pinnedItem
         items.sort() // Re-sort to move pinned items to top
+        saveHistoryToDisk()
         
         logger.info("Toggled pin for item: \(item.id) - Now pinned: \(!item.isPinned)")
         trackHistoryEvent(item.isPinned ? "item_unpinned" : "item_pinned")
+    }
+    
+    /// Toggles pin status for an item
+    func togglePin(_ item: ClipboardHistoryItem) {
+        togglePin(for: item.id)
     }
     
     /// Clears all non-pinned history items
