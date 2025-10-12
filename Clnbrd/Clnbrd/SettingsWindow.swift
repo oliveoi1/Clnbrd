@@ -307,6 +307,82 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
+        // Image Compression Settings
+        let compressionHeader = NSTextField(labelWithString: "Image Compression")
+        compressionHeader.font = NSFont.boldSystemFont(ofSize: 13)
+        stackView.addArrangedSubview(compressionHeader)
+        
+        let compressionDesc = NSTextField(labelWithString: "Optimize images to save space")
+        compressionDesc.font = NSFont.systemFont(ofSize: 11)
+        compressionDesc.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(compressionDesc)
+        
+        // Compress Images Checkbox
+        let compressCheckbox = NSButton(
+            checkboxWithTitle: "Compress images in history",
+            target: self,
+            action: #selector(toggleImageCompression)
+        )
+        compressCheckbox.state = ClipboardHistoryManager.shared.compressImages ? .on : .off
+        stackView.addArrangedSubview(compressCheckbox)
+        
+        // Max Image Size
+        let maxSizeStack = NSStackView()
+        maxSizeStack.orientation = .horizontal
+        maxSizeStack.spacing = 8
+        
+        let maxSizeLabel = NSTextField(labelWithString: "Maximum image size:")
+        maxSizeLabel.alignment = .right
+        maxSizeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        maxSizeStack.addArrangedSubview(maxSizeLabel)
+        
+        let maxSizePopup = NSPopUpButton()
+        maxSizePopup.addItems(withTitles: ["1024px", "2048px", "4096px", "8192px"])
+        let currentMaxSize = ClipboardHistoryManager.shared.maxImageSize
+        let sizeIndex: Int = {
+            switch Int(currentMaxSize) {
+            case 1024: return 0
+            case 2048: return 1
+            case 4096: return 2
+            case 8192: return 3
+            default: return 1
+            }
+        }()
+        maxSizePopup.selectItem(at: sizeIndex)
+        maxSizePopup.target = self
+        maxSizePopup.action = #selector(maxImageSizeChanged)
+        maxSizeStack.addArrangedSubview(maxSizePopup)
+        
+        stackView.addArrangedSubview(maxSizeStack)
+        
+        // Compression Quality Slider
+        let qualityStack = NSStackView()
+        qualityStack.orientation = .horizontal
+        qualityStack.spacing = 8
+        
+        let qualityLabel = NSTextField(labelWithString: "Compression quality:")
+        qualityLabel.alignment = .right
+        qualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        qualityStack.addArrangedSubview(qualityLabel)
+        
+        let qualitySlider = NSSlider(value: ClipboardHistoryManager.shared.compressionQuality,
+                                     minValue: 0.3,
+                                     maxValue: 1.0,
+                                     target: self,
+                                     action: #selector(compressionQualityChanged))
+        qualitySlider.numberOfTickMarks = 0
+        qualityStack.addArrangedSubview(qualitySlider)
+        
+        let qualityValueLabel = NSTextField(labelWithString: "\(Int(ClipboardHistoryManager.shared.compressionQuality * 100))%")
+        qualityValueLabel.tag = 999 // Tag to update later
+        qualityValueLabel.alignment = .left
+        qualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        qualityStack.addArrangedSubview(qualityValueLabel)
+        
+        stackView.addArrangedSubview(qualityStack)
+        
+        stackView.addArrangedSubview(createSeparatorLine())
+        
         // Clear History Button
         let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
         clearButton.bezelStyle = .rounded
@@ -339,6 +415,89 @@ class SettingsWindow: NSWindowController {
         ])
         
         return container
+    }
+    
+    // MARK: - History Tab Actions
+    
+    @objc private func toggleHistoryEnabled(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.isEnabled = (sender.state == .on)
+        logger.info("History enabled: \(sender.state == .on)")
+    }
+    
+    @objc private func retentionPeriodChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title else { return }
+        
+        let period: ClipboardHistoryManager.RetentionPeriod = {
+            switch title {
+            case "Never": return .never
+            case "1 day": return .oneDay
+            case "3 days": return .threeDays
+            case "1 week": return .oneWeek
+            case "1 month": return .oneMonth
+            case "Forever": return .forever
+            default: return .threeDays
+            }
+        }()
+        
+        ClipboardHistoryManager.shared.retentionPeriod = period
+        logger.info("Retention period changed to: \(period)")
+    }
+    
+    @objc private func maxItemsChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title else { return }
+        
+        let maxItems = Int(title) ?? 100
+        ClipboardHistoryManager.shared.maxItems = maxItems
+        logger.info("Max items changed to: \(maxItems)")
+    }
+    
+    @objc private func toggleImageCompression(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.compressImages = (sender.state == .on)
+        logger.info("Image compression enabled: \(sender.state == .on)")
+    }
+    
+    @objc private func maxImageSizeChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title else { return }
+        
+        let sizeValue: CGFloat = {
+            switch title {
+            case "1024px": return 1024
+            case "2048px": return 2048
+            case "4096px": return 4096
+            case "8192px": return 8192
+            default: return 2048
+            }
+        }()
+        
+        ClipboardHistoryManager.shared.maxImageSize = sizeValue
+        logger.info("Max image size changed to: \(sizeValue)")
+    }
+    
+    @objc private func compressionQualityChanged(_ sender: NSSlider) {
+        let quality = sender.doubleValue
+        ClipboardHistoryManager.shared.compressionQuality = quality
+        
+        // Update the quality label
+        if let window = sender.window,
+           let qualityLabel = window.contentView?.viewWithTag(999) as? NSTextField {
+            qualityLabel.stringValue = "\(Int(quality * 100))%"
+        }
+        
+        logger.info("Compression quality changed to: \(quality)")
+    }
+    
+    @objc private func clearHistoryClicked() {
+        let alert = NSAlert()
+        alert.messageText = "Clear All History?"
+        alert.informativeText = "This will delete all non-pinned items from your clipboard history. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            ClipboardHistoryManager.shared.clearHistory()
+            logger.info("Clipboard history cleared by user")
+        }
     }
     
     // swiftlint:disable:next function_body_length

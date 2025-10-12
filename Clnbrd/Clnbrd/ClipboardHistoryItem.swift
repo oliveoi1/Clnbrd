@@ -45,9 +45,21 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         self.characterCount = plainText?.count ?? 0
         self.isPinned = isPinned
         
-        // Generate thumbnail from image if present
+        // Process image if present
         if let imageData = imageData, let image = NSImage(data: imageData) {
-            self.imageData = imageData
+            // Check if compression is enabled
+            let shouldCompress = ClipboardHistoryManager.shared.compressImages
+            let maxSize = ClipboardHistoryManager.shared.maxImageSize
+            let quality = ClipboardHistoryManager.shared.compressionQuality
+            
+            if shouldCompress {
+                // Compress the image if it exceeds max size
+                let compressedImage = Self.compressImageIfNeeded(image, maxSize: maxSize, quality: quality)
+                self.imageData = compressedImage
+            } else {
+                self.imageData = imageData
+            }
+            
             self.thumbnailData = Self.generateThumbnail(from: image)
         } else {
             self.imageData = nil
@@ -245,6 +257,58 @@ struct ClipboardHistoryItem: Identifiable, Codable {
         }
         
         return pngData
+    }
+    
+    /// Compresses an image if it exceeds maxSize, returns PNG data
+    private static func compressImageIfNeeded(
+        _ image: NSImage,
+        maxSize: CGFloat,
+        quality: Double
+    ) -> Data? {
+        let imageSize = image.size
+        
+        // Check if resizing is needed
+        let needsResize = imageSize.width > maxSize || imageSize.height > maxSize
+        
+        var finalImage = image
+        
+        if needsResize {
+            // Calculate new size maintaining aspect ratio
+            var newSize: NSSize
+            if imageSize.width > imageSize.height {
+                let ratio = maxSize / imageSize.width
+                newSize = NSSize(width: maxSize, height: imageSize.height * ratio)
+            } else {
+                let ratio = maxSize / imageSize.height
+                newSize = NSSize(width: imageSize.width * ratio, height: maxSize)
+            }
+            
+            // Resize the image
+            let resized = NSImage(size: newSize)
+            resized.lockFocus()
+            
+            image.draw(
+                in: NSRect(origin: .zero, size: newSize),
+                from: NSRect(origin: .zero, size: imageSize),
+                operation: .copy,
+                fraction: 1.0
+            )
+            
+            resized.unlockFocus()
+            finalImage = resized
+        }
+        
+        // Convert to PNG with compression
+        guard let tiffData = finalImage.tiffRepresentation,
+              let bitmapRep = NSBitmapImageRep(data: tiffData),
+              let compressedData = bitmapRep.representation(
+                using: .png,
+                properties: [.compressionFactor: NSNumber(value: quality)]
+              ) else {
+            return nil
+        }
+        
+        return compressedData
     }
 }
 

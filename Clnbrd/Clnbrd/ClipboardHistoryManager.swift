@@ -61,6 +61,25 @@ class ClipboardHistoryManager: ObservableObject {
         }
     }
     
+    // Image compression settings
+    var compressImages: Bool {
+        didSet {
+            UserDefaults.standard.set(compressImages, forKey: "ClipboardHistory.CompressImages")
+        }
+    }
+    
+    var maxImageSize: CGFloat {
+        didSet {
+            UserDefaults.standard.set(maxImageSize, forKey: "ClipboardHistory.MaxImageSize")
+        }
+    }
+    
+    var compressionQuality: Double {
+        didSet {
+            UserDefaults.standard.set(compressionQuality, forKey: "ClipboardHistory.CompressionQuality")
+        }
+    }
+    
     // MARK: - Private Properties
     private var cleanupTimer: Timer?
     private let maxItemsDefault = 100
@@ -91,6 +110,30 @@ class ClipboardHistoryManager: ObservableObject {
         
         if savedMaxItems == 0 {
             UserDefaults.standard.set(maxItemsDefault, forKey: "ClipboardHistory.MaxItems")
+        }
+        
+        // Load image compression settings
+        let compressKey = "ClipboardHistory.CompressImages"
+        if UserDefaults.standard.object(forKey: compressKey) == nil {
+            // Default to enabled
+            self.compressImages = true
+            UserDefaults.standard.set(true, forKey: compressKey)
+        } else {
+            self.compressImages = UserDefaults.standard.bool(forKey: compressKey)
+        }
+        
+        let maxImageSizeKey = "ClipboardHistory.MaxImageSize"
+        let savedMaxImageSize = UserDefaults.standard.double(forKey: maxImageSizeKey)
+        self.maxImageSize = savedMaxImageSize > 0 ? CGFloat(savedMaxImageSize) : 2048 // Default 2048px
+        if savedMaxImageSize == 0 {
+            UserDefaults.standard.set(2048, forKey: maxImageSizeKey)
+        }
+        
+        let compressionQualityKey = "ClipboardHistory.CompressionQuality"
+        let savedQuality = UserDefaults.standard.double(forKey: compressionQualityKey)
+        self.compressionQuality = savedQuality > 0 ? savedQuality : 0.8 // Default 80% quality
+        if savedQuality == 0 {
+            UserDefaults.standard.set(0.8, forKey: compressionQualityKey)
         }
         
         // Start cleanup timer (runs every hour)
