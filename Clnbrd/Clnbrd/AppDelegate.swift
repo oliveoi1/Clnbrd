@@ -434,7 +434,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
     
-    func openSettingsToTab(_ tabIndex: Int) {
+    @objc func openSettingsToTab(_ tabIndex: Int) {
         logger.info("📂 Opening settings to tab \(tabIndex)")
         
         if settingsWindowController == nil {

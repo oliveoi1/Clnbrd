@@ -687,22 +687,27 @@ class ClipboardHistoryWindow: NSPanel {
     @objc private func openHistorySettings() {
         logger.info("⚙️ Settings button clicked!")
         
-        // Get AppDelegate reference BEFORE closing window
-        guard let appDelegate = NSApp.delegate as? AppDelegate else {
-            logger.error("❌ Could not get AppDelegate! Delegate type: \(type(of: NSApp.delegate))")
+        // Get AppDelegate reference using runtime lookup
+        guard let delegate = NSApp.delegate else {
+            logger.error("❌ No app delegate found!")
             closeWindow()
             return
         }
         
-        logger.info("✅ Got AppDelegate, opening settings to History tab...")
+        logger.info("📋 Delegate type: \(type(of: delegate))")
+        logger.info("📋 Delegate class: \(String(describing: object_getClass(delegate)))")
         
-        // Close the history window first
-        closeWindow()
-        
-        // Open settings to History tab (tab index 2)
-        appDelegate.openSettingsToTab(2)
-        
-        AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
+        // Try to call openSettingsToTab using performSelector
+        let selector = Selector(("openSettingsToTab:"))
+        if delegate.responds(to: selector) {
+            logger.info("✅ Delegate responds to openSettingsToTab, calling it...")
+            closeWindow()
+            _ = delegate.perform(selector, with: 2)
+            AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
+        } else {
+            logger.error("❌ Delegate does not respond to openSettingsToTab")
+            closeWindow()
+        }
     }
     
     private func closeWindow() {
