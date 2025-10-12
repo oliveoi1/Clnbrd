@@ -21,6 +21,10 @@ class ClipboardHistoryWindow: NSPanel {
     private var selectedIndex: Int = 0 // Currently selected card index
     private var cardContainers: [NSView] = [] // Keep references to card containers
     
+    // Performance optimization
+    private var appIconCache: [String: NSImage] = [:] // Cache app icons
+    private let maxDisplayedItems: Int = 50 // Limit displayed items for performance
+    
     // Constants
     private let windowHeight: CGFloat = 220 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
     private let cardWidth: CGFloat = 180
@@ -223,13 +227,24 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Get items (filtered by app and search)
         let allItems = ClipboardHistoryManager.shared.items
-        let items = filterItems(allItems)
+        let filteredItems = filterItems(allItems)
+        
+        // Limit displayed items for performance (show most recent)
+        let items = Array(filteredItems.prefix(maxDisplayedItems))
         
         // Update title with count
         if !searchQuery.isEmpty || selectedAppFilter != nil {
-            titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
+            if filteredItems.count > maxDisplayedItems {
+                titleLabel.stringValue = "Results: \(items.count) of \(filteredItems.count) (showing \(maxDisplayedItems))"
+            } else {
+                titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
+            }
         } else {
-            titleLabel.stringValue = "Clipboard History (\(items.count))"
+            if filteredItems.count > maxDisplayedItems {
+                titleLabel.stringValue = "Clipboard History (\(items.count) of \(filteredItems.count))"
+            } else {
+                titleLabel.stringValue = "Clipboard History (\(items.count))"
+            }
         }
         
         if items.isEmpty {
@@ -998,33 +1013,47 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func getAppIcon(for appName: String) -> NSImage? {
+        // Check cache first
+        if let cachedIcon = appIconCache[appName] {
+            return cachedIcon
+        }
+        
         let workspace = NSWorkspace.shared
+        var icon: NSImage?
         
         // Try to find running app by name
         if let app = workspace.runningApplications.first(where: { app in
             app.localizedName == appName ||
             app.bundleIdentifier?.contains(appName.lowercased()) == true
         }) {
-            return app.icon
+            icon = app.icon
         }
         
         // Try to find app by bundle identifier or path
-        if let appURL = workspace.urlForApplication(withBundleIdentifier: appName) {
-            return workspace.icon(forFile: appURL.path)
+        if icon == nil, let appURL = workspace.urlForApplication(withBundleIdentifier: appName) {
+            icon = workspace.icon(forFile: appURL.path)
         }
         
         // Try common app paths
-        let appPaths = [
-            "/Applications/\(appName).app",
-            "/System/Applications/\(appName).app",
-            "/Applications/Utilities/\(appName).app"
-        ]
+        if icon == nil {
+            let appPaths = [
+                "/Applications/\(appName).app",
+                "/System/Applications/\(appName).app",
+                "/Applications/Utilities/\(appName).app"
+            ]
         
-        for path in appPaths where FileManager.default.fileExists(atPath: path) {
-            return workspace.icon(forFile: path)
+            for path in appPaths where FileManager.default.fileExists(atPath: path) {
+                icon = workspace.icon(forFile: path)
+                break
+            }
         }
         
-        return nil
+        // Cache the icon if found
+        if let icon = icon {
+            appIconCache[appName] = icon
+        }
+        
+        return icon
     }
     
     func toggle() {
