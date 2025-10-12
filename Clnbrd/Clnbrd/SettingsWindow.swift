@@ -96,7 +96,13 @@ class SettingsWindow: NSWindowController {
         rulesTab.view = createGeneralTab()
         tabView.addTabViewItem(rulesTab)
         
-        // Tab 2: About
+        // Tab 2: History
+        let historyTab = NSTabViewItem(identifier: "history")
+        historyTab.label = "History"
+        historyTab.view = createHistoryTab()
+        tabView.addTabViewItem(historyTab)
+        
+        // Tab 3: About
         let aboutTab = NSTabViewItem(identifier: "about")
         aboutTab.label = "About"
         aboutTab.view = createAboutTab()
@@ -166,6 +172,153 @@ class SettingsWindow: NSWindowController {
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
+        ])
+        
+        return container
+    }
+    
+    private func createHistoryTab() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        container.addSubview(scrollView)
+        
+        let stackView = NSStackView()
+        stackView.orientation = .vertical
+        stackView.alignment = .leading
+        stackView.spacing = 20
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = stackView
+        
+        // Header
+        let headerLabel = NSTextField(labelWithString: "Clipboard History")
+        headerLabel.font = NSFont.systemFont(ofSize: 18, weight: .bold)
+        stackView.addArrangedSubview(headerLabel)
+        
+        let descriptionLabel = NSTextField(labelWithString: "Clnbrd automatically saves your clipboard history before cleaning. Access it anytime with ⌘⇧H.")
+        descriptionLabel.font = NSFont.systemFont(ofSize: 12)
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.lineBreakMode = .byWordWrapping
+        descriptionLabel.maximumNumberOfLines = 2
+        descriptionLabel.preferredMaxLayoutWidth = 480
+        stackView.addArrangedSubview(descriptionLabel)
+        
+        // Enable/Disable Toggle
+        let enableCheckbox = NSButton(checkboxWithTitle: "Enable Clipboard History", target: self, action: #selector(toggleHistoryEnabled))
+        enableCheckbox.state = ClipboardHistoryManager.shared.isEnabled ? .on : .off
+        stackView.addArrangedSubview(enableCheckbox)
+        
+        stackView.addArrangedSubview(createSeparator())
+        
+        // Retention Period Section
+        let retentionLabel = NSTextField(labelWithString: "Delete History After:")
+        retentionLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        stackView.addArrangedSubview(retentionLabel)
+        
+        let retentionPopup = NSPopUpButton()
+        retentionPopup.autoenablesItems = false
+        for period in ClipboardHistoryManager.RetentionPeriod.allCases {
+            retentionPopup.addItem(withTitle: period.rawValue)
+        }
+        retentionPopup.selectItem(withTitle: ClipboardHistoryManager.shared.retentionPeriod.rawValue)
+        retentionPopup.target = self
+        retentionPopup.action = #selector(retentionPeriodChanged(_:))
+        stackView.addArrangedSubview(retentionPopup)
+        
+        let retentionHint = NSTextField(labelWithString: "Pinned items are never deleted")
+        retentionHint.font = NSFont.systemFont(ofSize: 10)
+        retentionHint.textColor = .tertiaryLabelColor
+        stackView.addArrangedSubview(retentionHint)
+        
+        stackView.addArrangedSubview(createSeparator())
+        
+        // Max Items Section
+        let maxItemsLabel = NSTextField(labelWithString: "Maximum Items:")
+        maxItemsLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        stackView.addArrangedSubview(maxItemsLabel)
+        
+        let maxItemsPopup = NSPopUpButton()
+        maxItemsPopup.autoenablesItems = false
+        let maxItemsOptions = [10, 25, 50, 100, 200]
+        for option in maxItemsOptions {
+            maxItemsPopup.addItem(withTitle: "\(option) items")
+        }
+        if let currentIndex = maxItemsOptions.firstIndex(of: ClipboardHistoryManager.shared.maxItems) {
+            maxItemsPopup.selectItem(at: currentIndex)
+        } else {
+            maxItemsPopup.selectItem(at: 3) // Default to 100
+        }
+        maxItemsPopup.target = self
+        maxItemsPopup.action = #selector(maxItemsChanged(_:))
+        stackView.addArrangedSubview(maxItemsPopup)
+        
+        stackView.addArrangedSubview(createSeparator())
+        
+        // Current Stats
+        let statsLabel = NSTextField(labelWithString: "Current Statistics:")
+        statsLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        stackView.addArrangedSubview(statsLabel)
+        
+        let statsStack = NSStackView()
+        statsStack.orientation = .vertical
+        statsStack.alignment = .leading
+        statsStack.spacing = 4
+        
+        let totalItemsLabel = NSTextField(labelWithString: "Total items: \(ClipboardHistoryManager.shared.totalItems)")
+        totalItemsLabel.font = NSFont.systemFont(ofSize: 11)
+        totalItemsLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(totalItemsLabel)
+        
+        let pinnedItemsLabel = NSTextField(labelWithString: "Pinned items: \(ClipboardHistoryManager.shared.pinnedItemsCount)")
+        pinnedItemsLabel.font = NSFont.systemFont(ofSize: 11)
+        pinnedItemsLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(pinnedItemsLabel)
+        
+        if let oldestDate = ClipboardHistoryManager.shared.oldestItemDate {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            let oldestText = formatter.localizedString(for: oldestDate, relativeTo: Date())
+            let oldestLabel = NSTextField(labelWithString: "Oldest item: \(oldestText)")
+            oldestLabel.font = NSFont.systemFont(ofSize: 11)
+            oldestLabel.textColor = .secondaryLabelColor
+            statsStack.addArrangedSubview(oldestLabel)
+        }
+        
+        stackView.addArrangedSubview(statsStack)
+        
+        stackView.addArrangedSubview(createSeparator())
+        
+        // Clear History Button
+        let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
+        clearButton.bezelStyle = .rounded
+        clearButton.keyEquivalent = ""
+        stackView.addArrangedSubview(clearButton)
+        
+        let clearHint = NSTextField(labelWithString: "This will delete all non-pinned items")
+        clearHint.font = NSFont.systemFont(ofSize: 10)
+        clearHint.textColor = .tertiaryLabelColor
+        stackView.addArrangedSubview(clearHint)
+        
+        // Spacer
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 20).isActive = true
+        stackView.addArrangedSubview(spacer)
+        
+        // Layout constraints
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             
@@ -1370,6 +1523,55 @@ extension SettingsWindow: NSTextFieldDelegate {
             if let profileId = currentProfileId {
                 ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
             }
+        }
+    }
+    
+    // MARK: - History Settings Actions
+    
+    @objc private func toggleHistoryEnabled(_ sender: NSButton) {
+        ClipboardHistoryManager.shared.isEnabled = (sender.state == .on)
+        logger.info("Clipboard history \(sender.state == .on ? "enabled" : "disabled")")
+    }
+    
+    @objc private func retentionPeriodChanged(_ sender: NSPopUpButton) {
+        guard let selectedTitle = sender.selectedItem?.title,
+              let period = ClipboardHistoryManager.RetentionPeriod(rawValue: selectedTitle) else { return }
+        
+        ClipboardHistoryManager.shared.retentionPeriod = period
+        logger.info("History retention period changed to: \(period.rawValue)")
+    }
+    
+    @objc private func maxItemsChanged(_ sender: NSPopUpButton) {
+        let maxItemsOptions = [10, 25, 50, 100, 200]
+        let selectedIndex = sender.indexOfSelectedItem
+        
+        if selectedIndex >= 0 && selectedIndex < maxItemsOptions.count {
+            let maxItems = maxItemsOptions[selectedIndex]
+            ClipboardHistoryManager.shared.maxItems = maxItems
+            logger.info("History max items changed to: \(maxItems)")
+        }
+    }
+    
+    @objc private func clearHistoryClicked() {
+        let alert = NSAlert()
+        alert.messageText = "Clear Clipboard History?"
+        alert.informativeText = "This will delete all non-pinned items from your clipboard history. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear History")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            ClipboardHistoryManager.shared.clearHistory()
+            logger.info("Clipboard history cleared")
+            
+            // Show confirmation
+            let confirmAlert = NSAlert()
+            confirmAlert.messageText = "History Cleared"
+            confirmAlert.informativeText = "Your clipboard history has been cleared."
+            confirmAlert.alertStyle = .informational
+            confirmAlert.addButton(withTitle: "OK")
+            confirmAlert.runModal()
         }
     }
 }

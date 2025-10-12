@@ -14,6 +14,9 @@ class ClipboardManager {
     func cleanClipboard() {
         let pasteboard = NSPasteboard.general
         
+        // Capture original clipboard to history BEFORE cleaning
+        captureToHistory(pasteboard)
+        
         var text: String?
         
         text = pasteboard.string(forType: .string)
@@ -92,6 +95,9 @@ class ClipboardManager {
     func cleanAndPasteClipboard() {
         logger.info("🔍 cleanAndPasteClipboard() called!")
         let pasteboard = NSPasteboard.general
+        
+        // Capture original clipboard to history BEFORE cleaning
+        captureToHistory(pasteboard)
         
         // Store original clipboard data
         let originalData = preserveClipboardData(pasteboard)
@@ -261,5 +267,33 @@ class ClipboardManager {
         clipboardMonitorTimer?.invalidate()
         clipboardMonitorTimer = nil
         logger.info("Clipboard monitoring stopped")
+    }
+    
+    // MARK: - Clipboard History Integration
+    
+    private func captureToHistory(_ pasteboard: NSPasteboard) {
+        // Only capture if history is enabled
+        guard ClipboardHistoryManager.shared.isEnabled else { return }
+        
+        // Extract all available formats
+        let plainText = pasteboard.string(forType: .string)
+        let rtfData = pasteboard.data(forType: .rtf)
+        let htmlData = pasteboard.data(forType: .html)
+        
+        // Get source app
+        let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
+        
+        // Create history item
+        let historyItem = ClipboardHistoryItem(
+            plainText: plainText,
+            rtfData: rtfData,
+            htmlData: htmlData,
+            sourceApp: sourceApp
+        )
+        
+        // Add to history
+        ClipboardHistoryManager.shared.addItem(historyItem)
+        
+        logger.debug("Captured clipboard to history: \(historyItem.preview)")
     }
 }

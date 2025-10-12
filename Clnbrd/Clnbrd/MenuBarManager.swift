@@ -9,6 +9,8 @@ class MenuBarManager {
     var statusItem: NSStatusItem!
     var menu: NSMenu!
     var eventMonitor: Any?
+    var historyEventMonitor: Any?
+    var historyWindow: ClipboardHistoryWindow?
     
     weak var delegate: MenuBarManagerDelegate?
     
@@ -33,6 +35,13 @@ class MenuBarManager {
         cleanItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: "Clean clipboard")
         cleanItem.target = self
         menu.addItem(cleanItem)
+        
+        let historyItem = NSMenuItem(title: "Show Clipboard History (⌘⇧H)", action: #selector(showClipboardHistory), keyEquivalent: "")
+        historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Show clipboard history")
+        historyItem.target = self
+        menu.addItem(historyItem)
+        
+        menu.addItem(NSMenuItem.separator())
         
         let autoCleanItem = NSMenuItem(title: "Auto-clean on Copy", action: #selector(toggleAutoClean), keyEquivalent: "")
         autoCleanItem.image = NSImage(systemSymbolName: "arrow.clockwise.circle", accessibilityDescription: "Auto-clean toggle")
@@ -107,6 +116,29 @@ class MenuBarManager {
         
         logger.info("Hotkey registered: ⌘⌥V")
         logger.info("🔍 Hotkey registration completed - eventMonitor: \(self.eventMonitor != nil)")
+        
+        // Register history hotkey (⌘⇧H)
+        registerHistoryHotKey()
+    }
+    
+    func registerHistoryHotKey() {
+        logger.info("🔍 Registering clipboard history hotkey (⌘⇧H)...")
+        
+        // Initialize history window
+        historyWindow = ClipboardHistoryWindow()
+        
+        // Register ⌘⇧H hotkey (Command+Shift+H, keyCode 4 is 'H')
+        historyEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Check for ⌘⇧H (Command+Shift+H)
+            if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 4 {
+                logger.info("🎯 ⌘⇧H detected! Toggling clipboard history...")
+                DispatchQueue.main.async {
+                    self?.historyWindow?.toggle()
+                }
+            }
+        }
+        
+        logger.info("History hotkey registered: ⌘⇧H")
     }
     
     func updateAutoCleanState(_ enabled: Bool) {
@@ -187,6 +219,12 @@ class MenuBarManager {
     @objc func cleanClipboardManually() {
         SentryManager.shared.trackUserAction("manual_clean_triggered")
         delegate?.cleanClipboardRequested()
+    }
+    
+    @objc func showClipboardHistory() {
+        logger.info("Show clipboard history requested from menu")
+        SentryManager.shared.trackUserAction("show_history_menu_clicked")
+        historyWindow?.show()
     }
     
     @objc func toggleAutoClean() {
