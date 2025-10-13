@@ -44,6 +44,14 @@ class AboutWindow: NSWindowController {
         contentView.autoresizingMask = [.width, .height]
         window.contentView = contentView
         
+        // Add modern vibrancy to window background
+        let backgroundView = NSVisualEffectView(frame: contentView.bounds)
+        backgroundView.autoresizingMask = [.width, .height]
+        backgroundView.material = .underWindowBackground  // Apple's standard for settings/about windows
+        backgroundView.state = .followsWindowActiveState
+        backgroundView.blendingMode = .behindWindow
+        contentView.addSubview(backgroundView, positioned: .below, relativeTo: nil)
+        
         // Main stack view
         let mainStack = NSStackView()
         mainStack.orientation = .vertical
@@ -58,10 +66,15 @@ class AboutWindow: NSWindowController {
         centeredStack.spacing = 16
         centeredStack.alignment = .centerX
         
-        // App Icon
+        // App Icon with modern shadow
         let iconView = NSImageView()
         iconView.image = NSImage(named: NSImage.applicationIconName)
         iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.wantsLayer = true
+        iconView.layer?.shadowColor = NSColor.black.cgColor
+        iconView.layer?.shadowOpacity = 0.15
+        iconView.layer?.shadowOffset = NSSize(width: 0, height: 4)
+        iconView.layer?.shadowRadius = 12
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: 128),
@@ -69,9 +82,13 @@ class AboutWindow: NSWindowController {
         ])
         centeredStack.addArrangedSubview(iconView)
         
-        // App Name
+        // App Name with SF Pro Rounded
         let appNameLabel = NSTextField(labelWithString: "Clnbrd")
-        appNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
+        if let roundedFont = NSFont.systemFont(ofSize: 28, weight: .bold).rounded() {
+            appNameLabel.font = roundedFont  // Modern rounded font for app name
+        } else {
+            appNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
+        }
         appNameLabel.alignment = .center
         centeredStack.addArrangedSubview(appNameLabel)
         
@@ -92,7 +109,7 @@ class AboutWindow: NSWindowController {
         
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
-        updateButton.bezelStyle = .rounded
+        updateButton.bezelStyle = .automatic  // Modern, adaptive style
         updateButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             updateButton.widthAnchor.constraint(equalToConstant: 200)
@@ -104,7 +121,7 @@ class AboutWindow: NSWindowController {
         if VersionManager.version.contains("beta") {
             logger.info("Beta detected - showing Revert to Stable button")
             let revertButton = NSButton(title: "Revert to Stable Release", target: self, action: #selector(revertToStable))
-            revertButton.bezelStyle = .rounded
+            revertButton.bezelStyle = .automatic  // Modern, adaptive style
             revertButton.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
                 revertButton.widthAnchor.constraint(equalToConstant: 200)
@@ -150,10 +167,10 @@ class AboutWindow: NSWindowController {
         let buttonStack = createBottomButtons()
         mainStack.addArrangedSubview(buttonStack)
         
-        // Copyright label
-        let copyrightLabel = NSTextField(labelWithString: "© 2025 Olive Design Studios")
-        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
-        copyrightLabel.textColor = .tertiaryLabelColor
+        // Copyright label - matches description text styling
+        let copyrightLabel = NSTextField(labelWithString: "© 2025 Olive Design Studios. All Rights Reserved.")
+        copyrightLabel.font = NSFont.systemFont(ofSize: 11)
+        copyrightLabel.textColor = .secondaryLabelColor
         copyrightLabel.alignment = .center
         mainStack.addArrangedSubview(copyrightLabel)
         
@@ -174,6 +191,7 @@ class AboutWindow: NSWindowController {
     private func createSeparator() -> NSBox {
         let separator = NSBox()
         separator.boxType = .separator
+        separator.fillColor = .separatorColor  // Ensures proper color in dark mode
         separator.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             separator.heightAnchor.constraint(equalToConstant: 1)
@@ -236,13 +254,13 @@ class AboutWindow: NSWindowController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         
         let whatsNewButton = NSButton(title: "What's New", target: self, action: #selector(showWhatsNew))
-        whatsNewButton.bezelStyle = .rounded
+        whatsNewButton.bezelStyle = .automatic  // Modern, adaptive style
         
         let websiteButton = NSButton(title: "Visit our Website", target: self, action: #selector(openWebsite))
-        websiteButton.bezelStyle = .rounded
+        websiteButton.bezelStyle = .automatic  // Modern, adaptive style
         
         let contactButton = NSButton(title: "Contact Us", target: self, action: #selector(contactUs))
-        contactButton.bezelStyle = .rounded
+        contactButton.bezelStyle = .automatic  // Modern, adaptive style
         
         stack.addArrangedSubview(whatsNewButton)
         stack.addArrangedSubview(websiteButton)
@@ -277,28 +295,65 @@ class AboutWindow: NSWindowController {
         let alert = NSAlert()
         alert.messageText = "Revert to Stable Release?"
         alert.informativeText = """
-        This will download and install the latest stable version of Clnbrd (v1.3, Build 52).
+        This will download the latest stable version of Clnbrd (v1.3, Build 52).
+        
+        The app will quit, and you'll need to manually open the downloaded file to install it.
         
         You can switch back to the beta at any time by checking for updates again.
         
         Would you like to continue?
         """
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Revert to Stable")
+        alert.addButton(withTitle: "Download Stable")
         alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // Trigger update check - Sparkle will offer Build 52 as it has allowsDowngrades
-            logger.info("Triggering update check to revert to stable...")
-            if let appDelegate = NSApp.delegate as? AppDelegate {
-                appDelegate.checkForUpdatesRequested()
-            } else {
-                // Fallback using Objective-C runtime (needed when SwiftUI wraps the delegate)
-                if let delegate = NSApp.delegate {
-                    let selector = #selector(AppDelegate.checkForUpdatesRequested)
-                    if delegate.responds(to: selector) {
-                        delegate.perform(selector)
+            logger.info("User confirmed revert to stable - downloading Build 52")
+            
+            // Direct download URL for the stable release ZIP (Build 52)
+            let stableDownloadURL = "https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.52/Clnbrd-v1.3-Build52-notarized-stapled.zip"
+            
+            guard let url = URL(string: stableDownloadURL) else {
+                logger.error("Invalid stable download URL")
+                return
+            }
+            
+            // Show download instructions
+            let downloadAlert = NSAlert()
+            downloadAlert.messageText = "Downloading Stable Release..."
+            downloadAlert.informativeText = """
+            The stable version (v1.3, Build 52) will now download.
+            
+            Once downloaded:
+            1. Quit Clnbrd
+            2. Unzip the downloaded file
+            3. Drag Clnbrd.app to your Applications folder (replace existing)
+            4. Launch Clnbrd from Applications
+            
+            The download will open in your browser.
+            """
+            downloadAlert.alertStyle = .informational
+            downloadAlert.addButton(withTitle: "Download Now")
+            downloadAlert.addButton(withTitle: "Cancel")
+            
+            if downloadAlert.runModal() == .alertFirstButtonReturn {
+                // Open the download URL in the default browser
+                NSWorkspace.shared.open(url)
+                logger.info("Opened stable release download URL")
+                
+                // Offer to quit the app
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    let quitAlert = NSAlert()
+                    quitAlert.messageText = "Quit Clnbrd Now?"
+                    quitAlert.informativeText = "Would you like to quit Clnbrd now so you can install the stable version?"
+                    quitAlert.alertStyle = .informational
+                    quitAlert.addButton(withTitle: "Quit Now")
+                    quitAlert.addButton(withTitle: "Continue Running")
+                    
+                    if quitAlert.runModal() == .alertFirstButtonReturn {
+                        logger.info("User chose to quit - exiting application")
+                        NSApplication.shared.terminate(nil)
                     }
                 }
             }

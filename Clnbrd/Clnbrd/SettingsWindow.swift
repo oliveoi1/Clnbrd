@@ -102,6 +102,16 @@ class SettingsWindow: NSWindowController {
     func setupUI() {
         guard let window = window else { return }
         
+        // Add modern vibrancy to window background
+        if let contentView = window.contentView {
+            let backgroundView = NSVisualEffectView(frame: contentView.bounds)
+            backgroundView.autoresizingMask = [.width, .height]
+            backgroundView.material = .underWindowBackground  // Apple's standard for settings windows
+            backgroundView.state = .followsWindowActiveState
+            backgroundView.blendingMode = .behindWindow
+            contentView.addSubview(backgroundView, positioned: .below, relativeTo: nil)
+        }
+        
         // Create tab view
         mainTabView = NSTabView()
         mainTabView.translatesAutoresizingMaskIntoConstraints = false
@@ -147,15 +157,16 @@ class SettingsWindow: NSWindowController {
         stackView.alignment = .leading
         stackView.spacing = 8
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stackView.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)  // Apple standard for settings
         
         // Setup all UI sections
         setupProfileSection(stackView)
         setupBasicTextCleaningSection(stackView)
         setupAdvancedCleaningSection(stackView)
+        setupClipboardSafetySection(stackView)
         
         // CUSTOM FIND & REPLACE RULES SECTION
-        stackView.addArrangedSubview(createSpacer(height: 20))
+        stackView.addArrangedSubview(createSpacer(height: 12))  // More compact
         stackView.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
         stackView.addArrangedSubview(createSpacer(height: 4))
         
@@ -179,7 +190,7 @@ class SettingsWindow: NSWindowController {
         }
         
         let addButton = NSButton(title: "+ Add Rule", target: self, action: #selector(addNewRule))
-        addButton.bezelStyle = .rounded
+        addButton.bezelStyle = .automatic  // Modern, adaptive style
         stackView.addArrangedSubview(addButton)
         
         // Configure scroll view
@@ -216,24 +227,28 @@ class SettingsWindow: NSWindowController {
         let stackView = NSStackView()
         stackView.orientation = .vertical
         stackView.alignment = .leading
-        stackView.spacing = 20
-        stackView.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stackView.spacing = 12  // More compact, Apple HIG standard
+        stackView.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)  // Apple standard for settings
         stackView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stackView)
         
         scrollView.documentView = contentView
         
-        // Header
+        // Header with SF Pro Rounded
         let headerLabel = NSTextField(labelWithString: "Clipboard Settings")
-        headerLabel.font = NSFont.systemFont(ofSize: 18, weight: .bold)
+        if let roundedFont = NSFont.systemFont(ofSize: 17, weight: .semibold).rounded() {
+            headerLabel.font = roundedFont  // Apple's standard: 17pt semibold for section headers
+        } else {
+            headerLabel.font = NSFont.systemFont(ofSize: 17, weight: .semibold)
+        }
         stackView.addArrangedSubview(headerLabel)
         
-        let descriptionLabel = NSTextField(labelWithString: "Clnbrd automatically saves your clipboard history before cleaning. Access it anytime with ⌘⇧H.")
-        descriptionLabel.font = NSFont.systemFont(ofSize: 12)
+        let descriptionLabel = NSTextField(labelWithString: "Automatically saves your clipboard history before cleaning.")
+        descriptionLabel.font = NSFont.systemFont(ofSize: 11)  // Compact secondary text
         descriptionLabel.textColor = .secondaryLabelColor
         descriptionLabel.lineBreakMode = .byWordWrapping
-        descriptionLabel.maximumNumberOfLines = 2
-        descriptionLabel.preferredMaxLayoutWidth = 480
+        descriptionLabel.maximumNumberOfLines = 1
+        descriptionLabel.preferredMaxLayoutWidth = 460
         stackView.addArrangedSubview(descriptionLabel)
         
         // Enable/Disable Toggle
@@ -243,25 +258,129 @@ class SettingsWindow: NSWindowController {
         
         stackView.addArrangedSubview(createSeparatorLine())
         
+        // MARK: - Appearance Section
+        let appearanceHeader = NSTextField(labelWithString: "Appearance")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            appearanceHeader.font = roundedFont
+        } else {
+            appearanceHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        stackView.addArrangedSubview(appearanceHeader)
+        
+        let appearanceDesc = NSTextField(labelWithString: "Choose how Clnbrd looks. Auto follows your system appearance.")
+        appearanceDesc.font = NSFont.systemFont(ofSize: 11)
+        appearanceDesc.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(appearanceDesc)
+        
+        let appearanceControl = NSSegmentedControl(labels: ["Auto", "Light", "Dark"], trackingMode: .selectOne, target: self, action: #selector(appearanceChanged(_:)))
+        appearanceControl.segmentStyle = .rounded
+        appearanceControl.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set current selection based on saved preference
+        let currentAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
+        switch currentAppearance {
+        case "light": appearanceControl.selectedSegment = 1
+        case "dark": appearanceControl.selectedSegment = 2
+        default: appearanceControl.selectedSegment = 0 // auto
+        }
+        
+        NSLayoutConstraint.activate([
+            appearanceControl.widthAnchor.constraint(equalToConstant: 220)  // More compact
+        ])
+        stackView.addArrangedSubview(appearanceControl)
+        
+        stackView.addArrangedSubview(createSeparatorLine())
+        
+        // MARK: - Keyboard Shortcuts Section
+        let hotkeysHeader = NSTextField(labelWithString: "Keyboard Shortcuts")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            hotkeysHeader.font = roundedFont
+        } else {
+            hotkeysHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        stackView.addArrangedSubview(hotkeysHeader)
+        
+        let hotkeysDesc = NSTextField(labelWithString: "Click on a shortcut to change it. Press ⌫ to disable.")
+        hotkeysDesc.font = NSFont.systemFont(ofSize: 11)
+        hotkeysDesc.textColor = .secondaryLabelColor
+        stackView.addArrangedSubview(hotkeysDesc)
+        
+        // Clean & Paste hotkey
+        let cleanPasteRow = createHotkeyRow(
+            action: .cleanAndPaste,
+            description: "Clean and Paste:",
+            config: HotkeyManager.shared.getConfiguration(for: .cleanAndPaste)
+        )
+        stackView.addArrangedSubview(cleanPasteRow)
+        
+        // Show History hotkey
+        let historyRow = createHotkeyRow(
+            action: .showHistory,
+            description: "Show Clipboard History:",
+            config: HotkeyManager.shared.getConfiguration(for: .showHistory)
+        )
+        stackView.addArrangedSubview(historyRow)
+        
+        // Screenshot hotkey
+        let screenshotRow = createHotkeyRow(
+            action: .captureScreenshot,
+            description: "Capture Screenshot:",
+            config: HotkeyManager.shared.getConfiguration(for: .captureScreenshot)
+        )
+        stackView.addArrangedSubview(screenshotRow)
+        
+        // Buttons container
+        let buttonsStack = NSStackView()
+        buttonsStack.orientation = .horizontal
+        buttonsStack.spacing = 8
+        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetHotkeysToDefaults))
+        resetButton.bezelStyle = .rounded
+        resetButton.font = NSFont.systemFont(ofSize: 11)
+        buttonsStack.addArrangedSubview(resetButton)
+        
+        let systemButton = NSButton(title: "System Keyboard Shortcuts...", target: self, action: #selector(openKeyboardShortcutsSettings))
+        systemButton.bezelStyle = .rounded
+        systemButton.font = NSFont.systemFont(ofSize: 11)
+        buttonsStack.addArrangedSubview(systemButton)
+        
+        stackView.addArrangedSubview(buttonsStack)
+        
+        let helpLabel = NSTextField(labelWithString: "💡 Check System Settings if a hotkey conflicts with other apps")
+        helpLabel.font = NSFont.systemFont(ofSize: 10)
+        helpLabel.textColor = .tertiaryLabelColor
+        helpLabel.lineBreakMode = .byWordWrapping
+        helpLabel.maximumNumberOfLines = 1
+        helpLabel.preferredMaxLayoutWidth = 460
+        stackView.addArrangedSubview(helpLabel)
+        
+        stackView.addArrangedSubview(createSeparatorLine())
+        
         // MARK: - App Exclusions Section (at top)
         let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
-        exclusionsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            exclusionsHeader.font = roundedFont  // SF Pro Rounded for subsection headers
+        } else {
+            exclusionsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
         stackView.addArrangedSubview(exclusionsHeader)
         
-        let exclusionsDesc = NSTextField(labelWithString: "Prevent capturing clipboard from sensitive apps (e.g., password managers)")
+        let exclusionsDesc = NSTextField(labelWithString: "Don't capture clipboard from these apps (e.g., password managers)")
         exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
         exclusionsDesc.textColor = .secondaryLabelColor
         exclusionsDesc.lineBreakMode = .byWordWrapping
-        exclusionsDesc.maximumNumberOfLines = 2
-        exclusionsDesc.preferredMaxLayoutWidth = 480
+        exclusionsDesc.maximumNumberOfLines = 1
+        exclusionsDesc.preferredMaxLayoutWidth = 460
         stackView.addArrangedSubview(exclusionsDesc)
         
-        // Table View for excluded apps
+        // Table View for excluded apps (Modern inset style)
         appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
         
-        let tableScrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 480, height: 150))
+        let tableScrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 460, height: 120))  // More compact
         tableScrollView.hasVerticalScroller = true
-        tableScrollView.borderType = .bezelBorder
+        tableScrollView.borderType = .noBorder  // Modern: no border
+        tableScrollView.drawsBackground = false
         tableScrollView.autohidesScrollers = true
         tableScrollView.translatesAutoresizingMaskIntoConstraints = false
         
@@ -271,17 +390,20 @@ class SettingsWindow: NSWindowController {
         appExclusionsTableView.headerView = nil
         appExclusionsTableView.allowsEmptySelection = true
         appExclusionsTableView.allowsMultipleSelection = false
-        appExclusionsTableView.usesAlternatingRowBackgroundColors = true
-        appExclusionsTableView.rowSizeStyle = .medium
+        appExclusionsTableView.style = .inset  // macOS 11+ modern inset style
+        appExclusionsTableView.usesAlternatingRowBackgroundColors = false  // Clean look
+        appExclusionsTableView.backgroundColor = .clear
+        appExclusionsTableView.gridStyleMask = []  // No grid lines
+        appExclusionsTableView.rowSizeStyle = .small  // More compact rows
         
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("appName"))
         column.title = "App Name"
-        column.width = 460
+        column.width = 440
         appExclusionsTableView.addTableColumn(column)
         
         tableScrollView.documentView = appExclusionsTableView
-        tableScrollView.heightAnchor.constraint(equalToConstant: 150).isActive = true
-        tableScrollView.widthAnchor.constraint(equalToConstant: 480).isActive = true
+        tableScrollView.heightAnchor.constraint(equalToConstant: 120).isActive = true  // More compact
+        tableScrollView.widthAnchor.constraint(equalToConstant: 460).isActive = true  // More compact
         
         stackView.addArrangedSubview(tableScrollView)
         
@@ -291,15 +413,15 @@ class SettingsWindow: NSWindowController {
         exclusionsButtonStack.spacing = 8
         
         let addExclusionButton = NSButton(title: "Add App...", target: self, action: #selector(addExcludedApp))
-        addExclusionButton.bezelStyle = .rounded
+        addExclusionButton.bezelStyle = .automatic  // Modern, adaptive style
         exclusionsButtonStack.addArrangedSubview(addExclusionButton)
         
         let removeExclusionButton = NSButton(title: "Remove App", target: self, action: #selector(removeExcludedApp))
-        removeExclusionButton.bezelStyle = .rounded
+        removeExclusionButton.bezelStyle = .automatic  // Modern, adaptive style
         exclusionsButtonStack.addArrangedSubview(removeExclusionButton)
         
         let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
-        resetExclusionsButton.bezelStyle = .rounded
+        resetExclusionsButton.bezelStyle = .automatic  // Modern, adaptive style
         exclusionsButtonStack.addArrangedSubview(resetExclusionsButton)
         
         stackView.addArrangedSubview(exclusionsButtonStack)
@@ -308,7 +430,11 @@ class SettingsWindow: NSWindowController {
         
         // MARK: - History Section (all in one row)
         let historySectionLabel = NSTextField(labelWithString: "History")
-        historySectionLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            historySectionLabel.font = roundedFont  // SF Pro Rounded for subsection headers
+        } else {
+            historySectionLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
         stackView.addArrangedSubview(historySectionLabel)
         
         let historyControlStack = NSStackView()
@@ -368,7 +494,7 @@ class SettingsWindow: NSWindowController {
         
         // Clear Button
         let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
-        clearButton.bezelStyle = .rounded
+        clearButton.bezelStyle = .automatic  // Modern, adaptive style
         clearButton.setContentHuggingPriority(.required, for: .horizontal)
         historyControlStack.addArrangedSubview(clearButton)
         
@@ -378,7 +504,11 @@ class SettingsWindow: NSWindowController {
         
         // MARK: - Image Compression Section
         let compressionHeader = NSTextField(labelWithString: "Image Compression")
-        compressionHeader.font = NSFont.boldSystemFont(ofSize: 13)
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            compressionHeader.font = roundedFont
+        } else {
+            compressionHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
         stackView.addArrangedSubview(compressionHeader)
         
         let compressionDesc = NSTextField(labelWithString: "Optimize images to save space")
@@ -454,7 +584,11 @@ class SettingsWindow: NSWindowController {
         
         // Image Export Settings Section
         let exportHeader = NSTextField(labelWithString: "Image Export Settings")
-        exportHeader.font = NSFont.boldSystemFont(ofSize: 13)
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            exportHeader.font = roundedFont
+        } else {
+            exportHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
         stackView.addArrangedSubview(exportHeader)
         
         let exportDesc = NSTextField(labelWithString: "Configure how images are exported when saved from history")
@@ -549,7 +683,11 @@ class SettingsWindow: NSWindowController {
         
         // MARK: - Statistics Section (at bottom)
         let statsLabel = NSTextField(labelWithString: "Statistics")
-        statsLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            statsLabel.font = roundedFont  // SF Pro Rounded for subsection headers
+        } else {
+            statsLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
         stackView.addArrangedSubview(statsLabel)
         
         let statsStack = NSStackView()
@@ -599,7 +737,7 @@ class SettingsWindow: NSWindowController {
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 540)
+            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 500)  // More compact minimum width
         ])
         
         return container
@@ -610,6 +748,35 @@ class SettingsWindow: NSWindowController {
     @objc private func toggleHistoryEnabled(_ sender: NSButton) {
         ClipboardHistoryManager.shared.isEnabled = (sender.state == .on)
         logger.info("History enabled: \(sender.state == .on)")
+    }
+    
+    @objc private func appearanceChanged(_ sender: NSSegmentedControl) {
+        let appearance: String
+        let nsAppearance: NSAppearance?
+        
+        switch sender.selectedSegment {
+        case 1: // Light
+            appearance = "light"
+            nsAppearance = NSAppearance(named: .aqua)
+            logger.info("Appearance changed to: Light")
+        case 2: // Dark
+            appearance = "dark"
+            nsAppearance = NSAppearance(named: .darkAqua)
+            logger.info("Appearance changed to: Dark")
+        default: // Auto
+            appearance = "auto"
+            nsAppearance = nil // nil = follow system
+            logger.info("Appearance changed to: Auto (System)")
+        }
+        
+        // Save preference
+        UserDefaults.standard.set(appearance, forKey: "AppearanceMode")
+        
+        // Apply to all windows immediately
+        NSApp.appearance = nsAppearance
+        
+        // Track analytics
+        AnalyticsManager.shared.trackFeatureUsage("appearance_changed_\(appearance)")
     }
     
     @objc private func retentionPeriodChanged(_ sender: NSPopUpButton) {
@@ -854,7 +1021,7 @@ class SettingsWindow: NSWindowController {
         mainStack.spacing = 12
         mainStack.alignment = .leading
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        mainStack.edgeInsets = NSEdgeInsets(top: 20, left: 30, bottom: 15, right: 30)
+        mainStack.edgeInsets = NSEdgeInsets(top: 16, left: 24, bottom: 16, right: 24)  // More compact and consistent
         
         // Top section: Icon + App Info (side by side)
         let topStack = NSStackView()
@@ -862,14 +1029,14 @@ class SettingsWindow: NSWindowController {
         topStack.spacing = 16
         topStack.alignment = .top
         
-        // App Icon (bigger)
+        // App Icon
         let iconView = NSImageView()
         iconView.image = NSImage(named: NSImage.applicationIconName)
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 110),
-            iconView.heightAnchor.constraint(equalToConstant: 110)
+            iconView.widthAnchor.constraint(equalToConstant: 96),  // More compact
+            iconView.heightAnchor.constraint(equalToConstant: 96)
         ])
         topStack.addArrangedSubview(iconView)
         
@@ -908,7 +1075,7 @@ class SettingsWindow: NSWindowController {
         
         // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
-        updateButton.bezelStyle = .rounded
+        updateButton.bezelStyle = .automatic  // Modern, adaptive style
         updateStack.addArrangedSubview(updateButton)
         
         // Auto-update checkbox (on same line)
@@ -921,16 +1088,16 @@ class SettingsWindow: NSWindowController {
         // Revert to Stable button (only show if on beta)
         if VersionManager.version.contains("beta") {
             let revertButton = NSButton(title: "Revert to Stable Release", target: self, action: #selector(revertToStable))
-            revertButton.bezelStyle = .rounded
+            revertButton.bezelStyle = .automatic  // Modern, adaptive style
             updateButtonsStack.addArrangedSubview(revertButton)
         }
         
         rightStack.addArrangedSubview(updateButtonsStack)
         
-        // Copyright (very light grey) - aligned with app name
+        // Copyright - matches description text styling
         let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2025 All Rights Reserved.")
-        copyrightLabel.font = NSFont.systemFont(ofSize: 10)
-        copyrightLabel.textColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.6)
+        copyrightLabel.font = NSFont.systemFont(ofSize: 11)
+        copyrightLabel.textColor = .secondaryLabelColor
         copyrightLabel.alignment = .left
         rightStack.addArrangedSubview(copyrightLabel)
         
@@ -944,6 +1111,41 @@ class SettingsWindow: NSWindowController {
         mainStack.addArrangedSubview(separator1)
         mainStack.addArrangedSubview(createSpacer(height: 12))
         
+        // Appearance section
+        let appearanceLabel = NSTextField(labelWithString: "Appearance")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {  // Consistent with other sections
+            appearanceLabel.font = roundedFont
+        } else {
+            appearanceLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        mainStack.addArrangedSubview(appearanceLabel)
+        
+        let appearanceControl = NSSegmentedControl(labels: ["Auto", "Light", "Dark"], trackingMode: .selectOne, target: self, action: #selector(appearanceChanged(_:)))
+        appearanceControl.segmentStyle = .rounded
+        appearanceControl.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set current selection based on saved preference
+        let currentAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
+        switch currentAppearance {
+        case "light": appearanceControl.selectedSegment = 1
+        case "dark": appearanceControl.selectedSegment = 2
+        default: appearanceControl.selectedSegment = 0 // auto
+        }
+        
+        NSLayoutConstraint.activate([
+            appearanceControl.widthAnchor.constraint(equalToConstant: 220)  // More compact
+        ])
+        mainStack.addArrangedSubview(appearanceControl)
+        
+        let appearanceDescription = NSTextField(wrappingLabelWithString: "Choose how Clnbrd looks. Auto follows your system appearance.")
+        appearanceDescription.font = NSFont.systemFont(ofSize: 11)
+        appearanceDescription.textColor = .secondaryLabelColor
+        appearanceDescription.preferredMaxLayoutWidth = 480  // More compact
+        appearanceDescription.alignment = .left
+        mainStack.addArrangedSubview(appearanceDescription)
+        
+        mainStack.addArrangedSubview(createSpacer(height: 12))
+        
         // Analytics section
         let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
         analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
@@ -952,7 +1154,7 @@ class SettingsWindow: NSWindowController {
         let analyticsDescription = NSTextField(wrappingLabelWithString: "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
         analyticsDescription.font = NSFont.systemFont(ofSize: 11)
         analyticsDescription.textColor = .secondaryLabelColor
-        analyticsDescription.preferredMaxLayoutWidth = 540
+        analyticsDescription.preferredMaxLayoutWidth = 480  // More compact
         analyticsDescription.alignment = .left
         mainStack.addArrangedSubview(analyticsDescription)
         
@@ -1035,13 +1237,13 @@ class SettingsWindow: NSWindowController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         
         let whatsNewButton = NSButton(title: "What's New", target: self, action: #selector(showWhatsNew))
-        whatsNewButton.bezelStyle = .rounded
+        whatsNewButton.bezelStyle = .automatic  // Modern, adaptive style
         
         let websiteButton = NSButton(title: "Visit Website", target: self, action: #selector(openWebsite))
-        websiteButton.bezelStyle = .rounded
+        websiteButton.bezelStyle = .automatic  // Modern, adaptive style
         
         let contactButton = NSButton(title: "Contact Us", target: self, action: #selector(contactUs))
-        contactButton.bezelStyle = .rounded
+        contactButton.bezelStyle = .automatic  // Modern, adaptive style
         
         stack.addArrangedSubview(whatsNewButton)
         stack.addArrangedSubview(websiteButton)
@@ -1055,6 +1257,55 @@ class SettingsWindow: NSWindowController {
     private func setupProfileSection(_ stackView: NSStackView) {
         let profileSection = createProfileManagementSection()
         stackView.addArrangedSubview(profileSection)
+        stackView.addArrangedSubview(createSpacer(height: 16))
+    }
+    
+    private func setupHotkeySection(_ stackView: NSStackView) {
+        stackView.addArrangedSubview(createSectionHeader("⌨️ Keyboard Shortcuts"))
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        
+        let descriptionLabel = NSTextField(labelWithString: "Click on a shortcut to change it. Press ⌫ to disable.")
+        descriptionLabel.font = NSFont.systemFont(ofSize: 11)
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.isEditable = false
+        descriptionLabel.isBordered = false
+        descriptionLabel.backgroundColor = .clear
+        stackView.addArrangedSubview(descriptionLabel)
+        
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // Clean & Paste hotkey
+        let cleanPasteRow = createHotkeyRow(
+            action: .cleanAndPaste,
+            description: "Clean and Paste:",
+            config: HotkeyManager.shared.getConfiguration(for: .cleanAndPaste)
+        )
+        stackView.addArrangedSubview(cleanPasteRow)
+        
+        // Show History hotkey
+        let historyRow = createHotkeyRow(
+            action: .showHistory,
+            description: "Show Clipboard History:",
+            config: HotkeyManager.shared.getConfiguration(for: .showHistory)
+        )
+        stackView.addArrangedSubview(historyRow)
+        
+        // Screenshot hotkey
+        let screenshotRow = createHotkeyRow(
+            action: .captureScreenshot,
+            description: "Capture Screenshot:",
+            config: HotkeyManager.shared.getConfiguration(for: .captureScreenshot)
+        )
+        stackView.addArrangedSubview(screenshotRow)
+        
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // Reset button
+        let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetHotkeysToDefaults))
+        resetButton.bezelStyle = .automatic
+        resetButton.font = NSFont.systemFont(ofSize: 11)
+        stackView.addArrangedSubview(resetButton)
+        
         stackView.addArrangedSubview(createSpacer(height: 16))
     }
     
@@ -1094,12 +1345,76 @@ class SettingsWindow: NSWindowController {
         stackView.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: CleaningRuleTooltips.removeExtraPunctuation, isOn: cleaningRules.removeExtraPunctuation, tag: 12))
     }
     
+    private func setupClipboardSafetySection(_ stackView: NSStackView) {
+        stackView.addArrangedSubview(createSpacer(height: 12))  // More compact
+        stackView.addArrangedSubview(createSectionHeader("⚡ Performance & Safety"))
+        stackView.addArrangedSubview(createSpacer(height: 4))
+        
+        let descriptionLabel = NSTextField(labelWithString: "Protect against large clipboard items (like InDesign objects) that can cause freezing")
+        descriptionLabel.font = NSFont.systemFont(ofSize: 11)
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.isEditable = false
+        descriptionLabel.isBordered = false
+        descriptionLabel.backgroundColor = .clear
+        descriptionLabel.lineBreakMode = .byWordWrapping
+        descriptionLabel.maximumNumberOfLines = 0
+        descriptionLabel.preferredMaxLayoutWidth = 520
+        stackView.addArrangedSubview(descriptionLabel)
+        
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // Skip large items checkbox
+        let skipLargeCheckbox = NSButton(checkboxWithTitle: "Skip processing large clipboard items", target: self, action: #selector(skipLargeItemsChanged(_:)))
+        skipLargeCheckbox.state = PreferencesManager.shared.loadSkipLargeClipboardItems() ? .on : .off
+        skipLargeCheckbox.toolTip = "When enabled, clipboard items larger than the size limit will be skipped to prevent freezing"
+        stackView.addArrangedSubview(skipLargeCheckbox)
+        
+        stackView.addArrangedSubview(createSpacer(height: 12))
+        
+        // Max clipboard size slider
+        let maxSizeContainer = createSliderSetting(
+            label: "Max clipboard size:",
+            minValue: 1,
+            maxValue: 50,
+            currentValue: Double(PreferencesManager.shared.loadMaxClipboardSize()),
+            formatter: { value in "\(Int(value)) MB" },
+            action: #selector(maxClipboardSizeChanged(_:))
+        )
+        stackView.addArrangedSubview(maxSizeContainer)
+        
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // Timeout slider
+        let timeoutContainer = createSliderSetting(
+            label: "Processing timeout:",
+            minValue: 1,
+            maxValue: 10,
+            currentValue: PreferencesManager.shared.loadClipboardTimeout(),
+            formatter: { value in String(format: "%.1f sec", value) },
+            action: #selector(clipboardTimeoutChanged(_:))
+        )
+        stackView.addArrangedSubview(timeoutContainer)
+        
+        let timeoutHelpLabel = NSTextField(labelWithString: "How long to wait before aborting slow clipboard operations")
+        timeoutHelpLabel.font = NSFont.systemFont(ofSize: 10)
+        timeoutHelpLabel.textColor = .tertiaryLabelColor
+        timeoutHelpLabel.isEditable = false
+        timeoutHelpLabel.isBordered = false
+        timeoutHelpLabel.backgroundColor = .clear
+        stackView.addArrangedSubview(timeoutHelpLabel)
+    }
+    
     // MARK: - UI Creation Helpers
     
     func createSectionHeader(_ title: String) -> NSView {
         let container = NSView()
         let label = NSTextField(labelWithString: title)
-        label.font = NSFont.boldSystemFont(ofSize: 14)
+        // Use SF Pro Rounded for section headers
+        if let roundedFont = NSFont.systemFont(ofSize: 14, weight: .semibold).rounded() {
+            label.font = roundedFont
+        } else {
+            label.font = NSFont.boldSystemFont(ofSize: 14)
+        }
         label.textColor = .controlTextColor
         label.isEditable = false
         label.isBordered = false
@@ -1131,13 +1446,13 @@ class SettingsWindow: NSWindowController {
         
         // Select All button
         let selectAllButton = NSButton(title: "Select All", target: self, action: selectAllSelector)
-        selectAllButton.bezelStyle = .rounded
+        selectAllButton.bezelStyle = .automatic  // Modern, adaptive style
         selectAllButton.font = NSFont.systemFont(ofSize: 11)
         selectAllButton.translatesAutoresizingMaskIntoConstraints = false
         
         // Deselect All button
         let deselectAllButton = NSButton(title: "Deselect All", target: self, action: deselectAllSelector)
-        deselectAllButton.bezelStyle = .rounded
+        deselectAllButton.bezelStyle = .automatic  // Modern, adaptive style
         deselectAllButton.font = NSFont.systemFont(ofSize: 11)
         deselectAllButton.translatesAutoresizingMaskIntoConstraints = false
         
@@ -1283,13 +1598,125 @@ class SettingsWindow: NSWindowController {
         return checkbox
     }
     
+    func createSliderSetting(label: String, minValue: Double, maxValue: Double, currentValue: Double, formatter: @escaping (Double) -> String, action: Selector) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Label
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = NSFont.systemFont(ofSize: 12)
+        labelField.translatesAutoresizingMaskIntoConstraints = false
+        labelField.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        
+        // Slider
+        let slider = NSSlider(value: currentValue, minValue: minValue, maxValue: maxValue, target: self, action: action)
+        slider.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Value label
+        let valueLabel = NSTextField(labelWithString: formatter(currentValue))
+        valueLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.alignment = .right
+        valueLabel.identifier = NSUserInterfaceItemIdentifier("valueLabel_\(label)")
+        
+        container.addSubview(labelField)
+        container.addSubview(slider)
+        container.addSubview(valueLabel)
+        
+        NSLayoutConstraint.activate([
+            labelField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            labelField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            slider.leadingAnchor.constraint(equalTo: labelField.trailingAnchor, constant: 12),
+            slider.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            slider.widthAnchor.constraint(equalToConstant: 200),
+            
+            valueLabel.leadingAnchor.constraint(equalTo: slider.trailingAnchor, constant: 12),
+            valueLabel.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            valueLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            valueLabel.widthAnchor.constraint(equalToConstant: 60),
+            
+            container.heightAnchor.constraint(equalToConstant: 30)
+        ])
+        
+        return container
+    }
+    
+    func createHotkeyRow(action: HotkeyAction, description: String, config: HotkeyConfiguration) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Description label
+        let labelField = NSTextField(labelWithString: description)
+        labelField.font = NSFont.systemFont(ofSize: 12)
+        labelField.translatesAutoresizingMaskIntoConstraints = false
+        labelField.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        
+        // Hotkey button (acts as recorder)
+        let hotkeyButton = HotkeyRecorderButton()
+        hotkeyButton.hotkeyAction = action
+        hotkeyButton.configuration = config
+        hotkeyButton.delegate = self
+        hotkeyButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Enable/Disable checkbox - use tag to identify which action
+        let enableCheckbox = NSButton(checkboxWithTitle: "Enabled", target: self, action: #selector(hotkeyEnabledChanged(_:)))
+        enableCheckbox.state = config.isEnabled ? .on : .off
+        // Use tag to identify: 0 = cleanAndPaste, 1 = showHistory, 2 = captureScreenshot
+        switch action {
+        case .cleanAndPaste:
+            enableCheckbox.tag = 0
+        case .showHistory:
+            enableCheckbox.tag = 1
+        case .captureScreenshot:
+            enableCheckbox.tag = 2
+        }
+        enableCheckbox.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addSubview(labelField)
+        container.addSubview(hotkeyButton)
+        container.addSubview(enableCheckbox)
+        
+        NSLayoutConstraint.activate([
+            labelField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            labelField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            labelField.widthAnchor.constraint(equalToConstant: 140),  // Slightly more compact
+            
+            hotkeyButton.leadingAnchor.constraint(equalTo: labelField.trailingAnchor, constant: 8),  // Tighter spacing
+            hotkeyButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            hotkeyButton.widthAnchor.constraint(equalToConstant: 140),  // Slightly more compact
+            hotkeyButton.heightAnchor.constraint(equalToConstant: 22),  // Tighter height
+            
+            enableCheckbox.leadingAnchor.constraint(equalTo: hotkeyButton.trailingAnchor, constant: 8),  // Tighter spacing
+            enableCheckbox.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            enableCheckbox.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            container.heightAnchor.constraint(equalToConstant: 28)  // More compact row
+        ])
+        
+        return container
+    }
+    
     func addCustomRuleRow(find: String, replace: String, index: Int) {
         let container = NSView()
         container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        container.layer?.cornerRadius = 8
-        container.layer?.borderWidth = 1
-        container.layer?.borderColor = NSColor.separatorColor.cgColor
+        
+        // Use modern material view for "liquid glass" effect
+        let materialView = NSVisualEffectView(frame: container.bounds)
+        materialView.autoresizingMask = [.width, .height]
+        materialView.material = .contentBackground  // Adaptive to light/dark mode
+        materialView.state = .active
+        materialView.wantsLayer = true
+        materialView.layer?.cornerRadius = 10  // Apple's 2024 standard
+        materialView.layer?.masksToBounds = true
+        
+        // Add subtle shadow for depth
+        materialView.layer?.shadowColor = NSColor.black.cgColor
+        materialView.layer?.shadowOpacity = 0.08
+        materialView.layer?.shadowOffset = NSSize(width: 0, height: 2)
+        materialView.layer?.shadowRadius = 4
+        
+        container.addSubview(materialView, positioned: .below, relativeTo: nil)
         
         let rowStack = NSStackView()
         rowStack.orientation = .horizontal
@@ -1406,6 +1833,206 @@ class SettingsWindow: NSWindowController {
         }
     }
     
+    // MARK: - Clipboard Safety Settings Actions
+    
+    @objc func skipLargeItemsChanged(_ sender: NSButton) {
+        let isEnabled = sender.state == .on
+        PreferencesManager.shared.saveSkipLargeClipboardItems(isEnabled)
+        
+        // Reload clipboard manager settings
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.clipboardManager.reloadSafetySettings()
+        }
+        
+        logger.info("Skip large clipboard items: \(isEnabled)")
+    }
+    
+    @objc func maxClipboardSizeChanged(_ sender: NSSlider) {
+        let sizeMB = Int(sender.doubleValue)
+        PreferencesManager.shared.saveMaxClipboardSize(sizeMB)
+        
+        // Update the value label
+        if let valueLabel = sender.superview?.subviews.first(where: { 
+            $0.identifier?.rawValue == "valueLabel_Max clipboard size:" 
+        }) as? NSTextField {
+            valueLabel.stringValue = "\(sizeMB) MB"
+        }
+        
+        // Reload clipboard manager settings
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.clipboardManager.reloadSafetySettings()
+        }
+        
+        logger.info("Max clipboard size set to: \(sizeMB) MB")
+    }
+    
+    @objc func clipboardTimeoutChanged(_ sender: NSSlider) {
+        let timeout = sender.doubleValue
+        PreferencesManager.shared.saveClipboardTimeout(timeout)
+        
+        // Update the value label
+        if let valueLabel = sender.superview?.subviews.first(where: { 
+            $0.identifier?.rawValue == "valueLabel_Processing timeout:" 
+        }) as? NSTextField {
+            valueLabel.stringValue = String(format: "%.1f sec", timeout)
+        }
+        
+        // Reload clipboard manager settings
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.clipboardManager.reloadSafetySettings()
+        }
+        
+        logger.info("Clipboard timeout set to: \(String(format: "%.1f", timeout)) seconds")
+    }
+    
+    // MARK: - Hotkey Settings Actions
+    
+    @objc func hotkeyEnabledChanged(_ sender: NSButton) {
+        // Map tag to action
+        let action: HotkeyAction
+        switch sender.tag {
+        case 0:
+            action = .cleanAndPaste
+        case 1:
+            action = .showHistory
+        case 2:
+            action = .captureScreenshot
+        default:
+            return
+        }
+        
+        var config = HotkeyManager.shared.getConfiguration(for: action)
+        config.isEnabled = sender.state == .on
+        HotkeyManager.shared.updateConfiguration(for: action, config: config)
+        
+        // Reload hotkeys in menu bar manager
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.menuBarManager.reloadHotkeys()
+        }
+        
+        logger.info("Hotkey \(action.rawValue) \(config.isEnabled ? "enabled" : "disabled")")
+    }
+    
+    @objc func resetHotkeysToDefaults() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Hotkeys to Defaults?"
+        alert.informativeText = "This will reset all keyboard shortcuts to their default values."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            HotkeyManager.shared.resetToDefaults()
+            
+            // Reload hotkeys in the menu bar
+            if let appDelegate = NSApp.delegate as? AppDelegate {
+                appDelegate.menuBarManager.reloadHotkeys()
+                
+                // Force menu update after a slight delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    appDelegate.menuBarManager.updateMenuItemHotkeys()
+                    logger.info("✅ Menu items updated after reset")
+                }
+            }
+            
+            // Update the hotkey buttons in the current view
+            DispatchQueue.main.async { [weak self] in
+                self?.updateHotkeyButtons()
+            }
+            
+            logger.info("Hotkeys reset to defaults")
+            
+            // Show success message
+            let successAlert = NSAlert()
+            successAlert.messageText = "Hotkeys Reset"
+            successAlert.informativeText = "All keyboard shortcuts have been reset to their default values:\n\n• Clean & Paste: ⌥⌘V\n• Show History: ⇧⌘H\n• Capture Screenshot: ⌥⌘C"
+            successAlert.alertStyle = .informational
+            successAlert.addButton(withTitle: "OK")
+            successAlert.runModal()
+        }
+    }
+    
+    private func updateHotkeyButtons() {
+        // Find all HotkeyRecorderButton instances in the view hierarchy and update them
+        if let window = window, let contentView = window.contentView {
+            updateHotkeyButtonsInView(contentView)
+        }
+    }
+    
+    private func updateHotkeyButtonsInView(_ view: NSView) {
+        for subview in view.subviews {
+            if let hotkeyButton = subview as? HotkeyRecorderButton,
+               let action = hotkeyButton.hotkeyAction {
+                // Update the button with the current configuration
+                let config = HotkeyManager.shared.getConfiguration(for: action)
+                hotkeyButton.configuration = config
+                logger.debug("Updated hotkey button for \(action.rawValue)")
+                
+                // Also update the enabled checkbox in the same container
+                if let container = hotkeyButton.superview {
+                    for sibling in container.subviews {
+                        if let checkbox = sibling as? NSButton, checkbox.cell is NSButtonCell {
+                            // Map action to tag to update the correct checkbox
+                            let expectedTag: Int
+                            switch action {
+                            case .cleanAndPaste:
+                                expectedTag = 0
+                            case .showHistory:
+                                expectedTag = 1
+                            case .captureScreenshot:
+                                expectedTag = 2
+                            }
+                            
+                            if checkbox.tag == expectedTag {
+                                checkbox.state = config.isEnabled ? .on : .off
+                                logger.debug("Updated checkbox state for \(action.rawValue): \(config.isEnabled)")
+                            }
+                        }
+                    }
+                }
+            }
+            // Recursively search subviews
+            updateHotkeyButtonsInView(subview)
+        }
+    }
+    
+    @objc func openKeyboardShortcutsSettings() {
+        // Open System Settings to Keyboard > Keyboard Shortcuts
+        // URL scheme for macOS Ventura+ (13.0+)
+        if #available(macOS 13.0, *) {
+            // New System Settings app URL
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") {
+                NSWorkspace.shared.open(url)
+                logger.info("Opened System Settings > Keyboard Shortcuts")
+            }
+        } else {
+            // Fallback for older macOS versions (System Preferences)
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.keyboard?Shortcuts") {
+                NSWorkspace.shared.open(url)
+                logger.info("Opened System Preferences > Keyboard > Shortcuts")
+            }
+        }
+        
+        // Show a helpful message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let info = NSAlert()
+            info.messageText = "System Keyboard Shortcuts Opened"
+            info.informativeText = """
+            Look for shortcuts that might conflict with Clnbrd:
+            
+            • Services > Screenshots (for screenshot shortcuts)
+            • App Shortcuts (for app-specific shortcuts)
+            • Mission Control, Spotlight, etc.
+            
+            You can disable conflicting shortcuts or change them in System Settings.
+            """
+            info.alertStyle = .informational
+            info.addButton(withTitle: "OK")
+            info.runModal()
+        }
+    }
+    
     @objc func toggleLaunchAtLogin(_ sender: NSButton) {
         if #available(macOS 13.0, *) {
             let service = SMAppService.mainApp
@@ -1516,28 +2143,65 @@ class SettingsWindow: NSWindowController {
         let alert = NSAlert()
         alert.messageText = "Revert to Stable Release?"
         alert.informativeText = """
-        This will download and install the latest stable version of Clnbrd (v1.3, Build 52).
+        This will download the latest stable version of Clnbrd (v1.3, Build 52).
+        
+        The app will quit, and you'll need to manually open the downloaded file to install it.
         
         You can switch back to the beta at any time by checking for updates again.
         
         Would you like to continue?
         """
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Revert to Stable")
+        alert.addButton(withTitle: "Download Stable")
         alert.addButton(withTitle: "Cancel")
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // Trigger update check - Sparkle will offer Build 52 as it has allowsDowngrades
-            logger.info("Triggering update check to revert to stable...")
-            if let appDelegate = NSApp.delegate as? AppDelegate {
-                appDelegate.checkForUpdatesRequested()
-            } else {
-                // Fallback using Objective-C runtime (needed when SwiftUI wraps the delegate)
-                if let delegate = NSApp.delegate {
-                    let selector = #selector(AppDelegate.checkForUpdatesRequested)
-                    if delegate.responds(to: selector) {
-                        delegate.perform(selector)
+            logger.info("User confirmed revert to stable - downloading Build 52")
+            
+            // Direct download URL for the stable release ZIP (Build 52)
+            let stableDownloadURL = "https://github.com/oliveoi1/Clnbrd/releases/download/v1.3.52/Clnbrd-v1.3-Build52-notarized-stapled.zip"
+            
+            guard let url = URL(string: stableDownloadURL) else {
+                logger.error("Invalid stable download URL")
+                return
+            }
+            
+            // Show download instructions
+            let downloadAlert = NSAlert()
+            downloadAlert.messageText = "Downloading Stable Release..."
+            downloadAlert.informativeText = """
+            The stable version (v1.3, Build 52) will now download.
+            
+            Once downloaded:
+            1. Quit Clnbrd
+            2. Unzip the downloaded file
+            3. Drag Clnbrd.app to your Applications folder (replace existing)
+            4. Launch Clnbrd from Applications
+            
+            The download will open in your browser.
+            """
+            downloadAlert.alertStyle = .informational
+            downloadAlert.addButton(withTitle: "Download Now")
+            downloadAlert.addButton(withTitle: "Cancel")
+            
+            if downloadAlert.runModal() == .alertFirstButtonReturn {
+                // Open the download URL in the default browser
+                NSWorkspace.shared.open(url)
+                logger.info("Opened stable release download URL")
+                
+                // Offer to quit the app
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    let quitAlert = NSAlert()
+                    quitAlert.messageText = "Quit Clnbrd Now?"
+                    quitAlert.informativeText = "Would you like to quit Clnbrd now so you can install the stable version?"
+                    quitAlert.alertStyle = .informational
+                    quitAlert.addButton(withTitle: "Quit Now")
+                    quitAlert.addButton(withTitle: "Continue Running")
+                    
+                    if quitAlert.runModal() == .alertFirstButtonReturn {
+                        logger.info("User chose to quit - exiting application")
+                        NSApplication.shared.terminate(nil)
                     }
                 }
             }
@@ -2225,5 +2889,223 @@ extension SettingsWindow: NSTabViewDelegate {
         }
         return nil
     }
+    
+    // Helper to refresh the entire UI
+    func refreshUI() {
+        // Close and reopen the window with updated values
+        window?.close()
+        let newSettingsWindow = SettingsWindow(cleaningRules: cleaningRules)
+        newSettingsWindow.showWindow(nil)
+        
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.settingsWindowController = newSettingsWindow
+        }
+    }
 }
 // swiftlint:enable type_body_length
+
+// MARK: - Hotkey Recorder Delegate
+extension SettingsWindow: HotkeyRecorderButtonDelegate {
+    func hotkeyRecorderDidChange(_ button: HotkeyRecorderButton, newConfig: HotkeyConfiguration) {
+        // Check for conflicts with other Clnbrd hotkeys
+        if let conflictingAction = HotkeyManager.shared.getConflictingAction(
+            keyCode: newConfig.keyCode,
+            modifiers: newConfig.modifiers,
+            excluding: button.hotkeyAction
+        ) {
+            // Show conflict alert
+            let alert = NSAlert()
+            alert.messageText = "Hotkey Conflict"
+            alert.informativeText = "This hotkey is already used by '\(conflictingAction)'. Please choose a different combination."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            
+            // Reset button to previous config
+            button.configuration = HotkeyManager.shared.getConfiguration(for: button.hotkeyAction)
+            return
+        }
+        
+        // Check for system shortcut conflicts
+        if let systemConflict = HotkeyManager.shared.getSystemConflictWarning(
+            keyCode: newConfig.keyCode,
+            modifiers: newConfig.modifiers
+        ) {
+            // Show warning about system shortcut
+            let alert = NSAlert()
+            alert.messageText = "Possible System Shortcut Conflict"
+            alert.informativeText = """
+            This hotkey (\(newConfig.displayString)) is used by macOS for '\(systemConflict)'.
+            
+            It may also conflict with other apps that use this shortcut.
+            
+            If it doesn't work as expected, you can check all keyboard shortcuts in System Settings.
+            """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Use Anyway")
+            alert.addButton(withTitle: "Choose Different")
+            alert.addButton(withTitle: "Open Keyboard Shortcuts...")
+            
+            let response = alert.runModal()
+            if response == .alertSecondButtonReturn {
+                // User chose to pick a different hotkey
+                button.configuration = HotkeyManager.shared.getConfiguration(for: button.hotkeyAction)
+                return
+            } else if response == .alertThirdButtonReturn {
+                // Open System Settings to Keyboard Shortcuts
+                openKeyboardShortcutsSettings()
+                button.configuration = HotkeyManager.shared.getConfiguration(for: button.hotkeyAction)
+                return
+            }
+        }
+        
+        // Update configuration
+        HotkeyManager.shared.updateConfiguration(for: button.hotkeyAction, config: newConfig)
+        
+        // Reload hotkeys and update menu
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.menuBarManager.reloadHotkeys()
+            
+            // Force menu update with a slight delay to ensure it applies
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                appDelegate.menuBarManager.updateMenuItemHotkeys()
+                logger.info("✅ Menu items updated with new hotkey: \(newConfig.displayString)")
+            }
+        }
+        
+        logger.info("Hotkey updated for \(button.hotkeyAction.rawValue): \(newConfig.displayString)")
+    }
+}
+
+// MARK: - Hotkey Recorder Button
+protocol HotkeyRecorderButtonDelegate: AnyObject {
+    func hotkeyRecorderDidChange(_ button: HotkeyRecorderButton, newConfig: HotkeyConfiguration)
+}
+
+class HotkeyRecorderButton: NSButton {
+    var hotkeyAction: HotkeyAction!
+    var configuration: HotkeyConfiguration! {
+        didSet {
+            // Update title on main thread to avoid layout issues
+            DispatchQueue.main.async { [weak self] in
+                self?.updateTitle()
+            }
+        }
+    }
+    weak var delegate: HotkeyRecorderButtonDelegate?
+    
+    private var isRecording = false
+    private var eventMonitor: Any?
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+    
+    private func commonInit() {
+        bezelStyle = .roundRect
+        target = self
+        self.action = #selector(startRecording)
+        
+        // Set initial title without triggering layout
+        title = "Click to set"
+    }
+    
+    private func updateTitle() {
+        let newTitle: String
+        if isRecording {
+            newTitle = "Press keys..."
+        } else if configuration != nil {
+            newTitle = configuration.displayString
+        } else {
+            newTitle = "Click to set"
+        }
+        
+        // Only update if title actually changed to avoid unnecessary layout
+        if title != newTitle {
+            title = newTitle
+        }
+        
+        if isRecording {
+            highlight(true)
+        } else {
+            highlight(false)
+        }
+    }
+    
+    @objc private func startRecording() {
+        isRecording = true
+        updateTitle()
+        
+        // Monitor for key presses
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            
+            // Delete key disables the hotkey
+            if event.keyCode == 51 {  // Delete key
+                self.stopRecording()
+                var newConfig = self.configuration!
+                newConfig.isEnabled = false
+                self.configuration = newConfig
+                self.delegate?.hotkeyRecorderDidChange(self, newConfig: newConfig)
+                return nil
+            }
+            
+            // ESC cancels recording
+            if event.keyCode == 53 {  // Escape key
+                self.stopRecording()
+                return nil
+            }
+            
+            // Require at least one modifier
+            let modifiers = event.modifierFlags.intersection([.command, .option, .shift, .control])
+            if modifiers.isEmpty {
+                NSSound.beep()
+                return nil
+            }
+            
+            // Create new configuration
+            var newConfig = self.configuration!
+            newConfig.keyCode = event.keyCode
+            newConfig.modifiers = HotkeyConfiguration.ModifierFlags(from: modifiers)
+            newConfig.isEnabled = true
+            
+            self.configuration = newConfig
+            self.stopRecording()
+            self.delegate?.hotkeyRecorderDidChange(self, newConfig: newConfig)
+            
+            return nil
+        }
+    }
+    
+    private func stopRecording() {
+        isRecording = false
+        updateTitle()
+        highlight(false)
+        
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+    
+    deinit {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+}
+
+// MARK: - NSFont Extension for SF Pro Rounded
+extension NSFont {
+    func rounded() -> NSFont? {
+        // Try to get the rounded variant of the font
+        let descriptor = self.fontDescriptor.withDesign(.rounded)
+        return descriptor.flatMap { NSFont(descriptor: $0, size: self.pointSize) }
+    }
+}
