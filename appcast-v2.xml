@@ -4,7 +4,63 @@
         <title>Clnbrd Updates</title>
         <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
         <description>Most recent updates to Clnbrd</description>
-        <language>en</language> <!-- Updated Mon Oct 13 15:40:00 PDT 2025 -->
+        <language>en</language> <!-- Updated Mon Oct 13 16:00:00 PDT 2025 -->
+        
+        <item>
+            <title>⚠️ Version 1.4.0-beta.3 (Build 56) - BETA RELEASE</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.3</link>
+            <sparkle:version>56</sparkle:version>
+            <sparkle:shortVersionString>1.4.0-beta.3</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>⚠️ BETA RELEASE - Critical Fix</h2>
+                
+                <p><strong style="color: orange;">This is a BETA release with an important fix. 
+                Build 52 (v1.3) remains the stable release.</strong></p>
+                
+                <h3>🔧 Build 56 - Critical Fix</h3>
+                <ul>
+                    <li><strong>Fixed "Revert to Stable Release" Button</strong> - Now properly downloads Build 52</li>
+                    <li><strong>Direct Download Approach</strong> - No longer relies on Sparkle's downgrade mechanism</li>
+                    <li><strong>Clear Instructions</strong> - Step-by-step guide for reverting to stable</li>
+                    <li><strong>More Reliable</strong> - Works consistently every time</li>
+                </ul>
+                
+                <h3>📝 What This Fixes</h3>
+                <p>Previously, when clicking "Revert to Stable Release", Sparkle would see beta.2 (Build 55) as 
+                the newest version and refuse to offer Build 52 (stable), saying "you're already on the newest version."</p>
+                
+                <p><strong>New behavior:</strong> The button now directly opens your browser to download the stable 
+                version ZIP file, with clear instructions on how to install it. This is more reliable and gives you 
+                full control over the process.</p>
+                
+                <h3>✨ All Previous Beta Features Included</h3>
+                <ul>
+                    <li>Compact UI following Apple HIG (from beta.2)</li>
+                    <li>Optimized settings layout and spacing</li>
+                    <li>Clipboard History Strip with ⌘⇧V hotkey</li>
+                    <li>Screenshot capture with ⌘⌥C</li>
+                    <li>Formatted text and image support</li>
+                    <li>Search and filtering capabilities</li>
+                    <li>Modern "liquid glass" UI aesthetic</li>
+                    <li>Light/Dark/Auto appearance modes</li>
+                </ul>
+                
+                <h3>Technical Details</h3>
+                <ul>
+                    <li>Fully notarized for macOS Sequoia</li>
+                    <li>Universal binary (Apple Silicon + Intel)</li>
+                    <li>Compatible with macOS 15.5+</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 13 Oct 2025 23:00:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.3/Clnbrd-v1.4.0-beta.3-Build56-notarized-stapled.zip" 
+                sparkle:version="56" 
+                sparkle:shortVersionString="1.4.0-beta.3" 
+                length="2101151"
+                type="application/octet-stream"
+            />
+        </item>
         
         <item>
             <title>⚠️ Version 1.4.0-beta.2 (Build 55) - BETA RELEASE</title>
