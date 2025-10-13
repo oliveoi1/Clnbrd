@@ -4,7 +4,67 @@
         <title>Clnbrd Updates</title>
         <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
         <description>Most recent updates to Clnbrd</description>
-        <language>en</language> <!-- Updated $(date) -->
+        <language>en</language> <!-- Updated Mon Oct 13 15:40:00 PDT 2025 -->
+        
+        <item>
+            <title>⚠️ Version 1.4.0-beta.2 (Build 55) - BETA RELEASE</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.2</link>
+            <sparkle:version>55</sparkle:version>
+            <sparkle:shortVersionString>1.4.0-beta.2</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>⚠️ BETA RELEASE - UI Improvements</h2>
+                
+                <p><strong style="color: orange;">This is a BETA release with UI refinements. 
+                Build 52 (v1.3) remains the stable release.</strong></p>
+                
+                <h3>🎨 Build 55 Updates - UI Improvements</h3>
+                <ul>
+                    <li><strong>Compact Settings Layout</strong> - More efficient use of space following Apple HIG</li>
+                    <li><strong>Edge Insets</strong> - Reduced to 16px (Apple standard for settings windows)</li>
+                    <li><strong>Stack Spacing</strong> - Optimized to 12px for better visual density</li>
+                    <li><strong>Typography Consistency</strong> - All section headers now use SF Pro Rounded 15pt semibold</li>
+                    <li><strong>Hotkey Section</strong> - Optimized with 28px row height and tighter 8px spacing</li>
+                    <li><strong>Table Views</strong> - More compact with smaller row sizes (120px height)</li>
+                    <li><strong>Controls</strong> - Segmented controls and buttons reduced to 220px width</li>
+                    <li><strong>Icon Size</strong> - About tab icon reduced to 96px for better proportion</li>
+                    <li><strong>Visual Hierarchy</strong> - Improved text sizing: 17pt → 15pt → 13pt → 11pt → 10pt</li>
+                </ul>
+                
+                <h3>🔧 Settings Window Refinements</h3>
+                <ul>
+                    <li>Minimum window width reduced from 540px to 500px</li>
+                    <li>More compact appearance throughout all tabs</li>
+                    <li>Better spacing consistency between sections</li>
+                    <li>Improved readability with proper visual hierarchy</li>
+                </ul>
+                
+                <h3>✨ All Previous Beta Features Included</h3>
+                <ul>
+                    <li>Clipboard History Strip with ⌘⇧V hotkey</li>
+                    <li>Formatted text and image support</li>
+                    <li>Screenshot capture with ⌘⌥C</li>
+                    <li>Search and filtering capabilities</li>
+                    <li>Encrypted persistence and privacy controls</li>
+                    <li>Modern "liquid glass" UI aesthetic</li>
+                    <li>Light/Dark/Auto appearance modes</li>
+                </ul>
+                
+                <h3>Technical Details</h3>
+                <ul>
+                    <li>Fully notarized for macOS Sequoia</li>
+                    <li>Universal binary (Apple Silicon + Intel)</li>
+                    <li>Compatible with macOS 15.5+</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 13 Oct 2025 22:40:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.2/Clnbrd-v1.4.0-beta.2-Build55-notarized-stapled.zip" 
+                sparkle:version="55" 
+                sparkle:shortVersionString="1.4.0-beta.2" 
+                length="2099265"
+                type="application/octet-stream"
+            />
+        </item>
         
         <item>
             <title>⚠️ Version 1.4.0-beta.1 (Build 54) - BETA RELEASE</title>
