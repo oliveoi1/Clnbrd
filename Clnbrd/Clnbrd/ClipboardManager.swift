@@ -11,27 +11,63 @@ class ClipboardManager {
     // Threshold for background processing (50,000 characters)
     private let largeTextThreshold = 50_000
     
+    // Safety settings
+    private var maxClipboardSizeMB: Int = 10
+    private var clipboardTimeoutSeconds: Double = 5.0
+    private var skipLargeClipboardItems: Bool = true
+    
+    init() {
+        loadSafetySettings()
+    }
+    
+    private func loadSafetySettings() {
+        maxClipboardSizeMB = PreferencesManager.shared.loadMaxClipboardSize()
+        clipboardTimeoutSeconds = PreferencesManager.shared.loadClipboardTimeout()
+        skipLargeClipboardItems = PreferencesManager.shared.loadSkipLargeClipboardItems()
+        
+        logger.info("""
+            📋 Clipboard safety settings loaded - \
+            Max size: \(self.maxClipboardSizeMB) MB, \
+            Timeout: \(self.clipboardTimeoutSeconds)s, \
+            Skip large: \(self.skipLargeClipboardItems)
+            """)
+    }
+    
+    /// Reload safety settings (call this after user changes settings)
+    func reloadSafetySettings() {
+        loadSafetySettings()
+    }
+    
     func cleanClipboard() {
         let pasteboard = NSPasteboard.general
+        
+        // Check clipboard size first
+        if skipLargeClipboardItems && isClipboardTooLarge(pasteboard) {
+            let sizeBytes = getClipboardSize(pasteboard)
+            let sizeMB = Double(sizeBytes) / (1024 * 1024)
+            
+            logger.warning("🚫 Skipping large clipboard item (\(String(format: "%.2f", sizeMB)) MB)")
+            
+            SentryManager.shared.trackUserAction("clipboard_clean_skipped", data: [
+                "reason": "too_large",
+                "size_mb": String(format: "%.2f", sizeMB),
+                "max_size_mb": "\(maxClipboardSizeMB)"
+            ])
+            
+            // Still capture to history if it's not too large for that
+            captureToHistory(pasteboard)
+            return
+        }
         
         // Capture original clipboard to history BEFORE cleaning
         captureToHistory(pasteboard)
         
-        var text: String?
-        
-        text = pasteboard.string(forType: .string)
-        
-        if text == nil, let rtfData = pasteboard.data(forType: .rtf) {
-            text = NSAttributedString(rtf: rtfData, documentAttributes: nil)?.string
-        }
-        
-        if text == nil, let htmlData = pasteboard.data(forType: .html) {
-            text = NSAttributedString(html: htmlData, documentAttributes: nil)?.string
-        }
-        
-        guard let originalText = text else { 
-            SentryManager.shared.trackUserAction("clipboard_clean_failed", data: ["reason": "no_text_found"])
-            return 
+        // Extract text with timeout protection
+        guard let originalText = extractTextSafely(from: pasteboard) else {
+            SentryManager.shared.trackUserAction("clipboard_clean_failed", data: [
+                "reason": "extraction_failed_or_timeout"
+            ])
+            return
         }
         
         // Check if text is large enough to warrant background processing
@@ -92,9 +128,36 @@ class ClipboardManager {
         }
     }
     
+    // swiftlint:disable:next function_body_length
     func cleanAndPasteClipboard() {
         logger.info("🔍 cleanAndPasteClipboard() called!")
         let pasteboard = NSPasteboard.general
+        
+        // Check clipboard size first
+        if skipLargeClipboardItems && isClipboardTooLarge(pasteboard) {
+            let sizeBytes = getClipboardSize(pasteboard)
+            let sizeMB = Double(sizeBytes) / (1024 * 1024)
+            
+            logger.warning("🚫 Skipping large clipboard item (\(String(format: "%.2f", sizeMB)) MB)")
+            
+            SentryManager.shared.trackUserAction("clipboard_paste_skipped", data: [
+                "reason": "too_large",
+                "size_mb": String(format: "%.2f", sizeMB),
+                "max_size_mb": "\(maxClipboardSizeMB)"
+            ])
+            
+            // Show notification to user
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ShowClipboardWarning"),
+                object: nil,
+                userInfo: [
+                    "title": "Clipboard Too Large",
+                    "message": "Clipboard data is \(String(format: "%.1f", sizeMB)) MB (max: \(maxClipboardSizeMB) MB). Skipped processing."
+                ]
+            )
+            
+            return
+        }
         
         // Capture original clipboard to history BEFORE cleaning
         captureToHistory(pasteboard)
@@ -102,9 +165,20 @@ class ClipboardManager {
         // Store original clipboard data
         let originalData = preserveClipboardData(pasteboard)
         
-        // Extract text from clipboard
-        guard let originalText = extractTextFromClipboard(pasteboard) else {
-            logger.error("❌ No text found in clipboard!")
+        // Extract text from clipboard with timeout protection
+        guard let originalText = extractTextSafely(from: pasteboard) else {
+            logger.error("❌ No text found in clipboard or extraction timed out!")
+            
+            // Show notification to user
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ShowClipboardWarning"),
+                object: nil,
+                userInfo: [
+                    "title": "Clipboard Processing Failed",
+                    "message": "Unable to extract text from clipboard (may have timed out)"
+                ]
+            )
+            
             return
         }
         
@@ -206,6 +280,63 @@ class ClipboardManager {
     
     // MARK: - Helper Methods
     
+    /// Calculate total size of clipboard data in bytes
+    private func getClipboardSize(_ pasteboard: NSPasteboard) -> Int64 {
+        guard let types = pasteboard.types else { return 0 }
+        
+        var totalSize: Int64 = 0
+        for type in types {
+            if let data = pasteboard.data(forType: type) {
+                totalSize += Int64(data.count)
+            }
+        }
+        
+        return totalSize
+    }
+    
+    /// Check if clipboard data exceeds size limit
+    private func isClipboardTooLarge(_ pasteboard: NSPasteboard) -> Bool {
+        let sizeBytes = getClipboardSize(pasteboard)
+        let sizeMB = Double(sizeBytes) / (1024 * 1024)
+        let maxSizeMB = Double(maxClipboardSizeMB)
+        
+        if sizeMB > maxSizeMB {
+            logger.warning("""
+                ⚠️ Clipboard data too large: \(String(format: "%.2f", sizeMB)) MB \
+                (max: \(maxSizeMB) MB)
+                """)
+            return true
+        }
+        
+        return false
+    }
+    
+    /// Extract text from clipboard with timeout protection
+    private func extractTextSafely(from pasteboard: NSPasteboard) -> String? {
+        let semaphore = DispatchSemaphore(value: 0)
+        var extractedText: String?
+        var didTimeout = false
+        
+        // Perform extraction on background thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            extractedText = self.extractTextFromClipboard(pasteboard)
+            semaphore.signal()
+        }
+        
+        // Wait with timeout
+        let timeout = DispatchTime.now() + clipboardTimeoutSeconds
+        if semaphore.wait(timeout: timeout) == .timedOut {
+            didTimeout = true
+            logger.error("⏱️ Clipboard text extraction timed out after \(self.clipboardTimeoutSeconds)s")
+            
+            SentryManager.shared.trackUserAction("clipboard_extraction_timeout", data: [
+                "timeout_seconds": "\(self.clipboardTimeoutSeconds)"
+            ])
+        }
+        
+        return didTimeout ? nil : extractedText
+    }
+    
     private func preserveClipboardData(_ pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType: Data] {
         let originalTypes = pasteboard.types ?? []
         var originalData: [NSPasteboard.PasteboardType: Data] = [:]
@@ -285,21 +416,50 @@ class ClipboardManager {
             return
         }
         
+        // Check clipboard size for history capture
+        let sizeBytes = getClipboardSize(pasteboard)
+        let sizeMB = Double(sizeBytes) / (1024 * 1024)
+        
+        // Use a larger limit for history (allow up to 2x the normal limit for history only)
+        let historyMaxSizeMB = Double(maxClipboardSizeMB) * 2.0
+        if sizeMB > historyMaxSizeMB {
+            logger.warning("🚫 Clipboard too large for history capture: \(String(format: "%.2f", sizeMB)) MB")
+            
+            SentryManager.shared.trackUserAction("history_capture_skipped", data: [
+                "reason": "too_large",
+                "size_mb": String(format: "%.2f", sizeMB)
+            ])
+            return
+        }
+        
         // Extract all available formats
         let plainText = pasteboard.string(forType: .string)
         let rtfData = pasteboard.data(forType: .rtf)
         let htmlData = pasteboard.data(forType: .html)
         
-        // Check for images
+        // Check for images (with size limits)
         var imageData: Data?
         if let types = pasteboard.types, types.contains(.tiff) || types.contains(.png) {
             // Try TIFF first (most common for screenshots/copied images)
             if let tiffData = pasteboard.data(forType: .tiff) {
-                imageData = tiffData
-                logger.debug("📸 Found TIFF image on clipboard")
+                let imageSizeMB = Double(tiffData.count) / (1024 * 1024)
+                
+                // Only capture images under the size limit
+                if imageSizeMB <= historyMaxSizeMB {
+                    imageData = tiffData
+                    logger.debug("📸 Found TIFF image on clipboard (\(String(format: "%.2f", imageSizeMB)) MB)")
+                } else {
+                    logger.warning("📸 TIFF image too large for capture: \(String(format: "%.2f", imageSizeMB)) MB")
+                }
             } else if let pngData = pasteboard.data(forType: .png) {
-                imageData = pngData
-                logger.debug("📸 Found PNG image on clipboard")
+                let imageSizeMB = Double(pngData.count) / (1024 * 1024)
+                
+                if imageSizeMB <= historyMaxSizeMB {
+                    imageData = pngData
+                    logger.debug("📸 Found PNG image on clipboard (\(String(format: "%.2f", imageSizeMB)) MB)")
+                } else {
+                    logger.warning("📸 PNG image too large for capture: \(String(format: "%.2f", imageSizeMB)) MB")
+                }
             }
         }
         

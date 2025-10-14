@@ -15,7 +15,7 @@ class ClipboardHistoryWindow: NSPanel {
     
     // State
     private var searchQuery: String = ""
-    private var selectedAppFilter: String? // nil = "All Apps"
+    private var selectedAppFilters: Set<String> = [] // Apps to EXCLUDE/HIDE (empty = show all)
     private var localClickMonitor: Any?
     private var globalClickMonitor: Any?
     private var selectedIndex: Int = 0 // Currently selected card index
@@ -33,15 +33,14 @@ class ClipboardHistoryWindow: NSPanel {
     private var optionsButton: NSButton!
     
     init() {
-        // Create window at top of screen - with padding for floating appearance
-        let screenFrame = NSScreen.main?.visibleFrame ?? .zero // visibleFrame excludes menu bar
-        let horizontalPadding: CGFloat = 20 // Inset from screen edges for floating look
-        let topPadding: CGFloat = 12 // Space below menu bar
+        let screenFrame = NSScreen.main?.visibleFrame ?? .zero
+        let horizontalPadding: CGFloat = 20
+        let topPadding: CGFloat = 12
         
         let windowFrame = NSRect(
             x: screenFrame.origin.x + horizontalPadding,
-            y: screenFrame.maxY - windowHeight - topPadding, // Just below menu bar with gap
-            width: screenFrame.width - (horizontalPadding * 2), // Inset from both sides
+            y: screenFrame.maxY - windowHeight - topPadding,
+            width: screenFrame.width - (horizontalPadding * 2),
             height: windowHeight
         )
         
@@ -60,41 +59,54 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     private func setupWindow() {
-        // Window properties - like macOS screenshot preview
         self.isFloatingPanel = true
-        self.level = .statusBar // Higher level like screenshot preview
+        self.level = .statusBar
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         self.hidesOnDeactivate = false
-        self.isMovableByWindowBackground = false // Fixed at top
-        self.backgroundColor = .clear // Clear for visual effect view
+        self.isMovableByWindowBackground = false
+        self.backgroundColor = .clear
         self.isOpaque = false
         self.hasShadow = true
         
-        // Add visual effect view for proper translucent grey background
         guard let contentView = self.contentView else { return }
+        let backdropBlur = NSVisualEffectView(frame: contentView.bounds)
+        backdropBlur.autoresizingMask = [.width, .height]
+        backdropBlur.material = .underWindowBackground
+        backdropBlur.state = .active
+        backdropBlur.blendingMode = .behindWindow
+        backdropBlur.wantsLayer = true
+        backdropBlur.layer?.cornerRadius = 14
+        backdropBlur.layer?.masksToBounds = true
+        backdropBlur.alphaValue = 0.7
         
         let visualEffect = NSVisualEffectView(frame: contentView.bounds)
         visualEffect.autoresizingMask = [.width, .height]
-        visualEffect.material = .hudWindow // Dark grey translucent material
+        visualEffect.material = .hudWindow
         visualEffect.state = .active
-        visualEffect.blendingMode = .behindWindow
+        visualEffect.blendingMode = .withinWindow
         visualEffect.wantsLayer = true
-        visualEffect.layer?.cornerRadius = 16 // Rounded on all sides for floating appearance
-        visualEffect.layer?.masksToBounds = true
+        visualEffect.layer?.cornerRadius = 14
+        visualEffect.layer?.masksToBounds = false
         
-        // Insert as bottom-most view
+        if let backdropLayer = backdropBlur.layer {
+            backdropLayer.shadowColor = NSColor.black.cgColor
+            backdropLayer.shadowOpacity = 0.25
+            backdropLayer.shadowOffset = NSSize(width: 0, height: 8)
+            backdropLayer.shadowRadius = 24
+        }
+        
+        contentView.addSubview(backdropBlur, positioned: .below, relativeTo: nil)
         contentView.addSubview(visualEffect, positioned: .below, relativeTo: nil)
     }
     
+    // swiftlint:disable:next function_body_length
     private func setupUI() {
         guard let contentView = self.contentView else { return }
         
-        // Main container
         let containerView = NSView(frame: contentView.bounds)
         containerView.autoresizingMask = [.width, .height]
         contentView.addSubview(containerView)
         
-        // Header view with title and options button
         let headerHeight: CGFloat = 36
         let headerView = NSView(frame: NSRect(x: 0, y: windowHeight - headerHeight, width: contentView.bounds.width, height: headerHeight))
         headerView.autoresizingMask = [.width, .minYMargin]
@@ -102,8 +114,13 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Title label (center-aligned like screenshot preview)
         titleLabel = NSTextField(labelWithString: "Clipboard History")
-        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        titleLabel.textColor = .white // White text on dark grey HUD
+        // Use SF Pro Rounded for modern Apple UI aesthetic
+        if let roundedFont = NSFont.systemFont(ofSize: 13, weight: .medium).rounded() {
+            titleLabel.font = roundedFont
+        } else {
+            titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        }
+        titleLabel.textColor = .labelColor // Adaptive color for light/dark mode
         titleLabel.alignment = .center
         titleLabel.frame = NSRect(x: 0, y: 8, width: contentView.bounds.width, height: 20)
         titleLabel.autoresizingMask = [.width]
@@ -124,12 +141,10 @@ class ClipboardHistoryWindow: NSPanel {
         searchField.sendsWholeSearchString = false
         headerView.addSubview(searchField)
         
-        // App filter popup (next to search field)
+        // App filter popup (next to search field) - now with checkboxes
         let appFilterWidth: CGFloat = 140
-        appFilterPopup = NSPopUpButton(frame: NSRect(x: 12 + searchFieldWidth + 8, y: 6, width: appFilterWidth, height: 24))
+        appFilterPopup = NSPopUpButton(frame: NSRect(x: 12 + searchFieldWidth + 8, y: 6, width: appFilterWidth, height: 24), pullsDown: false)
         appFilterPopup.font = NSFont.systemFont(ofSize: 12)
-        appFilterPopup.target = self
-        appFilterPopup.action = #selector(appFilterChanged)
         appFilterPopup.autoresizingMask = []
         headerView.addSubview(appFilterPopup)
         
@@ -142,7 +157,7 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.isBordered = false
         settingsButton.setButtonType(.momentaryChange)
         settingsButton.image = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: "Settings")
-        settingsButton.contentTintColor = .white
+        settingsButton.contentTintColor = .labelColor // Adaptive for light/dark mode
         settingsButton.imageScaling = .scaleProportionallyDown
         settingsButton.target = self
         settingsButton.action = #selector(openHistorySettings)
@@ -153,9 +168,9 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Options button (three dots) in top right - like screenshot preview
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
-        optionsButton.bezelStyle = .rounded
+        optionsButton.bezelStyle = .automatic // Modern, adaptive style
         optionsButton.image = NSImage(systemSymbolName: "ellipsis.circle.fill", accessibilityDescription: "Options")
-        optionsButton.contentTintColor = .white
+        optionsButton.contentTintColor = .labelColor // Adaptive for light/dark mode
         optionsButton.isBordered = false
         optionsButton.target = self
         optionsButton.action = #selector(showOptionsMenu(_:))
@@ -235,7 +250,7 @@ class ClipboardHistoryWindow: NSPanel {
         let items = Array(filteredItems.prefix(maxDisplayedItems))
         
         // Update title with count
-        if !searchQuery.isEmpty || selectedAppFilter != nil {
+        if !searchQuery.isEmpty || !selectedAppFilters.isEmpty {
             if filteredItems.count > maxDisplayedItems {
                 titleLabel.stringValue = "Results: \(items.count) of \(filteredItems.count) (showing \(maxDisplayedItems))"
             } else {
@@ -288,7 +303,7 @@ class ClipboardHistoryWindow: NSPanel {
         // Add icon
         let iconView = NSImageView(frame: NSRect(x: 130, y: 50, width: 40, height: 40))
         let iconName: String
-        if searchQuery.isEmpty && selectedAppFilter == nil {
+        if searchQuery.isEmpty && selectedAppFilters.isEmpty {
             iconName = "tray"
         } else {
             iconName = "magnifyingglass"
@@ -300,7 +315,7 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Add message
         let message: String
-        if searchQuery.isEmpty && selectedAppFilter == nil {
+        if searchQuery.isEmpty && selectedAppFilters.isEmpty {
             message = "No clipboard history yet\nCopy something to get started!"
         } else {
             message = "No results found\nTry adjusting your search or filters"
@@ -318,45 +333,215 @@ class ClipboardHistoryWindow: NSPanel {
         stackView.addArrangedSubview(emptyContainer)
     }
     
+    // MARK: - Liquid Glass Card System
+    
+    /// Container for card visual effect layers
+    private struct CardLayers {
+        let backdropBlur: NSVisualEffectView
+        let materialView: NSVisualEffectView
+        let colorOverlay: CALayer
+        let gradientLayer: CAGradientLayer
+        let innerGlow: CAGradientLayer
+    }
+    
+    /// Container for card shadow layers
+    private struct CardShadows {
+        let contactShadow: CALayer
+        let accentShadow: CALayer
+    }
+    
+    /// Container for card border layers
+    private struct CardBorders {
+        let borderLayer: CALayer
+        let innerShadowLayer: CALayer
+    }
+    
+    /// Creates all visual effect layers for a history card
+    private func createCardLayers(cornerRadius: CGFloat, cardWidth: CGFloat, cardHeight: CGFloat) -> CardLayers {
+        // Use bounds (0,0) for frames since these will be subviews
+        let bounds = NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight)
+        
+        let backdropBlur = NSVisualEffectView(frame: bounds)
+        backdropBlur.material = .underWindowBackground
+        backdropBlur.state = .active
+        backdropBlur.blendingMode = .behindWindow
+        backdropBlur.wantsLayer = true
+        backdropBlur.layer?.cornerRadius = cornerRadius
+        backdropBlur.layer?.masksToBounds = true
+        backdropBlur.alphaValue = 0.5  // Lighter for performance
+        // No autoresizingMask - fixed size cards
+        
+        let materialView = NSVisualEffectView(frame: bounds)
+        materialView.material = .contentBackground
+        materialView.state = .active
+        materialView.blendingMode = .withinWindow
+        materialView.wantsLayer = true
+        materialView.layer?.cornerRadius = cornerRadius
+        materialView.layer?.masksToBounds = true  // Clip for rounded corners
+        // No autoresizingMask - fixed size cards
+        
+        let colorOverlay = CALayer()
+        colorOverlay.frame = bounds
+        colorOverlay.cornerRadius = cornerRadius
+        colorOverlay.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.04).cgColor
+        colorOverlay.opacity = 0
+        
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.frame = bounds
+        gradientLayer.colors = [
+            NSColor.controlAccentColor.withAlphaComponent(0.06).cgColor,
+            NSColor.controlAccentColor.withAlphaComponent(0.01).cgColor,
+            NSColor.clear.cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.2, 0.5]
+        gradientLayer.cornerRadius = cornerRadius
+        gradientLayer.opacity = 0
+        
+        let innerGlow = CAGradientLayer()
+        innerGlow.frame = CGRect(x: 0, y: cardHeight - 2, width: cardWidth, height: 2)
+        innerGlow.colors = [
+            NSColor.white.withAlphaComponent(0.3).cgColor,
+            NSColor.white.withAlphaComponent(0.0).cgColor
+        ]
+        innerGlow.locations = [0.0, 1.0]
+        innerGlow.cornerRadius = cornerRadius
+        innerGlow.opacity = 0
+        
+        return CardLayers(
+            backdropBlur: backdropBlur,
+            materialView: materialView,
+            colorOverlay: colorOverlay,
+            gradientLayer: gradientLayer,
+            innerGlow: innerGlow
+        )
+    }
+    
+    /// Creates shadow layers for a history card
+    private func createCardShadows(cardWidth: CGFloat, cardHeight: CGFloat, cornerRadius: CGFloat) -> CardShadows {
+        let bounds = NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight)
+        
+        let contactShadow = CALayer()
+        contactShadow.frame = bounds
+        contactShadow.cornerRadius = cornerRadius
+        contactShadow.shadowColor = NSColor.black.cgColor
+        contactShadow.shadowOpacity = 0.1
+        contactShadow.shadowOffset = NSSize(width: 0, height: 2)
+        contactShadow.shadowRadius = 4
+        
+        let accentShadow = CALayer()
+        accentShadow.frame = bounds
+        accentShadow.cornerRadius = cornerRadius
+        accentShadow.shadowColor = NSColor.controlAccentColor.cgColor
+        accentShadow.shadowOpacity = 0
+        accentShadow.shadowOffset = .zero
+        accentShadow.shadowRadius = 12
+        
+        return CardShadows(contactShadow: contactShadow, accentShadow: accentShadow)
+    }
+    
+    /// Creates border layers for a history card
+    private func createCardBorders(cardWidth: CGFloat, cardHeight: CGFloat, cornerRadius: CGFloat) -> CardBorders {
+        let bounds = NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight)
+        
+        let borderLayer = CALayer()
+        borderLayer.frame = bounds
+        borderLayer.cornerRadius = cornerRadius
+        borderLayer.borderWidth = 0.5
+        borderLayer.borderColor = NSColor.separatorColor.withAlphaComponent(0.2).cgColor
+        
+        let innerShadowLayer = CALayer()
+        innerShadowLayer.frame = bounds.insetBy(dx: 1, dy: 1)
+        innerShadowLayer.cornerRadius = cornerRadius - 1
+        innerShadowLayer.borderWidth = 0.5
+        innerShadowLayer.borderColor = NSColor.black.withAlphaComponent(0.03).cgColor
+        
+        return CardBorders(borderLayer: borderLayer, innerShadowLayer: innerShadowLayer)
+    }
+    
     // swiftlint:disable:next function_body_length
     private func createHistoryCard(for item: ClipboardHistoryItem) -> NSView {
         // Container holds both card and timestamp below it
         let timeHeight: CGFloat = 18
         let spacing: CGFloat = 6
         let containerHeight = cardHeight + spacing + timeHeight
+        let cornerRadius: CGFloat = 10
         
         let container = NSView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: containerHeight))
         container.identifier = NSUserInterfaceItemIdentifier("container-\(item.id.uuidString)")
         container.wantsLayer = true
         container.layer?.masksToBounds = false // Allow icon to overflow the container bounds
         
-        // Create the card
-        let card = NSView(frame: NSRect(x: 0, y: timeHeight + spacing, width: cardWidth, height: cardHeight))
-        card.wantsLayer = true
-        // Light card background like screenshot thumbnails
-        card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.95).cgColor
-        card.layer?.cornerRadius = 8 // 4 rounded corners (ALL SIDES)
-        card.layer?.masksToBounds = true // Ensure corners are clipped
-        card.layer?.borderWidth = 4 // Thicker border for better visibility when selected
-        card.layer?.borderColor = NSColor.clear.cgColor // Default: no border (will be blue when selected)
+        // Create premium liquid glass card with all layers
+        let cardFrame = NSRect(x: 0, y: timeHeight + spacing, width: cardWidth, height: cardHeight)
+        let cardContainer = NSView(frame: cardFrame)
+        cardContainer.wantsLayer = true
+        cardContainer.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
         
-        // Subtle shadow like screenshot preview
-        card.shadow = NSShadow()
-        card.layer?.shadowColor = NSColor.black.cgColor
-        card.layer?.shadowOpacity = 0.3
-        card.layer?.shadowOffset = NSSize(width: 0, height: 2)
-        card.layer?.shadowRadius = 8
+        // Create all liquid glass layers
+        let layers = createCardLayers(cornerRadius: cornerRadius, cardWidth: cardWidth, cardHeight: cardHeight)
+        let shadows = createCardShadows(cardWidth: cardWidth, cardHeight: cardHeight, cornerRadius: cornerRadius)
+        let borders = createCardBorders(cardWidth: cardWidth, cardHeight: cardHeight, cornerRadius: cornerRadius)
+        
+        // Assemble the card with advanced shadow system
+        cardContainer.shadow = NSShadow()
+        cardContainer.layer?.shadowColor = NSColor.black.cgColor
+        cardContainer.layer?.shadowOpacity = 0.08
+        cardContainer.layer?.shadowOffset = NSSize(width: 0, height: 3)
+        cardContainer.layer?.shadowRadius = 10
+        
+        // Add layers in order (back to front)
+        cardContainer.addSubview(layers.backdropBlur)
+        cardContainer.addSubview(layers.materialView)
+        
+        // Add overlay layers to material view
+        if let materialLayer = layers.materialView.layer {
+            materialLayer.insertSublayer(layers.colorOverlay, at: 0)
+            materialLayer.insertSublayer(layers.gradientLayer, at: 1)
+            materialLayer.addSublayer(layers.innerGlow)
+            materialLayer.addSublayer(borders.borderLayer)
+            materialLayer.addSublayer(borders.innerShadowLayer)
+        }
+        
+        // Add shadow layers to container
+        if let containerLayer = cardContainer.layer {
+            containerLayer.insertSublayer(shadows.contactShadow, at: 0)
+            containerLayer.insertSublayer(shadows.accentShadow, at: 0)
+            
+            // Add SEPARATE selection ring layer (won't conflict with hover)
+            let selectionRing = CALayer()
+            selectionRing.frame = NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight)
+            selectionRing.cornerRadius = cornerRadius
+            selectionRing.borderWidth = 2.5
+            selectionRing.borderColor = NSColor.clear.cgColor
+            selectionRing.name = "selectionRing"  // Tag for finding later
+            containerLayer.addSublayer(selectionRing)
+        }
         
         // Make card clickable
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardClicked(_:)))
-        card.addGestureRecognizer(clickGesture)
-        card.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
+        cardContainer.addGestureRecognizer(clickGesture)
+        
+        // Create hover tracking view for premium effects (no autoresizing to avoid layout recursion)
+        let hoverView = HistoryGlassCardView(frame: NSRect(x: 0, y: 0, width: cardWidth, height: cardHeight))
+        hoverView.backdropBlur = layers.backdropBlur
+        hoverView.materialView = layers.materialView
+        hoverView.colorOverlay = layers.colorOverlay
+        hoverView.gradientLayer = layers.gradientLayer
+        hoverView.innerGlow = layers.innerGlow
+        hoverView.borderLayer = borders.borderLayer
+        hoverView.innerShadowLayer = borders.innerShadowLayer
+        hoverView.containerLayer = cardContainer.layer
+        hoverView.contactShadow = shadows.contactShadow
+        hoverView.accentShadow = shadows.accentShadow
+        hoverView.itemId = item.id.uuidString
+        // No autoresizingMask - fixed size to prevent layout issues
+        cardContainer.addSubview(hoverView, positioned: .below, relativeTo: layers.backdropBlur)
         
         // Add right-click context menu for images
         if item.contentType == .image || item.contentType == .mixed {
             let rightClickGesture = NSClickGestureRecognizer(target: self, action: #selector(cardRightClicked(_:)))
             rightClickGesture.buttonMask = 0x2 // Right mouse button
-            card.addGestureRecognizer(rightClickGesture)
+            cardContainer.addGestureRecognizer(rightClickGesture)
         }
         
         // Content area - show image or text based on content type
@@ -369,7 +554,7 @@ class ClipboardHistoryWindow: NSPanel {
             imageView.wantsLayer = true
             imageView.layer?.cornerRadius = 4
             imageView.layer?.masksToBounds = true
-            card.addSubview(imageView)
+            layers.materialView.addSubview(imageView)
             
             // If mixed content (text + image), show small text badge
             if item.contentType == .mixed, let plainText = item.plainText {
@@ -382,7 +567,7 @@ class ClipboardHistoryWindow: NSPanel {
                 textBadge.wantsLayer = true
                 textBadge.layer?.cornerRadius = 4
                 textBadge.layer?.masksToBounds = true
-                card.addSubview(textBadge)
+                layers.materialView.addSubview(textBadge)
             }
         } else {
             // TEXT CONTENT - Show formatted text
@@ -412,7 +597,7 @@ class ClipboardHistoryWindow: NSPanel {
                 // Fallback to plain text
                 textLabel.stringValue = item.preview
                 textLabel.font = NSFont.systemFont(ofSize: 11)
-                textLabel.textColor = .black
+                textLabel.textColor = .labelColor
             }
             
             textLabel.lineBreakMode = .byWordWrapping
@@ -424,10 +609,10 @@ class ClipboardHistoryWindow: NSPanel {
             textLabel.drawsBackground = false
             textLabel.cell?.wraps = true
             textLabel.cell?.isScrollable = false
-            card.addSubview(textLabel)
+            layers.materialView.addSubview(textLabel)
         }
         
-        container.addSubview(card)
+        container.addSubview(cardContainer)
         
         // App icon badge (shows which app it was copied from)
         // Positioned to float over the bottom-right corner of the card
@@ -440,7 +625,7 @@ class ClipboardHistoryWindow: NSPanel {
         let timeLabel = NSTextField(labelWithString: item.displayTime)
         timeLabel.frame = NSRect(x: 0, y: 0, width: cardWidth, height: timeHeight)
         timeLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-        timeLabel.textColor = .white // White text on dark HUD background
+        timeLabel.textColor = .secondaryLabelColor // Adaptive color for light/dark mode
         timeLabel.alignment = .center
         timeLabel.isEditable = false
         timeLabel.isSelectable = false
@@ -669,13 +854,37 @@ class ClipboardHistoryWindow: NSPanel {
             
             let isSelected = (index == selectedIndex)
             
-            // Animate border color and selection state
+            // Find the dedicated selection ring layer
+            var selectionRing: CALayer?
+            if let containerLayer = cardView.layer, let sublayers = containerLayer.sublayers {
+                for sublayer in sublayers where sublayer.name == "selectionRing" {
+                    selectionRing = sublayer
+                    break
+                }
+            }
+            
+            // Animate selection state with premium liquid glass effects
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.15
+                context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                context.allowsImplicitAnimation = true
                 
-                // Update border color (thicker now - 4px)
-                cardView.layer?.borderColor = isSelected ? NSColor.systemBlue.cgColor : NSColor.clear.cgColor
+                if isSelected {
+                    // Premium selection state: glowing ring
+                    selectionRing?.borderColor = NSColor.controlAccentColor.cgColor
+                    selectionRing?.opacity = 1.0
+                    
+                    // Add subtle selection glow via shadow on the ring
+                    selectionRing?.shadowColor = NSColor.controlAccentColor.cgColor
+                    selectionRing?.shadowOpacity = 0.5
+                    selectionRing?.shadowRadius = 8
+                    selectionRing?.shadowOffset = .zero
+                } else {
+                    // Hide selection ring
+                    selectionRing?.borderColor = NSColor.clear.cgColor
+                    selectionRing?.opacity = 0
+                    selectionRing?.shadowOpacity = 0
+                }
                 
                 // Update pill visibility with animation
                 pillView.animator().alphaValue = isSelected ? 1.0 : 0.0
@@ -686,15 +895,15 @@ class ClipboardHistoryWindow: NSPanel {
                 // Show "Copy" in white text on blue pill
                 timeLabelView.stringValue = "Copy"
                 timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-                timeLabelView.textColor = .white // White text
+                timeLabelView.textColor = .white // White text on blue pill
                 pillView.isHidden = false // Show blue pill background
             } else {
-                // Show timestamp in white text, no pill
+                // Show timestamp with adaptive color, no pill
                 if index < ClipboardHistoryManager.shared.items.count {
                     let item = ClipboardHistoryManager.shared.items[index]
                     timeLabelView.stringValue = item.displayTime
                     timeLabelView.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-                    timeLabelView.textColor = .white // White text on dark HUD
+                    timeLabelView.textColor = .secondaryLabelColor // Adaptive for light/dark mode
                     pillView.isHidden = true // Hide pill
                 }
             }
@@ -775,7 +984,7 @@ class ClipboardHistoryWindow: NSPanel {
         if delegate.responds(to: selector) {
             logger.info("✅ Delegate responds to openSettingsToTab, calling it...")
             closeWindow()
-            _ = delegate.perform(selector, with: 1)  // Tab 1 = History tab
+            _ = delegate.perform(selector, with: NSNumber(value: 1))  // Tab 1 = History tab (wrapped in NSNumber)
             AnalyticsManager.shared.trackFeatureUsage("history_settings_opened_from_strip")
         } else {
             logger.error("❌ Delegate does not respond to openSettingsToTab")
@@ -793,58 +1002,132 @@ class ClipboardHistoryWindow: NSPanel {
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_search")
     }
     
-    @objc private func appFilterChanged() {
-        let selectedTitle = appFilterPopup.titleOfSelectedItem
-        selectedAppFilter = (selectedTitle == "All Apps") ? nil : selectedTitle
-        logger.debug("🎯 App filter: '\(self.selectedAppFilter ?? "All")'")
+    @objc private func appFilterChanged(_ sender: NSMenuItem) {
+        let appName = sender.title
+        
+        // selectedAppFilters contains apps to EXCLUDE/HIDE
+        // Empty = show all apps
+        // Toggle the app's visibility
+        
+        if selectedAppFilters.contains(appName) {
+            // Currently hidden (unchecked), so show it (check it)
+            selectedAppFilters.remove(appName)
+        } else {
+            // Currently shown (checked), so hide it (uncheck it)
+            selectedAppFilters.insert(appName)
+        }
+        
+        // Update popup title to show selection count
+        updateAppFilterTitle()
+        updateAppFilter() // Refresh checkmarks
+        
+        let allItems = ClipboardHistoryManager.shared.items
+        let totalApps = Set(allItems.compactMap { $0.sourceApp }).count
+        let visibleApps = totalApps - selectedAppFilters.count
+        logger.debug("🎯 Visible apps: \(visibleApps) / \(totalApps)")
         reloadHistoryItems()
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_app_filter")
     }
     
-    private func updateAppFilter() {
-        appFilterPopup.removeAllItems()
+    private func updateAppFilterTitle() {
+        let allItems = ClipboardHistoryManager.shared.items
+        let totalApps = Set(allItems.compactMap { $0.sourceApp }).count
+        let visibleApps = totalApps - selectedAppFilters.count
         
-        // Add "All Apps" option
-        appFilterPopup.addItem(withTitle: "All Apps")
-        if let allAppsItem = appFilterPopup.menu?.item(at: 0) {
-            allAppsItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "All apps")
+        if selectedAppFilters.isEmpty {
+            // No apps hidden, showing all
+            appFilterPopup.setTitle("All Apps")
+        } else if visibleApps == 1 {
+            // Only one app visible, show its name
+            let allApps = Set(allItems.compactMap { $0.sourceApp })
+            let visibleApp = allApps.subtracting(selectedAppFilters).first!
+            appFilterPopup.setTitle(visibleApp)
+        } else {
+            // Show count of visible apps
+            appFilterPopup.setTitle("\(visibleApps) Apps")
         }
+    }
+    
+    private func updateAppFilter() {
+        // Create menu
+        let menu = NSMenu()
         
         // Get unique apps from history
         let allItems = ClipboardHistoryManager.shared.items
         let uniqueApps = Set(allItems.compactMap { $0.sourceApp }).sorted()
         
+        // Add "All Apps" option with checkmark when all selected
+        let allAppsItem = NSMenuItem(title: "All Apps", action: #selector(selectAllApps), keyEquivalent: "")
+        allAppsItem.target = self
+        let allAppsIcon = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "All Apps")
+        allAppsIcon?.isTemplate = true
+        allAppsItem.image = allAppsIcon
+        // Check "All Apps" if no specific filters are selected (showing all)
+        allAppsItem.state = selectedAppFilters.isEmpty ? .on : .off
+        menu.addItem(allAppsItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
         if !uniqueApps.isEmpty {
-            appFilterPopup.menu?.addItem(NSMenuItem.separator())
-            
             for appName in uniqueApps {
-                appFilterPopup.addItem(withTitle: appName)
+                let menuItem = NSMenuItem(title: appName, action: #selector(appFilterChanged(_:)), keyEquivalent: "")
+                menuItem.target = self
                 
-                // Add app icon to menu item
-                if let menuItem = appFilterPopup.menu?.item(withTitle: appName),
-                   let appIcon = getAppIcon(for: appName) {
-                    menuItem.image = appIcon
-                    menuItem.image?.size = NSSize(width: 16, height: 16)
+                // Set checkbox state
+                // selectedAppFilters contains apps to HIDE
+                // Checked = app is visible, Unchecked = app is hidden
+                let isVisible = !selectedAppFilters.contains(appName)
+                
+                // Always show a checkbox - either checked or unchecked
+                if isVisible {
+                    // Show filled checkbox with checkmark
+                    let checkedBox = NSImage(systemSymbolName: "checkmark.square.fill", accessibilityDescription: "Visible")
+                    checkedBox?.isTemplate = true
+                    menuItem.image = checkedBox
+                } else {
+                    // Show empty square box
+                    let uncheckedBox = NSImage(systemSymbolName: "square", accessibilityDescription: "Hidden")
+                    uncheckedBox?.isTemplate = true
+                    menuItem.image = uncheckedBox
                 }
+                
+                // Don't use the built-in state indicator
+                menuItem.state = .off
+                
+                menu.addItem(menuItem)
             }
         }
         
-        // Restore previous selection if it still exists
-        if let selectedApp = selectedAppFilter,
-           appFilterPopup.itemTitles.contains(selectedApp) {
-            appFilterPopup.selectItem(withTitle: selectedApp)
-        } else {
-            appFilterPopup.selectItem(at: 0) // Select "All Apps"
-            selectedAppFilter = nil
-        }
+        appFilterPopup.menu = menu
+        updateAppFilterTitle()
+    }
+    
+    @objc private func selectAllApps() {
+        // Clear all filters to show all apps
+        selectedAppFilters.removeAll()
+        updateAppFilter()
+        reloadHistoryItems()
+        logger.debug("🎯 Selected all apps (cleared filters)")
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_select_all_apps")
+    }
+    
+    @objc private func clearAppFilters() {
+        selectedAppFilters.removeAll()
+        updateAppFilter()
+        reloadHistoryItems()
     }
     
     private func filterItems(_ items: [ClipboardHistoryItem]) -> [ClipboardHistoryItem] {
         var filteredItems = items
         
-        // Apply app filter first
-        if let appFilter = selectedAppFilter {
-            filteredItems = filteredItems.filter { $0.sourceApp == appFilter }
+        // Apply app filters - selectedAppFilters contains apps to HIDE/EXCLUDE
+        // Empty = show all, Otherwise = hide those in the set
+        if !selectedAppFilters.isEmpty {
+            filteredItems = filteredItems.filter { item in
+                guard let sourceApp = item.sourceApp else { return true }
+                // Show item only if its app is NOT in the excluded set
+                return !selectedAppFilters.contains(sourceApp)
+            }
         }
         
         // Apply search query
@@ -900,8 +1183,8 @@ class ClipboardHistoryWindow: NSPanel {
     private func clearFilters() {
         searchField.stringValue = ""
         searchQuery = ""
-        selectedAppFilter = nil
-        appFilterPopup.selectItem(at: 0) // Select "All Apps"
+        selectedAppFilters.removeAll()
+        updateAppFilter() // Refresh menu and title
         reloadHistoryItems()
         logger.debug("🔍 All filters cleared")
     }
@@ -1112,7 +1395,7 @@ class ClipboardHistoryWindow: NSPanel {
         switch event.keyCode {
         case 53: // Escape key
             // If any filters are active, clear them first, otherwise close window
-            if !searchQuery.isEmpty || selectedAppFilter != nil {
+            if !searchQuery.isEmpty || !selectedAppFilters.isEmpty {
                 clearFilters()
             } else {
                 closeWindow()
@@ -1146,6 +1429,131 @@ class ClipboardHistoryWindow: NSPanel {
         default:
             super.keyDown(with: event)
         }
+    }
+}
+
+// MARK: - History Glass Card View (Performance-Optimized)
+
+/// Performance-optimized liquid glass card view for history items
+class HistoryGlassCardView: NSView {
+    weak var backdropBlur: NSVisualEffectView?
+    weak var materialView: NSVisualEffectView?
+    weak var colorOverlay: CALayer?
+    weak var gradientLayer: CAGradientLayer?
+    weak var innerGlow: CAGradientLayer?
+    weak var borderLayer: CALayer?
+    weak var innerShadowLayer: CALayer?
+    weak var containerLayer: CALayer?
+    weak var contactShadow: CALayer?
+    weak var accentShadow: CALayer?
+    
+    var itemId: String = ""
+    private var trackingArea: NSTrackingArea?
+    private var hasSetupTracking = false
+    
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // Setup tracking when added to window (avoids layout recursion)
+        if window != nil && !hasSetupTracking {
+            setupTrackingArea()
+            hasSetupTracking = true
+        }
+    }
+    
+    private func setupTrackingArea() {
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: ["itemId": itemId]
+        )
+        
+        if let area = trackingArea {
+            addTrackingArea(area)
+        }
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        // Only update if already setup (avoids recursion during initial layout)
+        if hasSetupTracking {
+            setupTrackingArea()
+        }
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        animateGlassHoverIn()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        animateGlassHoverOut()
+    }
+    
+    /// Premium hover-in animation (optimized for performance)
+    private func animateGlassHoverIn() {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            context.allowsImplicitAnimation = true
+            
+            // Subtle lift and scale - only transform the container, not borders
+            self.containerLayer?.transform = CATransform3DMakeScale(1.03, 1.03, 1.0)
+            
+            // Intensify blur
+            self.backdropBlur?.animator().alphaValue = 0.7
+            
+            // Reveal overlays
+            self.colorOverlay?.opacity = 1.0
+            self.gradientLayer?.opacity = 1.0
+            self.innerGlow?.opacity = 0.8
+            
+            // Enhance shadows
+            self.containerLayer?.shadowOpacity = 0.15
+            self.containerLayer?.shadowRadius = 16
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 6)
+            
+            self.contactShadow?.shadowOpacity = 0.15
+            self.contactShadow?.shadowRadius = 6
+            
+            // Subtle accent glow on hover (not too much)
+            self.accentShadow?.shadowOpacity = 0.08
+        })
+    }
+    
+    /// Smooth hover-out animation
+    private func animateGlassHoverOut() {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            context.allowsImplicitAnimation = true
+            
+            // Return to normal
+            self.containerLayer?.transform = CATransform3DIdentity
+            
+            // Restore blur
+            self.backdropBlur?.animator().alphaValue = 0.5
+            
+            // Hide overlays
+            self.colorOverlay?.opacity = 0
+            self.gradientLayer?.opacity = 0
+            self.innerGlow?.opacity = 0
+            
+            // Restore shadows
+            self.containerLayer?.shadowOpacity = 0.08
+            self.containerLayer?.shadowRadius = 10
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 3)
+            
+            self.contactShadow?.shadowOpacity = 0.1
+            self.contactShadow?.shadowRadius = 4
+            
+            self.accentShadow?.shadowOpacity = 0
+        })
     }
 }
 

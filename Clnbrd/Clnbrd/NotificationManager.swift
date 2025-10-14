@@ -15,12 +15,29 @@ class NotificationManager: NSObject {
         self.appDelegate = appDelegate
         super.init()
         setupNotificationCenter()
+        setupClipboardWarningObserver()
     }
 
     // MARK: - Setup
 
     private func setupNotificationCenter() {
         UNUserNotificationCenter.current().delegate = self
+    }
+    
+    private func setupClipboardWarningObserver() {
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("ShowClipboardWarning"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let userInfo = notification.userInfo,
+                  let title = userInfo["title"] as? String,
+                  let message = userInfo["message"] as? String else {
+                return
+            }
+            
+            self?.showNotification(title: title, message: message)
+        }
     }
 
     // MARK: - Permission Management

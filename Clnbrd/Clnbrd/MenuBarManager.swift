@@ -22,14 +22,24 @@ class MenuBarManager {
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "doc.plaintext", accessibilityDescription: "Clipboard Cleaner")
             button.imagePosition = .imageLeft
+            
+            // Enhancement #4: Add material effect to menu bar button
+            setupMenuBarButtonMaterialEffect(button)
         }
         
         menu = NSMenu()
+        // Enhancement #4: Enable menu to use modern appearance
+        menu.minimumWidth = 250  // Wider for better visual hierarchy
         
-        // Main actions
-        let pasteItem = NSMenuItem(title: "Paste Cleaned (⌘⌥V)", action: #selector(cleanAndPaste), keyEquivalent: "")
+        // Main actions section with enhanced visual hierarchy
+        let pasteItem = NSMenuItem(title: "Paste Cleaned", action: #selector(cleanAndPaste), keyEquivalent: "")
         pasteItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Paste cleaned text")
         pasteItem.target = self
+        pasteItem.tag = 100  // Tag for paste item
+        // Enhancement #4: Add emphasis to primary action
+        if #available(macOS 11.0, *) {
+            pasteItem.image?.isTemplate = true
+        }
         menu.addItem(pasteItem)
         
         let cleanItem = NSMenuItem(title: "Clean Clipboard Now", action: #selector(cleanClipboardManually), keyEquivalent: "c")
@@ -39,15 +49,28 @@ class MenuBarManager {
         
         menu.addItem(NSMenuItem.separator())
         
-        let screenshotItem = NSMenuItem(title: "Capture Screenshot (⌘⌥C)", action: #selector(captureScreenshotToHistory), keyEquivalent: "")
+        let screenshotItem = NSMenuItem(title: "Capture Screenshot", action: #selector(captureScreenshotToHistory), keyEquivalent: "")
         screenshotItem.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Capture screenshot")
         screenshotItem.target = self
+        screenshotItem.tag = 101  // Tag for screenshot item
         menu.addItem(screenshotItem)
         
-        let historyItem = NSMenuItem(title: "Show Clipboard History (⌘⇧H)", action: #selector(showClipboardHistory), keyEquivalent: "")
+        let historyItem = NSMenuItem(title: "Show Clipboard History", action: #selector(showClipboardHistory), keyEquivalent: "")
         historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Show clipboard history")
         historyItem.target = self
+        historyItem.tag = 999  // Tag to find and update later
         menu.addItem(historyItem)
+        
+        // Update badge immediately
+        updateHistoryBadge()
+        
+        // Add separator between history and clear actions
+        menu.addItem(NSMenuItem.separator())
+        
+        let clearHistoryItem = NSMenuItem(title: "Clear Clipboard History", action: #selector(clearClipboardHistory), keyEquivalent: "")
+        clearHistoryItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Clear clipboard history")
+        clearHistoryItem.target = self
+        menu.addItem(clearHistoryItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -89,6 +112,19 @@ class MenuBarManager {
         settingsItem.target = self
         menu.addItem(settingsItem)
         
+        // Show Welcome Screen
+        let welcomeItem = NSMenuItem(title: "Show Welcome Screen", action: #selector(showWelcomeScreen), keyEquivalent: "")
+        welcomeItem.image = NSImage(systemSymbolName: "questionmark.circle", accessibilityDescription: "Welcome")
+        welcomeItem.target = self
+        menu.addItem(welcomeItem)
+        
+        #if DEBUG
+        // Debug: Reset Onboarding (only in debug builds)
+        let resetItem = NSMenuItem(title: "🔄 Reset Onboarding (Debug)", action: #selector(resetOnboarding), keyEquivalent: "")
+        resetItem.target = self
+        menu.addItem(resetItem)
+        #endif
+        
         // Separator before Quit
         menu.addItem(NSMenuItem.separator())
         
@@ -112,61 +148,84 @@ class MenuBarManager {
             _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         }
         
-        // Use Cmd+Option+V to avoid conflicts with Chrome's Cmd+Shift+V
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            if event.modifierFlags.contains([.command, .option]) && event.keyCode == 9 {
-                logger.info("🎯 ⌘⌥V detected! Triggering hotkey...")
-                DispatchQueue.main.async {
-                    self?.delegate?.hotkeyTriggered()
-                }
-            }
-        }
+        // Register all hotkeys using HotkeyManager
+        registerAllHotkeys()
         
-        logger.info("Hotkey registered: ⌘⌥V")
-        logger.info("🔍 Hotkey registration completed - eventMonitor: \(self.eventMonitor != nil)")
-        
-        // Register history hotkey (⌘⇧H)
-        registerHistoryHotKey()
-        
-        // Register screenshot capture hotkey (⌘⌥C)
-        registerScreenshotHotKey()
+        logger.info("🔍 Hotkey registration completed")
     }
     
-    func registerHistoryHotKey() {
-        logger.info("🔍 Registering clipboard history hotkey (⌘⇧H)...")
-        
-        // Initialize history window
-        historyWindow = ClipboardHistoryWindow()
-        
-        // Register ⌘⇧H hotkey (Command+Shift+H, keyCode 4 is 'H')
-        historyEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Check for ⌘⇧H (Command+Shift+H)
-            if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 4 {
-                logger.info("🎯 ⌘⇧H detected! Toggling clipboard history...")
-                DispatchQueue.main.async {
-                    self?.historyWindow?.toggle()
-                }
-            }
+    func registerAllHotkeys() {
+        // Register Clean & Paste hotkey
+        HotkeyManager.shared.registerHotkey(for: .cleanAndPaste) { [weak self] in
+            self?.delegate?.hotkeyTriggered()
         }
         
-        logger.info("History hotkey registered: ⌘⇧H")
+        // Register History hotkey
+        // Initialize history window if not already done
+        if historyWindow == nil {
+            historyWindow = ClipboardHistoryWindow()
+            
+            // Observe history changes to update badge
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(historyDidChange),
+                name: NSNotification.Name("ClipboardHistoryDidChange"),
+                object: nil
+            )
+        }
+        
+        HotkeyManager.shared.registerHotkey(for: .showHistory) { [weak self] in
+            self?.historyWindow?.toggle()
+        }
+        
+        // Register Screenshot hotkey
+        HotkeyManager.shared.registerHotkey(for: .captureScreenshot) { [weak self] in
+            self?.captureScreenshotToHistory()
+        }
+        
+        // Update menu items with current hotkey display strings
+        updateMenuItemHotkeys()
+        
+        logger.info("All hotkeys registered with HotkeyManager")
     }
     
-    func registerScreenshotHotKey() {
-        logger.info("🔍 Registering screenshot capture hotkey (⌘⌥C)...")
+    func updateMenuItemHotkeys() {
+        // Update menu item titles to show current hotkey configurations
+        let cleanConfig = HotkeyManager.shared.getConfiguration(for: .cleanAndPaste)
+        let historyConfig = HotkeyManager.shared.getConfiguration(for: .showHistory)
+        let screenshotConfig = HotkeyManager.shared.getConfiguration(for: .captureScreenshot)
         
-        // Register ⌘⌥C hotkey (Command+Option+C, keyCode 8 is 'C')
-        screenshotEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Check for ⌘⌥C (Command+Option+C)
-            if event.modifierFlags.contains([.command, .option]) && event.keyCode == 8 {
-                logger.info("🎯 ⌘⌥C detected! Starting screenshot capture...")
-                DispatchQueue.main.async {
-                    self?.captureScreenshotToHistory()
-                }
+        // Update paste item (tag 100)
+        if let pasteItem = menu.item(withTag: 100) {
+            pasteItem.title = "Paste Cleaned (\(cleanConfig.displayString))"
+        }
+        
+        // Update history item (tag 999)
+        if let historyItem = menu.item(withTag: 999) {
+            // Store current attributed title to preserve badge
+            let hadBadge = historyItem.attributedTitle != nil
+            historyItem.title = "Show Clipboard History (\(historyConfig.displayString))"
+            historyItem.attributedTitle = nil  // Clear to allow updateHistoryBadge to work
+            
+            if hadBadge {
+                updateHistoryBadge()  // Re-apply badge after title change
             }
         }
         
-        logger.info("Screenshot hotkey registered: ⌘⌥C")
+        // Update screenshot item (tag 101)
+        if let screenshotItem = menu.item(withTag: 101) {
+            screenshotItem.title = "Capture Screenshot (\(screenshotConfig.displayString))"
+        }
+    }
+    
+    func reloadHotkeys() {
+        // Unregister all existing hotkeys
+        HotkeyManager.shared.unregisterAllHotkeys()
+        
+        // Re-register with updated configurations
+        registerAllHotkeys()
+        
+        logger.info("Hotkeys reloaded with updated configurations")
     }
     
     /// Captures a screenshot using interactive area selection and adds it to history
@@ -307,6 +366,56 @@ class MenuBarManager {
         }
     }
     
+    /// Sets up material effect for menu bar button (Enhancement #4)
+    private func setupMenuBarButtonMaterialEffect(_ button: NSStatusBarButton) {
+        button.wantsLayer = true
+        
+        // Add subtle material background when menu is open
+        // The button already has built-in highlight, we enhance it
+        button.layer?.cornerRadius = 6
+        button.layer?.masksToBounds = true
+        
+        // Add a subtle background that becomes visible on hover/click
+        let backgroundView = NSVisualEffectView(frame: button.bounds)
+        backgroundView.material = .menu
+        backgroundView.state = .inactive  // Only active when highlighted
+        backgroundView.blendingMode = .behindWindow
+        backgroundView.wantsLayer = true
+        backgroundView.layer?.cornerRadius = 6
+        backgroundView.layer?.masksToBounds = true
+        backgroundView.alphaValue = 0.0  // Hidden by default
+        backgroundView.autoresizingMask = [.width, .height]
+        
+        // Insert behind button's image
+        button.addSubview(backgroundView, positioned: .below, relativeTo: nil)
+        
+        // Animate on click
+        button.sendAction(on: [.leftMouseDown])
+        NotificationCenter.default.addObserver(
+            forName: NSMenu.didBeginTrackingNotification,
+            object: menu,
+            queue: .main
+        ) { _ in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.15
+                backgroundView.animator().alphaValue = 0.3
+                backgroundView.state = .active
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: NSMenu.didEndTrackingNotification,
+            object: menu,
+            queue: .main
+        ) { _ in
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                backgroundView.animator().alphaValue = 0.0
+                backgroundView.state = .inactive
+            }
+        }
+    }
+    
     @objc func cleanAndPaste() {
         SentryManager.shared.trackUserAction("hotkey_paste_triggered")
         delegate?.cleanAndPasteRequested()
@@ -320,7 +429,57 @@ class MenuBarManager {
     @objc func showClipboardHistory() {
         logger.info("Show clipboard history requested from menu")
         SentryManager.shared.trackUserAction("show_history_menu_clicked")
+        updateHistoryBadge()  // Update badge before showing
         historyWindow?.show()
+    }
+    
+    /// Updates the history menu item with a badge showing the number of items
+    func updateHistoryBadge() {
+        guard let historyItem = menu.item(withTag: 999) else { return }
+        
+        let itemCount = ClipboardHistoryManager.shared.totalItems
+        
+        if itemCount > 0 {
+            // Create attributed title with badge
+            let baseTitle = "Show Clipboard History (⌘⇧H)"
+            let badge = " • \(itemCount)"
+            
+            let attributedTitle = NSMutableAttributedString(string: baseTitle + badge)
+            
+            // Style the badge with secondary color and monospaced font
+            let badgeRange = NSRange(location: baseTitle.count, length: badge.count)
+            attributedTitle.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: badgeRange)
+            attributedTitle.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular), range: badgeRange)
+            
+            historyItem.attributedTitle = attributedTitle
+        } else {
+            // No items, show plain title
+            historyItem.title = "Show Clipboard History (⌘⇧H)"
+            historyItem.attributedTitle = nil
+        }
+    }
+    
+    @objc func clearClipboardHistory() {
+        logger.info("Clear clipboard history requested from menu")
+        SentryManager.shared.trackUserAction("clear_history_menu_clicked")
+        
+        // Show confirmation alert
+        let alert = NSAlert()
+        alert.messageText = "Clear Clipboard History?"
+        alert.informativeText = "This will permanently delete all clipboard history items. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear History")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            ClipboardHistoryManager.shared.clearHistory()
+            logger.info("✅ Clipboard history cleared from menu")
+            AnalyticsManager.shared.trackFeatureUsage("history_cleared_from_menu")
+            updateHistoryBadge()  // Update badge after clearing
+        } else {
+            logger.info("❌ Clear history cancelled by user")
+        }
     }
     
     @objc func toggleAutoClean() {
@@ -332,6 +491,29 @@ class MenuBarManager {
         SentryManager.shared.trackUserAction("settings_opened")
         delegate?.openSettingsRequested()
     }
+    
+    @objc func showWelcomeScreen() {
+        logger.info("🎓 MenuBarManager.showWelcomeScreen() called")
+        SentryManager.shared.trackUserAction("welcome_screen_opened")
+        delegate?.showWelcomeScreenRequested()
+    }
+    
+    #if DEBUG
+    @objc func resetOnboarding() {
+        OnboardingManager.shared.resetOnboarding()
+        
+        let alert = NSAlert()
+        alert.messageText = "Onboarding Reset"
+        alert.informativeText = "Onboarding has been reset. Relaunch the app to see it again, or click 'Show Welcome Screen' now."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Show Welcome Screen")
+        alert.addButton(withTitle: "OK")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            showWelcomeScreen()
+        }
+    }
+    #endif
     
     @objc func checkForUpdatesManually() {
         SentryManager.shared.trackUserAction("manual_update_check")
@@ -377,6 +559,12 @@ class MenuBarManager {
         SentryManager.shared.trackUserAction("share_app_triggered")
         delegate?.shareAppRequested()
     }
+    
+    @objc private func historyDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateHistoryBadge()
+        }
+    }
 }
 
 protocol MenuBarManagerDelegate: AnyObject {
@@ -390,6 +578,7 @@ protocol MenuBarManagerDelegate: AnyObject {
     func testSentryRequested()
     func showInstallationGuideRequested()
     func openAboutRequested()
+    func showWelcomeScreenRequested()
     func showSamplesRequested()
     func showVersionHistoryRequested()
     func shareAppRequested()

@@ -152,7 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var autoCleanEnabled = false
     
     // Managers
-    private let clipboardManager = ClipboardManager()
+    let clipboardManager = ClipboardManager()  // Internal access for SettingsWindow
     let menuBarManager = MenuBarManager()  // Internal access for SettingsWindow
     private let preferencesManager = PreferencesManager.shared
     
@@ -184,16 +184,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardManager.cleaningRules = activeProfile.rules
         autoCleanEnabled = preferencesManager.loadAutoCleanEnabled()
         
+        // Apply saved appearance preference
+        let savedAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
+        switch savedAppearance {
+        case "light":
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark":
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: // auto
+            NSApp.appearance = nil // Follow system
+        }
+        
         // Setup managers
         menuBarManager.delegate = self
         
         // Initialize UI
         menuBarManager.setupMenuBar()
-        menuBarManager.registerHotKey()
+        
+        // Register hotkeys after a short delay to ensure everything is initialized
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.menuBarManager.registerHotKey()
+            logger.info("🔍 Hotkeys registered")
+        }
         
         // Debug: Check if everything is working
         logger.info("🔍 App initialized - MenuBarManager delegate: \(self.menuBarManager.delegate != nil)")
         logger.info("🔍 ClipboardManager initialized: true")
+        
+        // Show onboarding if needed (first launch)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            OnboardingManager.shared.showOnboardingIfNeeded()
+        }
         
         // Check permissions and first launch
         checkFirstLaunch()
@@ -458,8 +479,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindowController?.selectTab(tabIndex)
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
-        
-        logger.info("Settings window opened and activated")
+    }
+    
+    @objc func showWelcomeScreen() {
+        logger.info("📖 AppDelegate.showWelcomeScreen() called")
+        logger.info("📖 About to call OnboardingManager.shared.showOnboarding()")
+        OnboardingManager.shared.showOnboarding(canDismiss: true)
+        logger.info("📖 Finished calling OnboardingManager.shared.showOnboarding()")
+        AnalyticsManager.shared.trackFeatureUsage("welcome_screen_opened_from_menu")
+    }
+    
+    func showWelcomeScreenRequested() {
+        logger.info("📖 AppDelegate.showWelcomeScreenRequested() called from delegate")
+        showWelcomeScreen()
     }
     func toggleAutoCleanRequested() {
         autoCleanEnabled.toggle()

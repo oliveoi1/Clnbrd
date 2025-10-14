@@ -27,7 +27,7 @@ class SettingsWindow: NSWindowController {
         self.currentProfileId = activeProfile.id
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 550),
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 550),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -35,7 +35,7 @@ class SettingsWindow: NSWindowController {
         window.title = "Clnbrd Settings"
         window.center()
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 500, height: 400)
+        window.minSize = NSSize(width: 620, height: 400)  // Match initial width to fit 550px cards
         window.maxSize = NSSize(width: 800, height: 1200)  // Allow vertical resizing
         
         super.init(window: window)
@@ -154,44 +154,34 @@ class SettingsWindow: NSWindowController {
         
         let stackView = NSStackView()
         stackView.orientation = .vertical
-        stackView.alignment = .leading
-        stackView.spacing = 8
+        stackView.alignment = .centerX  // Center all cards
+        stackView.spacing = 10  // Compact spacing
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)  // Apple standard for settings
+        stackView.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)  // Compact padding
         
-        // Setup all UI sections
-        setupProfileSection(stackView)
-        setupBasicTextCleaningSection(stackView)
-        setupAdvancedCleaningSection(stackView)
-        setupClipboardSafetySection(stackView)
+        // Setup all UI sections with card styling - FIXED WIDTH for consistency
+        let cardWidth: CGFloat = 550  // Fixed width for all cards
         
-        // CUSTOM FIND & REPLACE RULES SECTION
-        stackView.addArrangedSubview(createSpacer(height: 12))  // More compact
-        stackView.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
-        stackView.addArrangedSubview(createSpacer(height: 4))
+        let profileCard = createSectionCard(content: createProfileSectionContent())
+        profileCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(profileCard)
         
-        let helpLabel = NSTextField(labelWithString: "Add your own text replacements (applied before built-in rules):")
-        helpLabel.font = NSFont.systemFont(ofSize: 11)
-        helpLabel.textColor = .secondaryLabelColor
-        helpLabel.isEditable = false
-        helpLabel.isBordered = false
-        helpLabel.backgroundColor = .clear
-        stackView.addArrangedSubview(helpLabel)
+        let basicCleaningCard = createSectionCard(content: createBasicTextCleaningSectionContent())
+        basicCleaningCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(basicCleaningCard)
         
-        customRulesStackView = NSStackView()
-        customRulesStackView.orientation = .vertical
-        customRulesStackView.alignment = .leading
-        customRulesStackView.spacing = 8
-        customRulesStackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.addArrangedSubview(customRulesStackView)
+        let advancedCleaningCard = createSectionCard(content: createAdvancedCleaningSectionContent())
+        advancedCleaningCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(advancedCleaningCard)
         
-        for (index, rule) in cleaningRules.customRules.enumerated() {
-            addCustomRuleRow(find: rule.find, replace: rule.replace, index: index)
-        }
+        let safetyCard = createSectionCard(content: createClipboardSafetySectionContent())
+        safetyCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(safetyCard)
         
-        let addButton = NSButton(title: "+ Add Rule", target: self, action: #selector(addNewRule))
-        addButton.bezelStyle = .automatic  // Modern, adaptive style
-        stackView.addArrangedSubview(addButton)
+        // CUSTOM FIND & REPLACE RULES SECTION (Card styled)
+        let customRulesCard = createSectionCard(content: createCustomRulesSectionContent())
+        customRulesCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(customRulesCard)
         
         // Configure scroll view
         scrollView.documentView = stackView
@@ -203,7 +193,8 @@ class SettingsWindow: NSWindowController {
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             
-            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
+            // Let cards define width (550px), stackView adjusts to content
+            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 550)
         ])
         
         return container
@@ -226,136 +217,34 @@ class SettingsWindow: NSWindowController {
         
         let stackView = NSStackView()
         stackView.orientation = .vertical
-        stackView.alignment = .leading
-        stackView.spacing = 12  // More compact, Apple HIG standard
-        stackView.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)  // Apple standard for settings
+        stackView.alignment = .centerX  // Center all cards
+        stackView.spacing = 10  // Compact spacing
+        stackView.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)  // Compact padding
         stackView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stackView)
         
         scrollView.documentView = contentView
         
-        // Header with SF Pro Rounded
-        let headerLabel = NSTextField(labelWithString: "Clipboard Settings")
-        if let roundedFont = NSFont.systemFont(ofSize: 17, weight: .semibold).rounded() {
-            headerLabel.font = roundedFont  // Apple's standard: 17pt semibold for section headers
-        } else {
-            headerLabel.font = NSFont.systemFont(ofSize: 17, weight: .semibold)
-        }
-        stackView.addArrangedSubview(headerLabel)
+        // Fixed width for all cards (matches Rules tab)
+        let cardWidth: CGFloat = 550
         
-        let descriptionLabel = NSTextField(labelWithString: "Automatically saves your clipboard history before cleaning.")
-        descriptionLabel.font = NSFont.systemFont(ofSize: 11)  // Compact secondary text
-        descriptionLabel.textColor = .secondaryLabelColor
-        descriptionLabel.lineBreakMode = .byWordWrapping
-        descriptionLabel.maximumNumberOfLines = 1
-        descriptionLabel.preferredMaxLayoutWidth = 460
-        stackView.addArrangedSubview(descriptionLabel)
-        
-        // Enable/Disable Toggle
+        // Enable/Disable Toggle (compact, no header)
         let enableCheckbox = NSButton(checkboxWithTitle: "Enable Clipboard History", target: self, action: #selector(toggleHistoryEnabled))
         enableCheckbox.state = ClipboardHistoryManager.shared.isEnabled ? .on : .off
+        enableCheckbox.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         stackView.addArrangedSubview(enableCheckbox)
         
-        stackView.addArrangedSubview(createSeparatorLine())
+        stackView.addArrangedSubview(createSpacer(height: 6))
         
-        // MARK: - Appearance Section
-        let appearanceHeader = NSTextField(labelWithString: "Appearance")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            appearanceHeader.font = roundedFont
-        } else {
-            appearanceHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(appearanceHeader)
+        // Appearance Section (Card)
+        let appearanceCard = createSectionCard(content: createAppearanceSectionContent())
+        appearanceCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(appearanceCard)
         
-        let appearanceDesc = NSTextField(labelWithString: "Choose how Clnbrd looks. Auto follows your system appearance.")
-        appearanceDesc.font = NSFont.systemFont(ofSize: 11)
-        appearanceDesc.textColor = .secondaryLabelColor
-        stackView.addArrangedSubview(appearanceDesc)
-        
-        let appearanceControl = NSSegmentedControl(labels: ["Auto", "Light", "Dark"], trackingMode: .selectOne, target: self, action: #selector(appearanceChanged(_:)))
-        appearanceControl.segmentStyle = .rounded
-        appearanceControl.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Set current selection based on saved preference
-        let currentAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
-        switch currentAppearance {
-        case "light": appearanceControl.selectedSegment = 1
-        case "dark": appearanceControl.selectedSegment = 2
-        default: appearanceControl.selectedSegment = 0 // auto
-        }
-        
-        NSLayoutConstraint.activate([
-            appearanceControl.widthAnchor.constraint(equalToConstant: 220)  // More compact
-        ])
-        stackView.addArrangedSubview(appearanceControl)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // MARK: - Keyboard Shortcuts Section
-        let hotkeysHeader = NSTextField(labelWithString: "Keyboard Shortcuts")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            hotkeysHeader.font = roundedFont
-        } else {
-            hotkeysHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(hotkeysHeader)
-        
-        let hotkeysDesc = NSTextField(labelWithString: "Click on a shortcut to change it. Press ⌫ to disable.")
-        hotkeysDesc.font = NSFont.systemFont(ofSize: 11)
-        hotkeysDesc.textColor = .secondaryLabelColor
-        stackView.addArrangedSubview(hotkeysDesc)
-        
-        // Clean & Paste hotkey
-        let cleanPasteRow = createHotkeyRow(
-            action: .cleanAndPaste,
-            description: "Clean and Paste:",
-            config: HotkeyManager.shared.getConfiguration(for: .cleanAndPaste)
-        )
-        stackView.addArrangedSubview(cleanPasteRow)
-        
-        // Show History hotkey
-        let historyRow = createHotkeyRow(
-            action: .showHistory,
-            description: "Show Clipboard History:",
-            config: HotkeyManager.shared.getConfiguration(for: .showHistory)
-        )
-        stackView.addArrangedSubview(historyRow)
-        
-        // Screenshot hotkey
-        let screenshotRow = createHotkeyRow(
-            action: .captureScreenshot,
-            description: "Capture Screenshot:",
-            config: HotkeyManager.shared.getConfiguration(for: .captureScreenshot)
-        )
-        stackView.addArrangedSubview(screenshotRow)
-        
-        // Buttons container
-        let buttonsStack = NSStackView()
-        buttonsStack.orientation = .horizontal
-        buttonsStack.spacing = 8
-        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-        
-        let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetHotkeysToDefaults))
-        resetButton.bezelStyle = .rounded
-        resetButton.font = NSFont.systemFont(ofSize: 11)
-        buttonsStack.addArrangedSubview(resetButton)
-        
-        let systemButton = NSButton(title: "System Keyboard Shortcuts...", target: self, action: #selector(openKeyboardShortcutsSettings))
-        systemButton.bezelStyle = .rounded
-        systemButton.font = NSFont.systemFont(ofSize: 11)
-        buttonsStack.addArrangedSubview(systemButton)
-        
-        stackView.addArrangedSubview(buttonsStack)
-        
-        let helpLabel = NSTextField(labelWithString: "💡 Check System Settings if a hotkey conflicts with other apps")
-        helpLabel.font = NSFont.systemFont(ofSize: 10)
-        helpLabel.textColor = .tertiaryLabelColor
-        helpLabel.lineBreakMode = .byWordWrapping
-        helpLabel.maximumNumberOfLines = 1
-        helpLabel.preferredMaxLayoutWidth = 460
-        stackView.addArrangedSubview(helpLabel)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
+        // Keyboard Shortcuts Section (Card)
+        let hotkeysCard = createSectionCard(content: createKeyboardShortcutsSectionContent())
+        hotkeysCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(hotkeysCard)
         
         // MARK: - App Exclusions Section (at top)
         let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
@@ -737,7 +626,7 @@ class SettingsWindow: NSWindowController {
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 500)  // More compact minimum width
+            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 550)  // Match card width
         ])
         
         return container
@@ -1402,6 +1291,373 @@ class SettingsWindow: NSWindowController {
         timeoutHelpLabel.isBordered = false
         timeoutHelpLabel.backgroundColor = .clear
         stackView.addArrangedSubview(timeoutHelpLabel)
+    }
+    
+    // MARK: - Section Content Creators (for card-based UI)
+    
+    /// Creates the profile management section content
+    private func createProfileSectionContent() -> NSView {
+        return createProfileManagementSection()
+    }
+    
+    /// Creates the basic text cleaning section content
+    private func createBasicTextCleaningSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addArrangedSubview(createSectionHeaderWithControls(
+            "Basic Text Cleaning",
+            selectAllSelector: #selector(selectAllBasic),
+            deselectAllSelector: #selector(deselectAllBasic)
+        ))
+        
+        container.addArrangedSubview(createCheckbox(
+            title: "Remove zero-width and invisible characters (AI watermarks)",
+            tooltip: CleaningRuleTooltips.removeZeroWidthChars,
+            isOn: cleaningRules.removeZeroWidthChars,
+            tag: 0
+        ))
+        container.addArrangedSubview(createCheckbox(title: "Replace em-dashes (—) with comma+space", tooltip: CleaningRuleTooltips.removeEmdashes, isOn: cleaningRules.removeEmdashes, tag: 1))
+        container.addArrangedSubview(createCheckbox(title: "Normalize multiple spaces to single space", tooltip: CleaningRuleTooltips.normalizeSpaces, isOn: cleaningRules.normalizeSpaces, tag: 2))
+        container.addArrangedSubview(createCheckbox(title: "Convert smart quotes to straight quotes", tooltip: CleaningRuleTooltips.convertSmartQuotes, isOn: cleaningRules.convertSmartQuotes, tag: 3))
+        container.addArrangedSubview(createCheckbox(title: "Normalize line breaks", tooltip: CleaningRuleTooltips.normalizeLineBreaks, isOn: cleaningRules.normalizeLineBreaks, tag: 4))
+        container.addArrangedSubview(createCheckbox(title: "Remove trailing spaces from lines", tooltip: CleaningRuleTooltips.removeTrailingSpaces, isOn: cleaningRules.removeTrailingSpaces, tag: 5))
+        container.addArrangedSubview(createCheckbox(title: "Remove emojis", tooltip: CleaningRuleTooltips.removeEmojis, isOn: cleaningRules.removeEmojis, tag: 6))
+        
+        return container
+    }
+    
+    /// Creates the advanced cleaning section content
+    private func createAdvancedCleaningSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addArrangedSubview(createSectionHeaderWithControls(
+            "Advanced Cleaning",
+            selectAllSelector: #selector(selectAllAdvanced),
+            deselectAllSelector: #selector(deselectAllAdvanced)
+        ))
+        
+        container.addArrangedSubview(createCheckbox(title: "Remove extra line breaks (3+ → 2)", tooltip: CleaningRuleTooltips.removeExtraLineBreaks, isOn: cleaningRules.removeExtraLineBreaks, tag: 7))
+        container.addArrangedSubview(createCheckbox(
+            title: "Remove leading/trailing whitespace",
+            tooltip: CleaningRuleTooltips.removeLeadingTrailingWhitespace,
+            isOn: cleaningRules.removeLeadingTrailingWhitespace,
+            tag: 8
+        ))
+        container.addArrangedSubview(createCheckbox(title: "Remove URL tracking parameters", tooltip: CleaningRuleTooltips.removeUrlTracking, isOn: cleaningRules.removeUrlTracking, tag: 9))
+        container.addArrangedSubview(createCheckbox(title: "Remove URL protocols (https://, www.)", tooltip: CleaningRuleTooltips.removeUrls, isOn: cleaningRules.removeUrls, tag: 10))
+        container.addArrangedSubview(createCheckbox(title: "Remove HTML tags and entities", tooltip: CleaningRuleTooltips.removeHtmlTags, isOn: cleaningRules.removeHtmlTags, tag: 11))
+        container.addArrangedSubview(createCheckbox(title: "Remove extra punctuation marks", tooltip: CleaningRuleTooltips.removeExtraPunctuation, isOn: cleaningRules.removeExtraPunctuation, tag: 12))
+        
+        return container
+    }
+    
+    /// Creates the clipboard safety section content
+    private func createClipboardSafetySectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addArrangedSubview(createSectionHeader("⚡ Performance & Safety"))
+        
+        let descriptionLabel = NSTextField(labelWithString: "Protect against large clipboard items (like InDesign objects) that can cause freezing")
+        descriptionLabel.font = NSFont.systemFont(ofSize: 11)
+        descriptionLabel.textColor = .secondaryLabelColor
+        descriptionLabel.isEditable = false
+        descriptionLabel.isBordered = false
+        descriptionLabel.backgroundColor = .clear
+        descriptionLabel.lineBreakMode = .byWordWrapping
+        descriptionLabel.maximumNumberOfLines = 0
+        descriptionLabel.preferredMaxLayoutWidth = 520
+        container.addArrangedSubview(descriptionLabel)
+        
+        container.addArrangedSubview(createSpacer(height: 8))
+        
+        // Skip large items checkbox
+        let skipLargeCheckbox = NSButton(checkboxWithTitle: "Skip processing large clipboard items", target: self, action: #selector(skipLargeItemsChanged(_:)))
+        skipLargeCheckbox.state = PreferencesManager.shared.loadSkipLargeClipboardItems() ? .on : .off
+        skipLargeCheckbox.toolTip = "When enabled, clipboard items larger than the size limit will be skipped to prevent freezing"
+        container.addArrangedSubview(skipLargeCheckbox)
+        
+        container.addArrangedSubview(createSpacer(height: 12))
+        
+        // Max clipboard size slider
+        let maxSizeContainer = createSliderSetting(
+            label: "Max clipboard size:",
+            minValue: 1,
+            maxValue: 50,
+            currentValue: Double(PreferencesManager.shared.loadMaxClipboardSize()),
+            formatter: { value in "\(Int(value)) MB" },
+            action: #selector(maxClipboardSizeChanged(_:))
+        )
+        container.addArrangedSubview(maxSizeContainer)
+        
+        container.addArrangedSubview(createSpacer(height: 8))
+        
+        // Timeout slider
+        let timeoutContainer = createSliderSetting(
+            label: "Processing timeout:",
+            minValue: 1,
+            maxValue: 10,
+            currentValue: PreferencesManager.shared.loadClipboardTimeout(),
+            formatter: { value in String(format: "%.1f sec", value) },
+            action: #selector(clipboardTimeoutChanged(_:))
+        )
+        container.addArrangedSubview(timeoutContainer)
+        
+        let timeoutHelpLabel = NSTextField(labelWithString: "How long to wait before aborting slow clipboard operations")
+        timeoutHelpLabel.font = NSFont.systemFont(ofSize: 10)
+        timeoutHelpLabel.textColor = .tertiaryLabelColor
+        timeoutHelpLabel.isEditable = false
+        timeoutHelpLabel.isBordered = false
+        timeoutHelpLabel.backgroundColor = .clear
+        container.addArrangedSubview(timeoutHelpLabel)
+        
+        return container
+    }
+    
+    /// Creates the custom find & replace rules section content
+    private func createCustomRulesSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        container.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
+        
+        let helpLabel = NSTextField(labelWithString: "Add your own text replacements (applied before built-in rules):")
+        helpLabel.font = NSFont.systemFont(ofSize: 11)
+        helpLabel.textColor = .secondaryLabelColor
+        helpLabel.isEditable = false
+        helpLabel.isBordered = false
+        helpLabel.backgroundColor = .clear
+        container.addArrangedSubview(helpLabel)
+        
+        customRulesStackView = NSStackView()
+        customRulesStackView.orientation = .vertical
+        customRulesStackView.alignment = .leading
+        customRulesStackView.spacing = 8
+        customRulesStackView.translatesAutoresizingMaskIntoConstraints = false
+        container.addArrangedSubview(customRulesStackView)
+        
+        for (index, rule) in cleaningRules.customRules.enumerated() {
+            addCustomRuleRow(find: rule.find, replace: rule.replace, index: index)
+        }
+        
+        let addButton = NSButton(title: "+ Add Rule", target: self, action: #selector(addNewRule))
+        addButton.bezelStyle = .automatic  // Modern, adaptive style
+        container.addArrangedSubview(addButton)
+        
+        return container
+    }
+    
+    /// Creates the appearance section content for History tab
+    private func createAppearanceSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let appearanceHeader = NSTextField(labelWithString: "Appearance")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            appearanceHeader.font = roundedFont
+        } else {
+            appearanceHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(appearanceHeader)
+        
+        let appearanceDesc = NSTextField(labelWithString: "Choose how Clnbrd looks. Auto follows your system appearance.")
+        appearanceDesc.font = NSFont.systemFont(ofSize: 11)
+        appearanceDesc.textColor = .secondaryLabelColor
+        container.addArrangedSubview(appearanceDesc)
+        
+        let appearanceControl = NSSegmentedControl(labels: ["Auto", "Light", "Dark"], trackingMode: .selectOne, target: self, action: #selector(appearanceChanged(_:)))
+        appearanceControl.segmentStyle = .rounded
+        appearanceControl.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set current selection based on saved preference
+        let currentAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
+        switch currentAppearance {
+        case "light": appearanceControl.selectedSegment = 1
+        case "dark": appearanceControl.selectedSegment = 2
+        default: appearanceControl.selectedSegment = 0 // auto
+        }
+        
+        NSLayoutConstraint.activate([
+            appearanceControl.widthAnchor.constraint(equalToConstant: 220)
+        ])
+        container.addArrangedSubview(appearanceControl)
+        
+        return container
+    }
+    
+    /// Creates the keyboard shortcuts section content for History tab
+    private func createKeyboardShortcutsSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6  // More compact
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let hotkeysHeader = NSTextField(labelWithString: "Keyboard Shortcuts")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            hotkeysHeader.font = roundedFont
+        } else {
+            hotkeysHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(hotkeysHeader)
+        
+        let hotkeysDesc = NSTextField(labelWithString: "Click on a shortcut to change it. Press ⌫ to disable.")
+        hotkeysDesc.font = NSFont.systemFont(ofSize: 11)
+        hotkeysDesc.textColor = .secondaryLabelColor
+        container.addArrangedSubview(hotkeysDesc)
+        
+        // Clean & Paste hotkey
+        let cleanPasteRow = createHotkeyRow(
+            action: .cleanAndPaste,
+            description: "Clean and Paste:",
+            config: HotkeyManager.shared.getConfiguration(for: .cleanAndPaste)
+        )
+        container.addArrangedSubview(cleanPasteRow)
+        
+        // Show History hotkey
+        let historyRow = createHotkeyRow(
+            action: .showHistory,
+            description: "Show Clipboard History:",
+            config: HotkeyManager.shared.getConfiguration(for: .showHistory)
+        )
+        container.addArrangedSubview(historyRow)
+        
+        // Screenshot hotkey
+        let screenshotRow = createHotkeyRow(
+            action: .captureScreenshot,
+            description: "Capture Screenshot:",
+            config: HotkeyManager.shared.getConfiguration(for: .captureScreenshot)
+        )
+        container.addArrangedSubview(screenshotRow)
+        
+        // Buttons container
+        let buttonsStack = NSStackView()
+        buttonsStack.orientation = .horizontal
+        buttonsStack.spacing = 8
+        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        let resetButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetHotkeysToDefaults))
+        resetButton.bezelStyle = .rounded
+        resetButton.font = NSFont.systemFont(ofSize: 11)
+        buttonsStack.addArrangedSubview(resetButton)
+        
+        let systemButton = NSButton(title: "System Keyboard Shortcuts...", target: self, action: #selector(openKeyboardShortcutsSettings))
+        systemButton.bezelStyle = .rounded
+        systemButton.font = NSFont.systemFont(ofSize: 11)
+        buttonsStack.addArrangedSubview(systemButton)
+        
+        container.addArrangedSubview(buttonsStack)
+        
+        let helpLabel = NSTextField(labelWithString: "💡 Check System Settings if a hotkey conflicts with other apps")
+        helpLabel.font = NSFont.systemFont(ofSize: 10)
+        helpLabel.textColor = .tertiaryLabelColor
+        helpLabel.lineBreakMode = .byWordWrapping
+        helpLabel.maximumNumberOfLines = 1
+        helpLabel.preferredMaxLayoutWidth = 460
+        container.addArrangedSubview(helpLabel)
+        
+        return container
+    }
+    
+    /// Creates an enhanced search bar with material effect (Enhancement #2 + Option B Enhancement #3)
+    private func createSearchBar(placeholder: String = "Search settings...") -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.wantsLayer = true
+        
+        // Enhanced material background with frosted effect
+        let materialView = NSVisualEffectView()
+        materialView.material = .hudWindow  // Stronger frosted effect
+        materialView.state = .active
+        materialView.blendingMode = .withinWindow
+        materialView.wantsLayer = true
+        materialView.layer?.cornerRadius = 10
+        materialView.layer?.masksToBounds = false  // Allow outer glow
+        materialView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add gradient border layer (Option B Enhancement #2 & #3)
+        let gradientBorder = CAGradientLayer()
+        gradientBorder.frame = CGRect(x: 0, y: 0, width: 500, height: 32)  // Will be resized
+        gradientBorder.cornerRadius = 10
+        gradientBorder.colors = [
+            NSColor.controlAccentColor.withAlphaComponent(0.0).cgColor,
+            NSColor.controlAccentColor.withAlphaComponent(0.4).cgColor,
+            NSColor.controlAccentColor.withAlphaComponent(0.0).cgColor
+        ]
+        gradientBorder.startPoint = CGPoint(x: 0, y: 0.5)
+        gradientBorder.endPoint = CGPoint(x: 1, y: 0.5)
+        gradientBorder.opacity = 0  // Hidden until focus
+        
+        // Create border mask
+        let borderMask = CAShapeLayer()
+        borderMask.strokeColor = NSColor.white.cgColor
+        borderMask.fillColor = NSColor.clear.cgColor
+        borderMask.lineWidth = 2
+        gradientBorder.mask = borderMask
+        
+        container.layer?.addSublayer(gradientBorder)
+        
+        // Subtle static border
+        materialView.layer?.borderWidth = 1
+        materialView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
+        
+        // Add outer glow for focus state
+        materialView.layer?.shadowColor = NSColor.controlAccentColor.cgColor
+        materialView.layer?.shadowOpacity = 0
+        materialView.layer?.shadowRadius = 8
+        materialView.layer?.shadowOffset = .zero
+        
+        // Search field
+        let searchField = EnhancedSearchField()
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        searchField.placeholderString = placeholder
+        searchField.isBordered = false
+        searchField.drawsBackground = false
+        searchField.focusRingType = .none
+        searchField.font = NSFont.systemFont(ofSize: 13)
+        searchField.cell?.usesSingleLineMode = true
+        searchField.cell?.wraps = false
+        searchField.cell?.isScrollable = true
+        
+        // Store references for focus animations
+        searchField.gradientBorderLayer = gradientBorder
+        searchField.materialView = materialView
+        searchField.borderMaskLayer = borderMask
+        
+        container.addSubview(materialView)
+        materialView.addSubview(searchField)
+        
+        NSLayoutConstraint.activate([
+            materialView.topAnchor.constraint(equalTo: container.topAnchor),
+            materialView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            materialView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            materialView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            materialView.heightAnchor.constraint(equalToConstant: 32),
+            
+            searchField.topAnchor.constraint(equalTo: materialView.topAnchor, constant: 6),
+            searchField.leadingAnchor.constraint(equalTo: materialView.leadingAnchor, constant: 10),
+            searchField.trailingAnchor.constraint(equalTo: materialView.trailingAnchor, constant: -10),
+            searchField.bottomAnchor.constraint(equalTo: materialView.bottomAnchor, constant: -6)
+        ])
+        
+        return container
     }
     
     // MARK: - UI Creation Helpers
@@ -2975,6 +3231,599 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         
         logger.info("Hotkey updated for \(button.hotkeyAction.rawValue): \(newConfig.displayString)")
     }
+    
+    // MARK: - UI Enhancement Helpers
+    
+    /// Container for card visual effect layers
+    private struct CardLayers {
+        let backdropBlur: NSVisualEffectView
+        let materialView: NSVisualEffectView
+        let colorOverlay: CALayer
+        let gradientLayer: CAGradientLayer
+        let innerGlow: CAGradientLayer
+    }
+    
+    /// Container for card shadow layers
+    private struct CardShadows {
+        let contactShadow: CALayer
+        let accentShadow: CALayer
+    }
+    
+    /// Container for card border layers
+    private struct CardBorders {
+        let borderLayer: CALayer
+        let innerShadowLayer: CALayer
+    }
+    
+    /// Creates a MAXIMUM liquid glass card with all premium effects (Option A)
+    private func createSectionCard(content: NSView, cornerRadius: CGFloat = 12) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.wantsLayer = true
+        
+        let layers = createCardLayers(cornerRadius: cornerRadius)
+        let shadows = createCardShadows(container: container, cornerRadius: cornerRadius)
+        let borders = createCardBorders(cornerRadius: cornerRadius)
+        
+        assembleCard(
+            container: container,
+            backdropBlur: layers.backdropBlur,
+            materialView: layers.materialView,
+            content: content
+        )
+        
+        setupCardHoverView(
+            container: container,
+            layers: layers,
+            shadows: shadows,
+            borders: borders,
+            backdropBlur: layers.backdropBlur
+        )
+        
+        return container
+    }
+    
+    /// Creates all visual effect layers for the card
+    private func createCardLayers(cornerRadius: CGFloat) -> CardLayers {
+        let backdropBlur = NSVisualEffectView()
+        backdropBlur.material = .underWindowBackground
+        backdropBlur.state = .active
+        backdropBlur.blendingMode = .behindWindow
+        backdropBlur.wantsLayer = true
+        backdropBlur.layer?.cornerRadius = cornerRadius
+        backdropBlur.layer?.masksToBounds = true
+        backdropBlur.translatesAutoresizingMaskIntoConstraints = false
+        backdropBlur.alphaValue = 0.6
+        
+        let materialView = NSVisualEffectView()
+        materialView.material = .contentBackground
+        materialView.state = .active
+        materialView.blendingMode = .withinWindow
+        materialView.wantsLayer = true
+        materialView.layer?.cornerRadius = cornerRadius
+        materialView.layer?.masksToBounds = false
+        materialView.translatesAutoresizingMaskIntoConstraints = false
+        
+        let colorOverlay = CALayer()
+        colorOverlay.cornerRadius = cornerRadius
+        colorOverlay.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.05).cgColor
+        colorOverlay.opacity = 0
+        
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            NSColor.controlAccentColor.withAlphaComponent(0.08).cgColor,
+            NSColor.controlAccentColor.withAlphaComponent(0.02).cgColor,
+            NSColor.clear.cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.15, 0.4]
+        gradientLayer.cornerRadius = cornerRadius
+        gradientLayer.opacity = 0
+        
+        let innerGlow = CAGradientLayer()
+        innerGlow.colors = [
+            NSColor.white.withAlphaComponent(0.4).cgColor,
+            NSColor.white.withAlphaComponent(0.0).cgColor
+        ]
+        innerGlow.locations = [0.0, 1.0]
+        innerGlow.cornerRadius = cornerRadius
+        innerGlow.opacity = 0
+        
+        return CardLayers(
+            backdropBlur: backdropBlur,
+            materialView: materialView,
+            colorOverlay: colorOverlay,
+            gradientLayer: gradientLayer,
+            innerGlow: innerGlow
+        )
+    }
+    
+    /// Creates shadow layers for the card
+    private func createCardShadows(container: NSView, cornerRadius: CGFloat) -> CardShadows {
+        container.shadow = NSShadow()
+        container.layer?.shadowColor = NSColor.black.cgColor
+        container.layer?.shadowOpacity = 0.06
+        container.layer?.shadowOffset = NSSize(width: 0, height: 4)
+        container.layer?.shadowRadius = 16
+        
+        let contactShadow = CALayer()
+        contactShadow.cornerRadius = cornerRadius
+        contactShadow.shadowColor = NSColor.black.cgColor
+        contactShadow.shadowOpacity = 0.12
+        contactShadow.shadowOffset = NSSize(width: 0, height: 1)
+        contactShadow.shadowRadius = 3
+        
+        let accentShadow = CALayer()
+        accentShadow.cornerRadius = cornerRadius
+        accentShadow.shadowColor = NSColor.controlAccentColor.cgColor
+        accentShadow.shadowOpacity = 0
+        accentShadow.shadowOffset = .zero
+        accentShadow.shadowRadius = 20
+        
+        return CardShadows(contactShadow: contactShadow, accentShadow: accentShadow)
+    }
+    
+    /// Creates border layers for the card
+    private func createCardBorders(cornerRadius: CGFloat) -> CardBorders {
+        let borderLayer = CALayer()
+        borderLayer.cornerRadius = cornerRadius
+        borderLayer.borderWidth = 0.5
+        borderLayer.borderColor = NSColor.separatorColor.withAlphaComponent(0.15).cgColor
+        
+        let innerShadowLayer = CALayer()
+        innerShadowLayer.cornerRadius = cornerRadius - 1
+        innerShadowLayer.borderWidth = 0.5
+        innerShadowLayer.borderColor = NSColor.black.withAlphaComponent(0.05).cgColor
+        
+        return CardBorders(borderLayer: borderLayer, innerShadowLayer: innerShadowLayer)
+    }
+    
+    /// Assembles the card by adding subviews and setting up constraints
+    private func assembleCard(
+        container: NSView,
+        backdropBlur: NSVisualEffectView,
+        materialView: NSVisualEffectView,
+        content: NSView
+    ) {
+        container.addSubview(backdropBlur)
+        container.addSubview(materialView)
+        
+        content.translatesAutoresizingMaskIntoConstraints = false
+        materialView.addSubview(content)
+        
+        NSLayoutConstraint.activate([
+            backdropBlur.topAnchor.constraint(equalTo: container.topAnchor),
+            backdropBlur.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            backdropBlur.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            backdropBlur.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            materialView.topAnchor.constraint(equalTo: container.topAnchor),
+            materialView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            materialView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            materialView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            content.topAnchor.constraint(equalTo: materialView.topAnchor, constant: 12),
+            content.leadingAnchor.constraint(equalTo: materialView.leadingAnchor, constant: 12),
+            content.trailingAnchor.constraint(equalTo: materialView.trailingAnchor, constant: -12),
+            content.bottomAnchor.constraint(equalTo: materialView.bottomAnchor, constant: -12)
+        ])
+    }
+    
+    /// Sets up the hover view with all interactive effects
+    private func setupCardHoverView(
+        container: NSView,
+        layers: CardLayers,
+        shadows: CardShadows,
+        borders: CardBorders,
+        backdropBlur: NSVisualEffectView
+    ) {
+        let hoverView = MaximumGlassCardView(frame: container.bounds)
+        hoverView.backdropBlur = layers.backdropBlur
+        hoverView.materialView = layers.materialView
+        hoverView.colorOverlay = layers.colorOverlay
+        hoverView.gradientLayer = layers.gradientLayer
+        hoverView.innerGlow = layers.innerGlow
+        hoverView.borderLayer = borders.borderLayer
+        hoverView.innerShadowLayer = borders.innerShadowLayer
+        hoverView.containerLayer = container.layer
+        hoverView.contactShadow = shadows.contactShadow
+        hoverView.accentShadow = shadows.accentShadow
+        hoverView.autoresizingMask = [.width, .height]
+        container.addSubview(hoverView, positioned: .below, relativeTo: backdropBlur)
+        
+        hoverView.needsLayout = true
+    }
+}
+
+// MARK: - Enhanced Search Field (Option B Enhancement #3)
+
+/// Custom search field with gradient border and focus animations
+class EnhancedSearchField: NSSearchField {
+    weak var gradientBorderLayer: CAGradientLayer?
+    weak var materialView: NSVisualEffectView?
+    weak var borderMaskLayer: CAShapeLayer?
+    
+    private var shimmerAnimation: CABasicAnimation?
+    
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        if result {
+            animateFocusIn()
+        }
+        return result
+    }
+    
+    override func resignFirstResponder() -> Bool {
+        let result = super.resignFirstResponder()
+        if result {
+            animateFocusOut()
+        }
+        return result
+    }
+    
+    override func layout() {
+        super.layout()
+        updateBorderMask()
+    }
+    
+    private func updateBorderMask() {
+        guard let borderMask = borderMaskLayer,
+              let superview = materialView?.superview,
+              let superLayer = superview.layer else { return }
+        
+        // Use layer.bounds to avoid triggering layout recursion
+        let superBounds = superLayer.bounds
+        let rect = superBounds.insetBy(dx: 1, dy: 1)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
+        borderMask.path = path.cgPath
+        borderMask.frame = superBounds
+        
+        gradientBorderLayer?.frame = superBounds
+    }
+    
+    private func animateFocusIn() {
+        // Animate gradient border appearance
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.3)
+        gradientBorderLayer?.opacity = 1.0
+        CATransaction.commit()
+        
+        // Animate outer glow
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            materialView?.layer?.shadowOpacity = 0.2
+        })
+        
+        // Add shimmer animation (Option B Enhancement #2)
+        addShimmerAnimation()
+    }
+    
+    private func animateFocusOut() {
+        // Hide gradient border
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.25)
+        gradientBorderLayer?.opacity = 0
+        CATransaction.commit()
+        
+        // Hide outer glow
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            materialView?.layer?.shadowOpacity = 0
+        })
+        
+        // Remove shimmer
+        gradientBorderLayer?.removeAnimation(forKey: "shimmer")
+    }
+    
+    private func addShimmerAnimation() {
+        guard let gradientLayer = gradientBorderLayer else { return }
+        
+        // Create shimmer animation - subtle moving gradient
+        let shimmer = CABasicAnimation(keyPath: "locations")
+        shimmer.fromValue = [0.0, 0.5, 1.0]
+        shimmer.toValue = [0.0, 0.8, 1.0]
+        shimmer.duration = 2.0
+        shimmer.autoreverses = true
+        shimmer.repeatCount = .infinity
+        shimmer.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        
+        gradientLayer.add(shimmer, forKey: "shimmer")
+    }
+}
+
+// MARK: - Maximum Glass Card View (Option A - Ultimate Hover System)
+
+/// Handles MAXIMUM liquid glass hover effects with multi-layer animations
+class MaximumGlassCardView: NSView {
+    weak var backdropBlur: NSVisualEffectView?
+    weak var materialView: NSVisualEffectView?
+    weak var colorOverlay: CALayer?
+    weak var gradientLayer: CAGradientLayer?
+    weak var innerGlow: CAGradientLayer?
+    weak var borderLayer: CALayer?
+    weak var innerShadowLayer: CALayer?
+    weak var containerLayer: CALayer?
+    weak var contactShadow: CALayer?
+    weak var accentShadow: CALayer?
+    
+    private var trackingArea: NSTrackingArea?
+    private var pulseTimer: Timer?
+    private var layersSetup = false
+    
+    override func layout() {
+        super.layout()
+        
+        // Set up layer frames once we have valid bounds (avoids NaN crash)
+        if !layersSetup && bounds.width > 0 && bounds.height > 0 {
+            setupLayerFrames()
+            layersSetup = true
+        }
+    }
+    
+    private func setupLayerFrames() {
+        guard let materialView = materialView else { return }
+        
+        // Use materialView.layer?.bounds to avoid triggering layout recursion
+        guard let materialLayer = materialView.layer else { return }
+        let materialBounds = materialLayer.bounds
+        
+        // Set up all layer frames now that we have valid bounds
+        colorOverlay?.frame = materialBounds
+        gradientLayer?.frame = materialBounds
+        innerGlow?.frame = CGRect(x: 0, y: 0, width: materialBounds.width, height: 2)
+        borderLayer?.frame = materialBounds
+        innerShadowLayer?.frame = materialBounds.insetBy(dx: 1, dy: 1)
+        contactShadow?.frame = bounds
+        accentShadow?.frame = bounds
+        
+        // Add layers to their parent layers now
+        if let colorOverlay = colorOverlay, colorOverlay.superlayer == nil {
+            materialView.layer?.insertSublayer(colorOverlay, at: 0)
+        }
+        if let gradientLayer = gradientLayer, gradientLayer.superlayer == nil {
+            materialView.layer?.insertSublayer(gradientLayer, at: 1)
+        }
+        if let innerGlow = innerGlow, innerGlow.superlayer == nil {
+            materialView.layer?.addSublayer(innerGlow)
+        }
+        if let borderLayer = borderLayer, borderLayer.superlayer == nil {
+            materialView.layer?.addSublayer(borderLayer)
+        }
+        if let innerShadowLayer = innerShadowLayer, innerShadowLayer.superlayer == nil {
+            materialView.layer?.addSublayer(innerShadowLayer)
+        }
+        if let contactShadow = contactShadow, contactShadow.superlayer == nil {
+            containerLayer?.insertSublayer(contactShadow, at: 0)
+        }
+        if let accentShadow = accentShadow, accentShadow.superlayer == nil {
+            containerLayer?.insertSublayer(accentShadow, at: 0)
+        }
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        
+        if let area = trackingArea {
+            addTrackingArea(area)
+        }
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        animateMaximumGlassHoverIn()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        animateMaximumGlassHoverOut()
+    }
+    
+    // MARK: - Option A: Ultimate Hover Animation
+    
+    private func animateMaximumGlassHoverIn() {
+        // Stop any existing pulse
+        pulseTimer?.invalidate()
+        
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.4
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            context.allowsImplicitAnimation = true
+            
+            // ═══════════════════════════════════════════════════════════
+            // ELEVATION & SCALE (subtle lift)
+            // ═══════════════════════════════════════════════════════════
+            self.layer?.transform = CATransform3DMakeScale(1.02, 1.02, 1.0)
+            
+            // ═══════════════════════════════════════════════════════════
+            // DYNAMIC BLUR INTENSITY - Option A Enhancement #2
+            // ═══════════════════════════════════════════════════════════
+            self.backdropBlur?.animator().alphaValue = 0.8  // More visible
+            self.materialView?.material = .hudWindow  // More frosted
+            
+            // ═══════════════════════════════════════════════════════════
+            // COLOR OVERLAY - Option A Enhancement #3
+            // ═══════════════════════════════════════════════════════════
+            self.colorOverlay?.opacity = 1.0
+            
+            // ═══════════════════════════════════════════════════════════
+            // GRADIENT ACCENT - Option A Enhancement #3
+            // ═══════════════════════════════════════════════════════════
+            self.gradientLayer?.opacity = 1.0
+            
+            // ═══════════════════════════════════════════════════════════
+            // INNER GLOW - Option A Enhancement #5
+            // ═══════════════════════════════════════════════════════════
+            self.innerGlow?.opacity = 1.0
+            
+            // ═══════════════════════════════════════════════════════════
+            // ADVANCED SHADOWS - Option A Enhancement #4
+            // ═══════════════════════════════════════════════════════════
+            
+            // Ambient shadow (softer, larger)
+            self.containerLayer?.shadowOpacity = 0.12
+            self.containerLayer?.shadowRadius = 24
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 8)
+            
+            // Contact shadow (sharper)
+            self.contactShadow?.shadowOpacity = 0.18
+            self.contactShadow?.shadowRadius = 5
+            
+            // Accent shadow (colored glow)
+            self.accentShadow?.shadowOpacity = 0.15
+        })
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PULSE EFFECT - Option A Enhancement #2
+        // ═══════════════════════════════════════════════════════════════
+        startSubtlePulse()
+    }
+    
+    private func animateMaximumGlassHoverOut() {
+        // Stop pulse
+        pulseTimer?.invalidate()
+        pulseTimer = nil
+        
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            context.allowsImplicitAnimation = true
+            
+            // Return to normal
+            self.layer?.transform = CATransform3DIdentity
+            
+            // Restore blur
+            self.backdropBlur?.animator().alphaValue = 0.6
+            self.materialView?.material = .contentBackground
+            
+            // Hide overlays
+            self.colorOverlay?.opacity = 0
+            self.gradientLayer?.opacity = 0
+            self.innerGlow?.opacity = 0
+            
+            // Restore shadows
+            self.containerLayer?.shadowOpacity = 0.06
+            self.containerLayer?.shadowRadius = 16
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 4)
+            
+            self.contactShadow?.shadowOpacity = 0.12
+            self.contactShadow?.shadowRadius = 3
+            
+            self.accentShadow?.shadowOpacity = 0
+        })
+    }
+    
+    // MARK: - Pulse Effect (Option A Enhancement #2)
+    
+    private func startSubtlePulse() {
+        var pulseIn = true
+        
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 1.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                
+                if pulseIn {
+                    // Pulse in - slightly more glow
+                    self.accentShadow?.shadowOpacity = 0.2
+                    self.innerGlow?.opacity = 0.8
+                } else {
+                    // Pulse out - less glow
+                    self.accentShadow?.shadowOpacity = 0.12
+                    self.innerGlow?.opacity = 1.0
+                }
+            })
+            
+            pulseIn.toggle()
+        }
+        
+        // Fire immediately for first pulse
+        pulseTimer?.fire()
+    }
+    
+    deinit {
+        pulseTimer?.invalidate()
+    }
+}
+
+// MARK: - Legacy Hoverable Card View (Fallback)
+
+/// Simpler hover system for backwards compatibility
+class HoverableCardView: NSView {
+    weak var materialView: NSVisualEffectView?
+    weak var gradientLayer: CAGradientLayer?
+    weak var containerLayer: CALayer?
+    
+    private var trackingArea: NSTrackingArea?
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        
+        if let area = trackingArea {
+            addTrackingArea(area)
+        }
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        animateHoverIn()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        animateHoverOut()
+    }
+    
+    private func animateHoverIn() {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            
+            self.layer?.transform = CATransform3DMakeScale(1.01, 1.01, 1.0)
+            self.containerLayer?.shadowOpacity = 0.15
+            self.containerLayer?.shadowRadius = 20
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 4)
+            self.gradientLayer?.opacity = 1.0
+            self.materialView?.material = .hudWindow
+        })
+    }
+    
+    private func animateHoverOut() {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            
+            self.layer?.transform = CATransform3DIdentity
+            self.containerLayer?.shadowOpacity = 0.08
+            self.containerLayer?.shadowRadius = 12
+            self.containerLayer?.shadowOffset = NSSize(width: 0, height: 2)
+            self.gradientLayer?.opacity = 0
+            self.materialView?.material = .contentBackground
+        })
+    }
 }
 
 // MARK: - Hotkey Recorder Button
@@ -2996,6 +3845,7 @@ class HotkeyRecorderButton: NSButton {
     
     private var isRecording = false
     private var eventMonitor: Any?
+    private var materialBackground: NSVisualEffectView?
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -3014,6 +3864,9 @@ class HotkeyRecorderButton: NSButton {
         
         // Set initial title without triggering layout
         title = "Click to set"
+        
+        // Add material background for liquid glass effect when recording
+        wantsLayer = true
     }
     
     private func updateTitle() {
@@ -3031,11 +3884,55 @@ class HotkeyRecorderButton: NSButton {
             title = newTitle
         }
         
+        // Enhanced visual feedback for recording state
         if isRecording {
             highlight(true)
+            addMaterialGlow()
         } else {
             highlight(false)
+            removeMaterialGlow()
         }
+    }
+    
+    /// Adds a glowing material effect when recording (Enhancement #3)
+    private func addMaterialGlow() {
+        guard materialBackground == nil else { return }
+        
+        // Create material glow effect
+        let glow = NSVisualEffectView(frame: bounds.insetBy(dx: -4, dy: -4))
+        glow.material = .selection
+        glow.state = .active
+        glow.wantsLayer = true
+        glow.layer?.cornerRadius = 8
+        glow.layer?.borderWidth = 2
+        glow.layer?.borderColor = NSColor.controlAccentColor.cgColor
+        glow.alphaValue = 0
+        
+        // Insert behind button
+        if let superview = superview {
+            superview.addSubview(glow, positioned: .below, relativeTo: self)
+            materialBackground = glow
+            
+            // Animate in
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                glow.animator().alphaValue = 1.0
+            })
+        }
+    }
+    
+    /// Removes the material glow effect
+    private func removeMaterialGlow() {
+        guard let glow = materialBackground else { return }
+        
+        // Animate out
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            glow.animator().alphaValue = 0
+        }, completionHandler: {
+            glow.removeFromSuperview()
+            self.materialBackground = nil
+        })
     }
     
     @objc private func startRecording() {
@@ -3098,6 +3995,7 @@ class HotkeyRecorderButton: NSButton {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        removeMaterialGlow()
     }
 }
 

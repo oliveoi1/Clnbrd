@@ -96,6 +96,44 @@ class PreferencesManager {
         return completed
     }
     
+    // MARK: - Clipboard Safety Settings
+    
+    /// Maximum clipboard data size in MB (default: 10 MB)
+    func saveMaxClipboardSize(_ sizeMB: Int) {
+        UserDefaults.standard.set(sizeMB, forKey: "MaxClipboardSizeMB")
+        logger.info("Max clipboard size saved: \(sizeMB) MB")
+    }
+    
+    func loadMaxClipboardSize() -> Int {
+        let size = UserDefaults.standard.object(forKey: "MaxClipboardSizeMB") as? Int ?? 10
+        logger.info("Max clipboard size loaded: \(size) MB")
+        return size
+    }
+    
+    /// Timeout for clipboard operations in seconds (default: 5 seconds)
+    func saveClipboardTimeout(_ timeoutSeconds: Double) {
+        UserDefaults.standard.set(timeoutSeconds, forKey: "ClipboardTimeoutSeconds")
+        logger.info("Clipboard timeout saved: \(timeoutSeconds) seconds")
+    }
+    
+    func loadClipboardTimeout() -> Double {
+        let timeout = UserDefaults.standard.object(forKey: "ClipboardTimeoutSeconds") as? Double ?? 5.0
+        logger.info("Clipboard timeout loaded: \(timeout) seconds")
+        return timeout
+    }
+    
+    /// Whether to skip processing large clipboard items
+    func saveSkipLargeClipboardItems(_ skip: Bool) {
+        UserDefaults.standard.set(skip, forKey: "SkipLargeClipboardItems")
+        logger.info("Skip large clipboard items saved: \(skip)")
+    }
+    
+    func loadSkipLargeClipboardItems() -> Bool {
+        let skip = UserDefaults.standard.object(forKey: "SkipLargeClipboardItems") as? Bool ?? true
+        logger.info("Skip large clipboard items loaded: \(skip)")
+        return skip
+    }
+    
     // MARK: - Reset Preferences
     
     func resetAllPreferences() {
