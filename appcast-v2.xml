@@ -4,7 +4,60 @@
         <title>Clnbrd Updates</title>
         <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
         <description>Most recent updates to Clnbrd</description>
-        <language>en</language> <!-- Updated Tue Oct 14 2025 -->
+        <language>en</language> <!-- Updated Wed Oct 15 2025 -->
+        
+        <item>
+            <title>⚠️ Version 1.4.0-beta.8 (Build 61) - UPDATE NOTIFICATIONS</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.8</link>
+            <sparkle:version>61</sparkle:version>
+            <sparkle:shortVersionString>1.4.0-beta.8</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>⚠️ BETA RELEASE - Professional Update Notifications</h2>
+                
+                <p><strong style="color: orange;">This is a BETA release with enhanced update notifications. 
+                Build 52 (v1.3) remains the stable release.</strong></p>
+                
+                <h3>✨ Build 61 - Update Notification System</h3>
+                <ul>
+                    <li><strong>🟡 Yellow Dot Badge</strong> - Visual indicator on menu bar icon when updates available</li>
+                    <li><strong>📢 Menu Notification</strong> - "A new update is available..." at top of menu</li>
+                    <li><strong>🎯 Sparkle Integration</strong> - Automatic notification when updates detected</li>
+                    <li><strong>🎨 Professional Design</strong> - Orange/yellow theme matching macOS standards</li>
+                </ul>
+                
+                <h3>🎨 UI Improvements</h3>
+                <ul>
+                    <li><strong>📏 Compact Cards</strong> - Fixed card stretching with proper content sizing</li>
+                    <li><strong>📑 About Tab Redesign</strong> - Split into separate cards for better organization</li>
+                    <li><strong>🎯 Better Spacing</strong> - Improved visual hierarchy across all tabs</li>
+                </ul>
+                
+                <h3>✨ All Previous Beta Features Included</h3>
+                <ul>
+                    <li>Complete onboarding system with permission handling</li>
+                    <li>Clipboard History Strip with ⌘⇧V hotkey</li>
+                    <li>Screenshot capture with ⌘⌥C</li>
+                    <li>Modern "liquid glass" UI aesthetic</li>
+                    <li>Light/Dark/Auto appearance modes</li>
+                    <li>Performance optimizations from beta.5</li>
+                </ul>
+                
+                <h3>Technical Details</h3>
+                <ul>
+                    <li>Fully notarized for macOS Sequoia</li>
+                    <li>Universal binary (Apple Silicon + Intel)</li>
+                    <li>Compatible with macOS 15.5+</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 15 Oct 2025 06:15:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.8/Clnbrd-v1.4.0-beta.8-Build61-notarized-stapled.zip" 
+                sparkle:version="61" 
+                sparkle:shortVersionString="1.4.0-beta.8" 
+                length="2555274"
+                type="application/octet-stream"
+            />
+        </item>
         
         <item>
             <title>⚠️ Version 1.4.0-beta.6 (Build 59) - SETTINGS IMPROVEMENTS</title>
