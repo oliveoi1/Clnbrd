@@ -158,10 +158,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // Sparkle updater
     private let updaterController: SPUStandardUpdaterController
+    private var sparkleDelegate: SparkleUpdaterDelegate?
     
     override init() {
-        // Initialize Sparkle updater
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        // Create the Sparkle delegate
+        let delegate = SparkleUpdaterDelegate()
+        self.sparkleDelegate = delegate
+        
+        // Initialize Sparkle updater with delegate
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: delegate, userDriverDelegate: nil)
         super.init()
     }
     
@@ -700,6 +705,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: MenuBarManagerDelegate {
     // Delegate methods are already implemented in the main class
+}
+
+// MARK: - Sparkle Updater Delegate
+class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate {
+    weak var menuBarManager: MenuBarManager?
+    
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        // Update available - show notification
+        let version = item.displayVersionString
+        logger.info("📦 Update found: version \(version)")
+        
+        DispatchQueue.main.async {
+            // Get the menu bar manager from AppDelegate
+            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                appDelegate.menuBarManager.showUpdateAvailable(version: version)
+            }
+        }
+    }
+    
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        logger.info("✅ No updates found - app is up to date")
+    }
 }
 
 // Sparkle handles update checking and notifications automatically

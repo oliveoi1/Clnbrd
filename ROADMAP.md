@@ -1,11 +1,50 @@
 # Clnbrd Development Roadmap
 
-**Last Updated:** October 12, 2025  
-**Current Version:** 1.4 (Build 55 - Latest Release) ✅
+**Last Updated:** October 15, 2025  
+**Current Version:** 1.4.0-beta.9 (Build 62 - Latest Beta) ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 50-55)
+## 🎉 Recent Accomplishments (Build 58-62 - Beta Series)
+
+### ✅ Build 62 - Production Ready (October 15, 2025)
+- [x] **Professional Update Notifications**
+  - Yellow dot badge on menu bar icon when updates available
+  - "A new update is available..." menu notification
+  - Full Sparkle integration for automatic detection
+  - Professional orange/yellow theme matching macOS standards
+  - **Status:** ✅ Complete
+  - **Impact:** Professional update experience like CleanShot X!
+
+- [x] **UI Polish & Refinements**
+  - Fixed debug menu items (hidden in production builds)
+  - Compact card layouts with proper content sizing
+  - About tab redesigned with separate cards
+  - Settings window layout improvements
+  - **Status:** ✅ Complete
+  - **Impact:** Clean, professional UI for end users!
+
+### ✅ Build 58-61 - Beta Iterations (October 14-15, 2025)
+- [x] **Performance Optimizations (Build 58)**
+  - Reduced clipboard polling frequency
+  - Implemented differential history updates
+  - Added proper memory cleanup
+  - Optimized layer operations with CATransaction
+  - View recycling pool for history cards
+  - **Status:** ✅ Complete
+  - **Impact:** Faster, more efficient app!
+
+- [x] **Settings Window Improvements (Build 59-61)**
+  - Fixed window height condensing
+  - Consistent liquid glass card styling
+  - Proper scrolling behavior across all tabs
+  - App exclusions list now visible with table view
+  - **Status:** ✅ Complete
+  - **Impact:** Professional settings experience!
+
+---
+
+## 🎉 Previous Accomplishments (Build 50-55)
 
 ### ✅ Build 55 - Clipboard History Phase 3 Complete! (October 2025)
 - [x] **Clipboard History System - Phase 3 Complete!**

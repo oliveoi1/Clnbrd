@@ -46,6 +46,12 @@ class OnboardingWindow: NSPanel {
         logger.info("OnboardingWindow initialized")
     }
     
+    deinit {
+        // Clean up permission check timer
+        stopPermissionMonitoring()
+        logger.info("OnboardingWindow deinitialized")
+    }
+    
     private func setupWindow() {
         self.title = "Welcome to Clnbrd"
         self.titlebarAppearsTransparent = true
@@ -120,15 +126,19 @@ class OnboardingWindow: NSPanel {
         welcomeView = NSView(frame: contentContainer.bounds)
         welcomeView.autoresizingMask = [.width, .height]
         
-        // App icon (shifted left)
+        // App icon (shifted left) - with liquid glass enhancement
         let iconView = NSImageView(frame: NSRect(x: (windowWidth - 120) / 2 - 20, y: 240, width: 120, height: 120))
         if let appIcon = NSImage(named: "AppIcon") {
             iconView.image = appIcon
+            iconView.imageScaling = .scaleProportionallyUpOrDown
+            // Add floating shadow for depth
+            iconView.addFloatingShadow(offset: NSSize(width: 0, height: 8), radius: 16, opacity: 0.25)
         } else {
-            iconView.image = NSImage(systemSymbolName: "doc.on.clipboard.fill", accessibilityDescription: "Clnbrd")
-            iconView.contentTintColor = .controlAccentColor
+            // Fallback to hero symbol with hierarchical rendering
+            iconView.image = NSImage.heroSymbol("doc.on.clipboard.fill", color: .controlAccentColor)
+            iconView.imageScaling = .scaleProportionallyUpOrDown
+            iconView.applyLiquidGlassStyle(addShadow: true, addGlow: true, glowColor: .controlAccentColor)
         }
-        iconView.imageScaling = .scaleProportionallyUpOrDown
         welcomeView.addSubview(iconView)
         
         // Title (shifted left)
@@ -174,12 +184,12 @@ class OnboardingWindow: NSPanel {
         permissionsView = NSView(frame: contentContainer.bounds)
         permissionsView.autoresizingMask = [.width, .height]
         
-        // Icon - centered (shifted left)
+        // Icon - centered (shifted left) with hierarchical rendering
         let iconSize: CGFloat = 80
         let iconView = NSImageView(frame: NSRect(x: (windowWidth - iconSize) / 2 - 20, y: 280, width: iconSize, height: iconSize))
-        iconView.image = NSImage(systemSymbolName: "lock.shield.fill", accessibilityDescription: "Permissions")
-        iconView.contentTintColor = .controlAccentColor
+        iconView.image = NSImage.symbol("lock.shield.fill", size: 64, weight: .semibold, scale: .large, color: .controlAccentColor)
         iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.applyLiquidGlassStyle(addShadow: true, addGlow: true, glowColor: .controlAccentColor.withAlphaComponent(0.4))
         permissionsView.addSubview(iconView)
         
         // Title - centered (shifted left)
@@ -302,11 +312,11 @@ class OnboardingWindow: NSPanel {
         descLabel.isEditable = false
         card.addSubview(descLabel)
         
-        // Status indicator
+        // Status indicator with hierarchical rendering
         let statusView = NSImageView(frame: NSRect(x: 210, y: 14, width: 20, height: 20))
         statusView.identifier = NSUserInterfaceItemIdentifier("\(identifier)Status")
-        statusView.image = NSImage(systemSymbolName: "circle", accessibilityDescription: "Not granted")
-        statusView.contentTintColor = .secondaryLabelColor
+        statusView.image = NSImage.symbol("circle", size: 16, weight: .medium, scale: .medium, color: .secondaryLabelColor)
+        statusView.imageScaling = .scaleProportionallyUpOrDown
         card.addSubview(statusView)
         
         // "Open Settings" button
@@ -327,11 +337,11 @@ class OnboardingWindow: NSPanel {
         quickStartView = NSView(frame: contentContainer.bounds)
         quickStartView.autoresizingMask = [.width, .height]
         
-        // Success icon
+        // Success icon with multicolor rendering and glow
         let iconView = NSImageView(frame: NSRect(x: (windowWidth - 80) / 2 - 40, y: 280, width: 80, height: 80))
-        iconView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: "Success")
-        iconView.contentTintColor = .systemGreen
+        iconView.image = NSImage.symbolMulticolor("checkmark.circle.fill", size: 64, weight: .semibold, scale: .large)
         iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.applyLiquidGlassStyle(addShadow: true, addGlow: true, glowColor: .systemGreen.withAlphaComponent(0.5))
         quickStartView.addSubview(iconView)
         
         // Title
@@ -472,22 +482,28 @@ class OnboardingWindow: NSPanel {
         
         logger.info("Permission check - Accessibility: \(hasAccessibility), Input Monitoring: \(hasInputMonitoring)")
         
-        // Update accessibility status
+        // Update accessibility status with multicolor symbols
         if let statusView = permissionsView.viewWithTag(1) as? NSImageView {
-            statusView.image = NSImage(systemSymbolName: hasAccessibility ? "checkmark.circle.fill" : "circle", 
-                                       accessibilityDescription: hasAccessibility ? "Granted" : "Not granted")
-            statusView.contentTintColor = hasAccessibility ? .systemGreen : .secondaryLabelColor
+            if hasAccessibility {
+                statusView.image = NSImage.symbolMulticolor("checkmark.circle.fill", size: 16, weight: .semibold, scale: .medium)
+            } else {
+                statusView.image = NSImage.symbol("circle", size: 16, weight: .medium, scale: .medium, color: .secondaryLabelColor)
+            }
         } else if let statusView = findViewByIdentifier("accessibilityStatus", in: permissionsView) as? NSImageView {
-            statusView.image = NSImage(systemSymbolName: hasAccessibility ? "checkmark.circle.fill" : "circle",
-                                       accessibilityDescription: hasAccessibility ? "Granted" : "Not granted")
-            statusView.contentTintColor = hasAccessibility ? .systemGreen : .secondaryLabelColor
+            if hasAccessibility {
+                statusView.image = NSImage.symbolMulticolor("checkmark.circle.fill", size: 16, weight: .semibold, scale: .medium)
+            } else {
+                statusView.image = NSImage.symbol("circle", size: 16, weight: .medium, scale: .medium, color: .secondaryLabelColor)
+            }
         }
         
-        // Update input monitoring status
+        // Update input monitoring status with multicolor symbols
         if let statusView = findViewByIdentifier("inputMonitoringStatus", in: permissionsView) as? NSImageView {
-            statusView.image = NSImage(systemSymbolName: hasInputMonitoring ? "checkmark.circle.fill" : "circle",
-                                       accessibilityDescription: hasInputMonitoring ? "Granted" : "Not granted")
-            statusView.contentTintColor = hasInputMonitoring ? .systemGreen : .secondaryLabelColor
+            if hasInputMonitoring {
+                statusView.image = NSImage.symbolMulticolor("checkmark.circle.fill", size: 16, weight: .semibold, scale: .medium)
+            } else {
+                statusView.image = NSImage.symbol("circle", size: 16, weight: .medium, scale: .medium, color: .secondaryLabelColor)
+            }
         }
         
         // Enable/disable Continue button

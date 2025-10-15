@@ -66,16 +66,13 @@ class AboutWindow: NSWindowController {
         centeredStack.spacing = 16
         centeredStack.alignment = .centerX
         
-        // App Icon with modern shadow
+        // App Icon with premium liquid glass shadow and subtle glow
         let iconView = NSImageView()
         iconView.image = NSImage(named: NSImage.applicationIconName)
         iconView.imageScaling = .scaleProportionallyUpOrDown
-        iconView.wantsLayer = true
-        iconView.layer?.shadowColor = NSColor.black.cgColor
-        iconView.layer?.shadowOpacity = 0.15
-        iconView.layer?.shadowOffset = NSSize(width: 0, height: 4)
-        iconView.layer?.shadowRadius = 12
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.addFloatingShadow(offset: NSSize(width: 0, height: 6), radius: 16, opacity: 0.25)
+        iconView.addGlowEffect(color: .controlAccentColor.withAlphaComponent(0.3), radius: 12, opacity: 0.2)
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: 128),
             iconView.heightAnchor.constraint(equalToConstant: 128)

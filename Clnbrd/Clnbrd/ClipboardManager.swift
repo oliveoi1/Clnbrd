@@ -7,6 +7,7 @@ class ClipboardManager {
     var cleaningRules = CleaningRules()
     var lastClipboardChangeCount = 0
     var clipboardMonitorTimer: Timer?
+    private var historyMonitorTimer: DispatchSourceTimer?
     
     // Threshold for background processing (50,000 characters)
     private let largeTextThreshold = 50_000
@@ -490,8 +491,17 @@ class ClipboardManager {
     
     /// Start monitoring clipboard changes for history capture
     func startHistoryMonitoring() {
-        // Monitor clipboard changes every 0.5 seconds for history
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // Stop any existing timer
+        stopHistoryMonitoring()
+        
+        // Create a DispatchSourceTimer for better power efficiency
+        let queue = DispatchQueue(label: "com.allanray.Clnbrd.historyMonitor", qos: .utility)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        
+        // Monitor clipboard changes every 1.5 seconds (reduced from 0.5s for better battery life)
+        timer.schedule(deadline: .now(), repeating: 1.5, leeway: .milliseconds(100))
+        
+        timer.setEventHandler { [weak self] in
             guard let self = self else { return }
             guard ClipboardHistoryManager.shared.isEnabled else { return }
             
@@ -499,13 +509,28 @@ class ClipboardManager {
             if currentChangeCount != self.lastClipboardChangeCount {
                 self.lastClipboardChangeCount = currentChangeCount
                 
-                // Capture to history on ANY clipboard change
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Capture to history on ANY clipboard change (coalesced on main queue)
+                DispatchQueue.main.async {
                     self.captureToHistory(NSPasteboard.general)
                 }
             }
         }
         
-        logger.info("📋 Clipboard history monitoring started")
+        timer.resume()
+        historyMonitorTimer = timer
+        
+        logger.info("📋 Clipboard history monitoring started (1.5s interval)")
+    }
+    
+    /// Stop monitoring clipboard changes for history
+    func stopHistoryMonitoring() {
+        historyMonitorTimer?.cancel()
+        historyMonitorTimer = nil
+        logger.info("📋 Clipboard history monitoring stopped")
+    }
+    
+    deinit {
+        clipboardMonitorTimer?.invalidate()
+        stopHistoryMonitoring()
     }
 }

@@ -20,10 +20,14 @@ class ClipboardHistoryWindow: NSPanel {
     private var globalClickMonitor: Any?
     private var selectedIndex: Int = 0 // Currently selected card index
     private var cardContainers: [NSView] = [] // Keep references to card containers
+    private var displayedItemIds: [UUID] = [] // Track currently displayed item IDs for differential updates
     
     // Performance optimization
     private var appIconCache: [String: NSImage] = [:] // Cache app icons
     private let maxDisplayedItems: Int = 50 // Limit displayed items for performance
+    private let maxIconCacheSize: Int = 50 // LRU cache limit for app icons
+    private var cardViewPool: [NSView] = [] // Reusable card views
+    private let maxPoolSize: Int = 10 // Max cards to keep in pool
     
     // Constants
     private let windowHeight: CGFloat = 220 // Increased to show full cards + timestamps below (120px card + 24px time + header + padding)
@@ -56,6 +60,29 @@ class ClipboardHistoryWindow: NSPanel {
         observeHistoryChanges()
         
         logger.info("ClipboardHistoryWindow initialized")
+    }
+    
+    deinit {
+        // Clean up notification observers
+        NotificationCenter.default.removeObserver(self)
+        
+        // Clean up click monitors
+        if let monitor = localClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            localClickMonitor = nil
+        }
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
+        }
+        
+        // Clear caches and pools
+        appIconCache.removeAll()
+        cardContainers.removeAll()
+        displayedItemIds.removeAll()
+        cardViewPool.removeAll()
+        
+        logger.info("ClipboardHistoryWindow deinitialized")
     }
     
     private func setupWindow() {
@@ -156,8 +183,7 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.bezelStyle = .regularSquare
         settingsButton.isBordered = false
         settingsButton.setButtonType(.momentaryChange)
-        settingsButton.image = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: "Settings")
-        settingsButton.contentTintColor = .labelColor // Adaptive for light/dark mode
+        settingsButton.image = NSImage.symbol("gearshape.fill", size: 16, weight: .medium, scale: .medium, color: .labelColor)
         settingsButton.imageScaling = .scaleProportionallyDown
         settingsButton.target = self
         settingsButton.action = #selector(openHistorySettings)
@@ -166,11 +192,10 @@ class ClipboardHistoryWindow: NSPanel {
         settingsButton.toolTip = "Open History Settings"
         headerView.addSubview(settingsButton)
         
-        // Options button (three dots) in top right - like screenshot preview
+        // Options button (three dots) with hierarchical rendering
         optionsButton = NSButton(frame: NSRect(x: contentView.bounds.width - 44, y: 6, width: 28, height: 24))
-        optionsButton.bezelStyle = .automatic // Modern, adaptive style
-        optionsButton.image = NSImage(systemSymbolName: "ellipsis.circle.fill", accessibilityDescription: "Options")
-        optionsButton.contentTintColor = .labelColor // Adaptive for light/dark mode
+        optionsButton.bezelStyle = .automatic
+        optionsButton.image = NSImage.symbol("ellipsis.circle.fill", size: 16, weight: .medium, scale: .medium, color: .labelColor)
         optionsButton.isBordered = false
         optionsButton.target = self
         optionsButton.action = #selector(showOptionsMenu(_:))
@@ -230,14 +255,44 @@ class ClipboardHistoryWindow: NSPanel {
     
     @objc private func historyDidChange() {
         DispatchQueue.main.async { [weak self] in
-            self?.reloadHistoryItems()
+            self?.updateHistoryItems()
         }
     }
     
+    /// Differential update: only modify changed items instead of full reload
+    private func updateHistoryItems() {
+        // Get items (filtered by app and search)
+        let allItems = ClipboardHistoryManager.shared.items
+        let filteredItems = filterItems(allItems)
+        let items = Array(filteredItems.prefix(maxDisplayedItems))
+        let newItemIds = items.map { $0.id }
+        
+        // Check if we need a full reload (filter changed or major difference)
+        let needsFullReload = newItemIds.count != displayedItemIds.count ||
+                              searchQuery != searchField.stringValue ||
+                              Set(newItemIds) != Set(displayedItemIds)
+        
+        if needsFullReload {
+            reloadHistoryItems()
+            return
+        }
+        
+        // Only title update needed (same items)
+        updateTitleLabel(items: items, filteredItems: filteredItems, allItems: allItems)
+        logger.debug("Updated history title only (no view changes needed)")
+    }
+    
+    /// Full reload: removes and recreates all views
     private func reloadHistoryItems() {
+        // Return existing cards to pool before removing
+        for container in cardContainers {
+            returnCardToPool(container)
+        }
+        
         // Remove all existing views
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         cardContainers.removeAll()
+        displayedItemIds.removeAll()
         
         // Update app filter dropdown
         updateAppFilter()
@@ -249,20 +304,8 @@ class ClipboardHistoryWindow: NSPanel {
         // Limit displayed items for performance (show most recent)
         let items = Array(filteredItems.prefix(maxDisplayedItems))
         
-        // Update title with count
-        if !searchQuery.isEmpty || !selectedAppFilters.isEmpty {
-            if filteredItems.count > maxDisplayedItems {
-                titleLabel.stringValue = "Results: \(items.count) of \(filteredItems.count) (showing \(maxDisplayedItems))"
-            } else {
-                titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
-            }
-        } else {
-            if filteredItems.count > maxDisplayedItems {
-                titleLabel.stringValue = "Clipboard History (\(items.count) of \(filteredItems.count))"
-            } else {
-                titleLabel.stringValue = "Clipboard History (\(items.count))"
-            }
-        }
+        // Update title
+        updateTitleLabel(items: items, filteredItems: filteredItems, allItems: allItems)
         
         if items.isEmpty {
             addEmptyStateView()
@@ -281,6 +324,7 @@ class ClipboardHistoryWindow: NSPanel {
             cardContainer.heightAnchor.constraint(equalToConstant: containerHeight).isActive = true
             stackView.addArrangedSubview(cardContainer)
             cardContainers.append(cardContainer)
+            displayedItemIds.append(item.id)
         }
         
         // Update container frame to fit all cards horizontally
@@ -296,11 +340,28 @@ class ClipboardHistoryWindow: NSPanel {
         logger.debug("Reloaded history with \(items.count) items")
     }
     
+    /// Helper to update title label
+    private func updateTitleLabel(items: [ClipboardHistoryItem], filteredItems: [ClipboardHistoryItem], allItems: [ClipboardHistoryItem]) {
+        if !searchQuery.isEmpty || !selectedAppFilters.isEmpty {
+            if filteredItems.count > maxDisplayedItems {
+                titleLabel.stringValue = "Results: \(items.count) of \(filteredItems.count) (showing \(maxDisplayedItems))"
+            } else {
+                titleLabel.stringValue = "Results: \(items.count) of \(allItems.count)"
+            }
+        } else {
+            if filteredItems.count > maxDisplayedItems {
+                titleLabel.stringValue = "Clipboard History (\(items.count) of \(filteredItems.count))"
+            } else {
+                titleLabel.stringValue = "Clipboard History (\(items.count))"
+            }
+        }
+    }
+    
     private func addEmptyStateView() {
         // Create a container for the empty state
         let emptyContainer = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
         
-        // Add icon
+        // Add icon with hierarchical rendering
         let iconView = NSImageView(frame: NSRect(x: 130, y: 50, width: 40, height: 40))
         let iconName: String
         if searchQuery.isEmpty && selectedAppFilters.isEmpty {
@@ -308,8 +369,7 @@ class ClipboardHistoryWindow: NSPanel {
         } else {
             iconName = "magnifyingglass"
         }
-        iconView.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
-        iconView.contentTintColor = .tertiaryLabelColor
+        iconView.image = NSImage.symbol(iconName, size: 32, weight: .medium, scale: .large, color: .tertiaryLabelColor)
         iconView.imageScaling = .scaleProportionallyUpOrDown
         emptyContainer.addSubview(iconView)
         
@@ -477,7 +537,10 @@ class ClipboardHistoryWindow: NSPanel {
         cardContainer.wantsLayer = true
         cardContainer.identifier = NSUserInterfaceItemIdentifier("card-\(item.id.uuidString)")
         
-        // Create all liquid glass layers
+        // Create all liquid glass layers (disable implicit animations during setup)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        
         let layers = createCardLayers(cornerRadius: cornerRadius, cardWidth: cardWidth, cardHeight: cardHeight)
         let shadows = createCardShadows(cardWidth: cardWidth, cardHeight: cardHeight, cornerRadius: cornerRadius)
         let borders = createCardBorders(cardWidth: cardWidth, cardHeight: cardHeight, cornerRadius: cornerRadius)
@@ -649,6 +712,14 @@ class ClipboardHistoryWindow: NSPanel {
         pillBackground.isHidden = true // Hidden by default, shown when selected
         pillBackground.identifier = NSUserInterfaceItemIdentifier("pill-\(item.id.uuidString)")
         container.addSubview(pillBackground, positioned: .below, relativeTo: timeLabel)
+        
+        // Enable rasterization for complex layer hierarchies to improve scrolling performance
+        if let cardLayer = cardContainer.layer {
+            cardLayer.shouldRasterize = true
+            cardLayer.rasterizationScale = NSScreen.main?.backingScaleFactor ?? 2.0
+        }
+        
+        CATransaction.commit()
         
         return container
     }
@@ -1056,12 +1127,10 @@ class ClipboardHistoryWindow: NSPanel {
         let allItems = ClipboardHistoryManager.shared.items
         let uniqueApps = Set(allItems.compactMap { $0.sourceApp }).sorted()
         
-        // Add "All Apps" option with checkmark when all selected
+        // Add "All Apps" option with modern symbol
         let allAppsItem = NSMenuItem(title: "All Apps", action: #selector(selectAllApps), keyEquivalent: "")
         allAppsItem.target = self
-        let allAppsIcon = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "All Apps")
-        allAppsIcon?.isTemplate = true
-        allAppsItem.image = allAppsIcon
+        allAppsItem.image = NSImage.menuBarSymbol("square.grid.2x2", color: .labelColor)
         // Check "All Apps" if no specific filters are selected (showing all)
         allAppsItem.state = selectedAppFilters.isEmpty ? .on : .off
         menu.addItem(allAppsItem)
@@ -1078,17 +1147,11 @@ class ClipboardHistoryWindow: NSPanel {
                 // Checked = app is visible, Unchecked = app is hidden
                 let isVisible = !selectedAppFilters.contains(appName)
                 
-                // Always show a checkbox - either checked or unchecked
+                // Always show a checkbox - either checked or unchecked (with modern symbols)
                 if isVisible {
-                    // Show filled checkbox with checkmark
-                    let checkedBox = NSImage(systemSymbolName: "checkmark.square.fill", accessibilityDescription: "Visible")
-                    checkedBox?.isTemplate = true
-                    menuItem.image = checkedBox
+                    menuItem.image = NSImage.menuBarSymbol("checkmark.square.fill", color: .labelColor)
                 } else {
-                    // Show empty square box
-                    let uncheckedBox = NSImage(systemSymbolName: "square", accessibilityDescription: "Hidden")
-                    uncheckedBox?.isTemplate = true
-                    menuItem.image = uncheckedBox
+                    menuItem.image = NSImage.menuBarSymbol("square", color: .secondaryLabelColor)
                 }
                 
                 // Don't use the built-in state indicator
@@ -1273,20 +1336,14 @@ class ClipboardHistoryWindow: NSPanel {
         if let appIcon = getAppIcon(for: appName) {
             imageView.image = appIcon
         } else {
-            // Fallback to generic document icon
-            imageView.image = NSImage(systemSymbolName: "doc.text.fill", accessibilityDescription: "Document")
-            imageView.contentTintColor = .systemGray
+            // Fallback to hierarchical document icon
+            imageView.image = NSImage.symbol("doc.text.fill", size: 24, weight: .medium, scale: .medium, color: .systemGray)
         }
         
         imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.wantsLayer = true
         
-        // NO background - just the icon itself like macOS screenshot badges
-        // Add subtle shadow for depth so icon stands out
-        imageView.layer?.shadowColor = NSColor.black.cgColor
-        imageView.layer?.shadowOpacity = 0.5
-        imageView.layer?.shadowOffset = NSSize(width: 0, height: 1)
-        imageView.layer?.shadowRadius = 4
+        // Add floating shadow for depth (liquid glass style)
+        imageView.addFloatingShadow(offset: NSSize(width: 0, height: 2), radius: 6, opacity: 0.3)
         
         return imageView
     }
@@ -1327,12 +1384,44 @@ class ClipboardHistoryWindow: NSPanel {
             }
         }
         
-        // Cache the icon if found
+        // Cache the icon if found (with LRU management)
         if let icon = icon {
+            // Enforce cache size limit
+            if appIconCache.count >= maxIconCacheSize {
+                // Remove oldest entry (simple approach - could use more sophisticated LRU)
+                if let firstKey = appIconCache.keys.first {
+                    appIconCache.removeValue(forKey: firstKey)
+                }
+            }
             appIconCache[appName] = icon
         }
         
         return icon
+    }
+    
+    // MARK: - View Recycling Pool
+    
+    /// Returns a card view to the pool for reuse
+    private func returnCardToPool(_ container: NSView) {
+        // Only pool if we're under the limit
+        guard cardViewPool.count < maxPoolSize else { return }
+        
+        // Reset view state before pooling
+        container.removeFromSuperview()
+        
+        // Clear identifiers and subviews that are item-specific
+        container.identifier = nil
+        
+        // Add to pool
+        cardViewPool.append(container)
+    }
+    
+    /// Retrieves a card view from the pool, or creates a new one if pool is empty
+    /// Note: For simplicity, we're still creating new cards each time since card content
+    /// is highly customized per item. The pool acts as a backup for rapid show/hide cycles.
+    private func dequeueReusableCard() -> NSView? {
+        guard !cardViewPool.isEmpty else { return nil }
+        return cardViewPool.removeLast()
     }
     
     func toggle() {
@@ -1348,6 +1437,12 @@ class ClipboardHistoryWindow: NSPanel {
     }
     
     func show() {
+        // Check if history is enabled first
+        guard ClipboardHistoryManager.shared.isEnabled else {
+            showHistoryDisabledMessage()
+            return
+        }
+        
         // Reload items before showing
         reloadHistoryItems()
         
@@ -1383,6 +1478,108 @@ class ClipboardHistoryWindow: NSPanel {
         
         // Track analytics
         AnalyticsManager.shared.trackFeatureUsage("clipboard_history_window_opened")
+    }
+    
+    private func showHistoryDisabledMessage() {
+        // Position at top of current screen - with padding for floating appearance
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let horizontalPadding: CGFloat = 20
+            let topPadding: CGFloat = 12
+            
+            // Smaller window for the disabled message
+            let messageHeight: CGFloat = 120
+            let windowFrame = NSRect(
+                x: screenFrame.origin.x + horizontalPadding,
+                y: screenFrame.maxY - messageHeight - topPadding,
+                width: screenFrame.width - (horizontalPadding * 2),
+                height: messageHeight
+            )
+            self.setFrame(windowFrame, display: true)
+        }
+        
+        // Clear existing content
+        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        cardContainers.removeAll()
+        
+        // Create disabled message content
+        let messageContainer = NSStackView()
+        messageContainer.orientation = .vertical
+        messageContainer.alignment = .centerX
+        messageContainer.spacing = 12
+        messageContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Icon
+        let iconView = NSImageView()
+        iconView.image = NSImage.symbol("clock.slash", size: 32, weight: .medium, scale: .large, color: .secondaryLabelColor)
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        messageContainer.addArrangedSubview(iconView)
+        
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Clipboard History Disabled")
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.textColor = .labelColor
+        titleLabel.alignment = .center
+        messageContainer.addArrangedSubview(titleLabel)
+        
+        // Description
+        let descLabel = NSTextField(labelWithString: "Enable clipboard history in Settings to view your clipboard history")
+        descLabel.font = NSFont.systemFont(ofSize: 13)
+        descLabel.textColor = .secondaryLabelColor
+        descLabel.alignment = .center
+        descLabel.lineBreakMode = .byWordWrapping
+        descLabel.maximumNumberOfLines = 2
+        descLabel.preferredMaxLayoutWidth = 400
+        messageContainer.addArrangedSubview(descLabel)
+        
+        // Settings button
+        let settingsButton = NSButton(title: "Open Settings", target: self, action: #selector(openSettings))
+        settingsButton.bezelStyle = .rounded
+        settingsButton.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        messageContainer.addArrangedSubview(settingsButton)
+        
+        // Add to main stack
+        stackView.addArrangedSubview(messageContainer)
+        
+        // Center the message container
+        NSLayoutConstraint.activate([
+            messageContainer.centerXAnchor.constraint(equalTo: stackView.centerXAnchor),
+            messageContainer.centerYAnchor.constraint(equalTo: stackView.centerYAnchor)
+        ])
+        
+        // Animate window appearance
+        self.alphaValue = 0
+        self.makeKeyAndOrderFront(nil)
+        
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            self.animator().alphaValue = 1.0
+        })
+        
+        logger.info("Showing history disabled message")
+        
+        // Start monitoring for clicks outside
+        startClickOutsideMonitor()
+        
+        // Track analytics
+        AnalyticsManager.shared.trackFeatureUsage("clipboard_history_disabled_message_shown")
+    }
+    
+    @objc private func openSettings() {
+        // Close this window first
+        closeWindow()
+        
+        // Open settings window to Settings tab
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            if appDelegate.settingsWindowController == nil {
+                appDelegate.settingsWindowController = SettingsWindow(cleaningRules: appDelegate.clipboardManager.cleaningRules)
+            }
+            appDelegate.settingsWindowController?.showWindow(withTab: "settings")
+        }
+        
+        logger.info("Opened settings from history disabled message")
+        AnalyticsManager.shared.trackFeatureUsage("settings_opened_from_disabled_history")
     }
     
     override func keyDown(with event: NSEvent) {

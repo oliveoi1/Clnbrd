@@ -8,6 +8,22 @@ import UniformTypeIdentifiers
 
 private let logger = Logger(subsystem: "com.allanray.Clnbrd", category: "settings")
 
+/// Flipped document view for proper scroll coordinate system
+final class FlippedDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+/// Extension for consistent scroll-to-top behavior with flipped document views
+private extension NSScrollView {
+    func scrollToTopFlipped() {
+        guard let doc = documentView else { return }
+        layoutSubtreeIfNeeded()
+        doc.layoutSubtreeIfNeeded()
+        contentView.setBoundsOrigin(NSPoint(x: 0, y: 0)) // flipped: top
+        reflectScrolledClipView(contentView)
+    }
+}
+
 /// Settings window for configuring cleaning rules and application preferences
 class SettingsWindow: NSWindowController {
     var cleaningRules: CleaningRules
@@ -16,6 +32,7 @@ class SettingsWindow: NSWindowController {
     var profileDropdown: NSPopUpButton!
     var currentProfileId: UUID?
     var scrollView: NSScrollView!
+    var scrollViews: [String: NSScrollView] = [:]  // Store scroll views for each tab
     var mainTabView: NSTabView!
     var appExclusionsTableView: NSTableView!
     var appExclusionsData: [String] = []
@@ -27,7 +44,7 @@ class SettingsWindow: NSWindowController {
         self.currentProfileId = activeProfile.id
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 550),
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 600),  // Reduced width to eliminate empty space
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -35,8 +52,11 @@ class SettingsWindow: NSWindowController {
         window.title = "Clnbrd Settings"
         window.center()
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 620, height: 400)  // Match initial width to fit 550px cards
-        window.maxSize = NSSize(width: 800, height: 1200)  // Allow vertical resizing
+        window.minSize = NSSize(width: 600, height: 400)  // Reduced minimum width
+        window.maxSize = NSSize(width: 700, height: 1200)  // Reduced max width
+        
+        // Remember user's preferred window size/position
+        window.setFrameAutosaveName("SettingsWindow")
         
         super.init(window: window)
         
@@ -50,24 +70,23 @@ class SettingsWindow: NSWindowController {
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
         
-        // Set up window delegate to catch window becoming key
         window?.delegate = self
         
-        scrollToTop()
+        DispatchQueue.main.async { [weak self] in
+            self?.scrollCurrentTabToTop()
+        }
     }
     
     /// Show the window with a specific tab selected
     func showWindow(withTab tabIdentifier: String) {
-        guard let window = window,
-              let tabView = window.contentView as? NSTabView else { return }
-        
-        // Find and select the tab
-        for item in tabView.tabViewItems where item.identifier as? String == tabIdentifier {
-            tabView.selectTabViewItem(item)
-            break
+        super.showWindow(nil)                      // put it on-screen first
+        DispatchQueue.main.async { [weak self] in  // then select after it's in a window
+            guard let self = self else { return }
+            if let item = self.mainTabView.tabViewItems.first(where: { ($0.identifier as? String) == tabIdentifier }) {
+                self.mainTabView.selectTabViewItem(item)
+            }
+            self.scrollCurrentTabToTop()
         }
-        
-        showWindow(nil)
     }
     
     /// Select a specific tab by index
@@ -81,21 +100,26 @@ class SettingsWindow: NSWindowController {
         logger.info("✅ Tab \(tabIndex) selected")
     }
     
-    private func scrollToTop() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self = self, let scrollView = self.scrollView else { return }
-            guard let documentView = scrollView.documentView else { return }
-            
-            // Calculate the Y position for the TOP of the content
-            // In flipped coordinates: Y = documentHeight - visibleHeight
-            let documentHeight = documentView.frame.height
-            let visibleHeight = scrollView.contentView.bounds.height
-            let topY = max(0, documentHeight - visibleHeight)
-            
-            // Set bounds to show the top
-            let topPoint = NSPoint(x: 0, y: topY)
-            scrollView.contentView.setBoundsOrigin(topPoint)
+    private func scrollCurrentTabToTop() {
+        guard
+            let item = mainTabView?.selectedTabViewItem,
+            let id = item.identifier as? String,
+            let sv = scrollViews[id]
+        else { return }
+        sv.scrollToTopFlipped()
+    }
+    
+    
+    private func scrollAllScrollViewsToTop(in view: NSView) {
+        if let scrollView = view as? NSScrollView {
+            // Scroll to top (origin is 0,0 for top)
+            scrollView.contentView.setBoundsOrigin(NSPoint(x: 0, y: 0))
             scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+        
+        // Recursively check all subviews
+        for subview in view.subviews {
+            scrollAllScrollViewsToTop(in: subview)
         }
     }
     
@@ -106,7 +130,7 @@ class SettingsWindow: NSWindowController {
         if let contentView = window.contentView {
             let backgroundView = NSVisualEffectView(frame: contentView.bounds)
             backgroundView.autoresizingMask = [.width, .height]
-            backgroundView.material = .underWindowBackground  // Apple's standard for settings windows
+            backgroundView.material = .underWindowBackground
             backgroundView.state = .followsWindowActiveState
             backgroundView.blendingMode = .behindWindow
             contentView.addSubview(backgroundView, positioned: .below, relativeTo: nil)
@@ -114,7 +138,8 @@ class SettingsWindow: NSWindowController {
         
         // Create tab view
         mainTabView = NSTabView()
-        mainTabView.translatesAutoresizingMaskIntoConstraints = false
+        mainTabView.translatesAutoresizingMaskIntoConstraints = true
+        mainTabView.autoresizingMask = [.width, .height]
         mainTabView.delegate = self
         
         // Tab 1: Rules (Cleaning Rules)
@@ -126,7 +151,8 @@ class SettingsWindow: NSWindowController {
         // Tab 2: Settings (formerly History)
         let settingsTab = NSTabViewItem(identifier: "settings")
         settingsTab.label = "Settings"
-        settingsTab.view = createHistoryTab()
+        let settingsView = createHistoryTab()
+        settingsTab.view = settingsView
         mainTabView.addTabViewItem(settingsTab)
         
         // Tab 3: About
@@ -138,13 +164,35 @@ class SettingsWindow: NSWindowController {
         // Add tab view to window
         window.contentView = mainTabView
         
-        // Set initial window title
+        // ✅ CLEAN: Let the first tab selection drive layout naturally
+        mainTabView.selectTabViewItem(rulesTab)
         window.title = "Rules"
+    }
+    
+    /// Helper to pin document view to clip view the AppKit way
+    private func pinDocumentViewToClipView(_ document: NSView, in scrollView: NSScrollView) {
+        document.translatesAutoresizingMaskIntoConstraints = false
+        let clip = scrollView.contentView
+        
+        let top    = document.topAnchor.constraint(equalTo: clip.topAnchor)
+        let lead   = document.leadingAnchor.constraint(equalTo: clip.leadingAnchor)
+        let trail  = document.trailingAnchor.constraint(equalTo: clip.trailingAnchor)
+        let bottom = document.bottomAnchor.constraint(greaterThanOrEqualTo: clip.bottomAnchor) // allow taller than clip
+        bottom.priority = .defaultLow  // 250 is fine
+        
+        let width  = document.widthAnchor.constraint(equalTo: clip.widthAnchor) // vertical-only scrolling
+        
+        // help Auto Layout prefer growing vertically
+        document.setContentHuggingPriority(.defaultLow, for: .vertical)
+        document.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        
+        NSLayoutConstraint.activate([top, lead, trail, bottom, width])
     }
     
     private func createGeneralTab() -> NSView {
         let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
+        container.translatesAutoresizingMaskIntoConstraints = true
+        container.autoresizingMask = [.width, .height]
         
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -156,7 +204,6 @@ class SettingsWindow: NSWindowController {
         stackView.orientation = .vertical
         stackView.alignment = .centerX  // Center all cards
         stackView.spacing = 10  // Compact spacing
-        stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)  // Compact padding
         
         // Setup all UI sections with card styling - FIXED WIDTH for consistency
@@ -174,67 +221,89 @@ class SettingsWindow: NSWindowController {
         advancedCleaningCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
         stackView.addArrangedSubview(advancedCleaningCard)
         
-        let safetyCard = createSectionCard(content: createClipboardSafetySectionContent())
-        safetyCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
-        stackView.addArrangedSubview(safetyCard)
-        
-        // CUSTOM FIND & REPLACE RULES SECTION (Card styled)
+        // CUSTOM FIND & REPLACE RULES SECTION (Card styled) - MOVED ABOVE SAFETY
         let customRulesCard = createSectionCard(content: createCustomRulesSectionContent())
         customRulesCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
         stackView.addArrangedSubview(customRulesCard)
         
-        // Configure scroll view
-        scrollView.documentView = stackView
+        let safetyCard = createSectionCard(content: createClipboardSafetySectionContent())
+        safetyCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(safetyCard)
+        
+        // Add a tiny spacer at the end so the last card isn't flush
+        stackView.addArrangedSubview(createSpacer(height: 8))
+        
+        // ✅ Wrap stack in flipped doc view
+        let doc = FlippedDocumentView()
+        doc.translatesAutoresizingMaskIntoConstraints = false
+        doc.addSubview(stackView)
+        
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: doc.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: doc.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: doc.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: doc.bottomAnchor)
+        ])
+        
+        scrollView.documentView = doc
         container.addSubview(scrollView)
         
+        // ✅ Pin doc container to clip view
+        pinDocumentViewToClipView(doc, in: scrollView)
+        
+        // Makes the very bottom reachable/comfortable
+        scrollView.contentInsets.bottom = 24
+        
+        // Scroll view fills the tab container
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
-            // Let cards define width (550px), stackView adjusts to content
-            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 550)
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
+        
+        scrollViews["rules"] = scrollView
         
         return container
     }
     
-    // swiftlint:disable:next function_body_length
     private func createHistoryTab() -> NSView {
         let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = true
+        container.autoresizingMask = [.width, .height]
         
         let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
-        scrollView.drawsBackground = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(scrollView)
-        
-        let contentView = NSView()
-        contentView.translatesAutoresizingMaskIntoConstraints = false
         
         let stackView = NSStackView()
         stackView.orientation = .vertical
         stackView.alignment = .centerX  // Center all cards
         stackView.spacing = 10  // Compact spacing
         stackView.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)  // Compact padding
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(stackView)
-        
-        scrollView.documentView = contentView
         
         // Fixed width for all cards (matches Rules tab)
         let cardWidth: CGFloat = 550
         
-        // Enable/Disable Toggle (compact, no header)
-        let enableCheckbox = NSButton(checkboxWithTitle: "Enable Clipboard History", target: self, action: #selector(toggleHistoryEnabled))
+        // ✅ Put enable toggle in a card for visual consistency
+        let enableCheckbox = NSButton(checkboxWithTitle: "Enable Clipboard History", 
+                                      target: self, 
+                                      action: #selector(toggleHistoryEnabled))
         enableCheckbox.state = ClipboardHistoryManager.shared.isEnabled ? .on : .off
         enableCheckbox.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        stackView.addArrangedSubview(enableCheckbox)
         
-        stackView.addArrangedSubview(createSpacer(height: 6))
+        // Wrap in a tiny vertical stack so the card has intrinsic height
+        let enableWrap = NSStackView()
+        enableWrap.orientation = .vertical
+        enableWrap.alignment = .leading
+        enableWrap.addArrangedSubview(enableCheckbox)
+        
+        let enableCard = createSectionCard(content: enableWrap)
+        enableCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(enableCard)
         
         // Appearance Section (Card)
         let appearanceCard = createSectionCard(content: createAppearanceSectionContent())
@@ -246,390 +315,93 @@ class SettingsWindow: NSWindowController {
         hotkeysCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
         stackView.addArrangedSubview(hotkeysCard)
         
-        // MARK: - App Exclusions Section (at top)
-        let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            exclusionsHeader.font = roundedFont  // SF Pro Rounded for subsection headers
-        } else {
-            exclusionsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(exclusionsHeader)
+        // App Exclusions Section (Card)
+        let exclusionsCard = createSectionCard(content: createAppExclusionsSectionContent())
+        exclusionsCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(exclusionsCard)
         
-        let exclusionsDesc = NSTextField(labelWithString: "Don't capture clipboard from these apps (e.g., password managers)")
-        exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
-        exclusionsDesc.textColor = .secondaryLabelColor
-        exclusionsDesc.lineBreakMode = .byWordWrapping
-        exclusionsDesc.maximumNumberOfLines = 1
-        exclusionsDesc.preferredMaxLayoutWidth = 460
-        stackView.addArrangedSubview(exclusionsDesc)
+        // History Section (Card)
+        let historyCard = createSectionCard(content: createHistorySectionContent())
+        historyCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(historyCard)
         
-        // Table View for excluded apps (Modern inset style)
-        appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+        // Image Compression Section (Card)
+        let compressionCard = createSectionCard(content: createImageCompressionSectionContent())
+        compressionCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(compressionCard)
         
-        let tableScrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 460, height: 120))  // More compact
-        tableScrollView.hasVerticalScroller = true
-        tableScrollView.borderType = .noBorder  // Modern: no border
-        tableScrollView.drawsBackground = false
-        tableScrollView.autohidesScrollers = true
-        tableScrollView.translatesAutoresizingMaskIntoConstraints = false
+        // Image Export Settings Section (Card)
+        let exportCard = createSectionCard(content: createImageExportSectionContent())
+        exportCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(exportCard)
         
-        appExclusionsTableView = NSTableView(frame: tableScrollView.bounds)
-        appExclusionsTableView.dataSource = self
-        appExclusionsTableView.delegate = self
-        appExclusionsTableView.headerView = nil
-        appExclusionsTableView.allowsEmptySelection = true
-        appExclusionsTableView.allowsMultipleSelection = false
-        appExclusionsTableView.style = .inset  // macOS 11+ modern inset style
-        appExclusionsTableView.usesAlternatingRowBackgroundColors = false  // Clean look
-        appExclusionsTableView.backgroundColor = .clear
-        appExclusionsTableView.gridStyleMask = []  // No grid lines
-        appExclusionsTableView.rowSizeStyle = .small  // More compact rows
+        // Statistics Section (Card)
+        let statsCard = createSectionCard(content: createStatisticsSectionContent())
+        statsCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stackView.addArrangedSubview(statsCard)
         
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("appName"))
-        column.title = "App Name"
-        column.width = 440
-        appExclusionsTableView.addTableColumn(column)
+        // Add a tiny spacer at the end so the last card isn't flush
+        stackView.addArrangedSubview(createSpacer(height: 8))
         
-        tableScrollView.documentView = appExclusionsTableView
-        tableScrollView.heightAnchor.constraint(equalToConstant: 120).isActive = true  // More compact
-        tableScrollView.widthAnchor.constraint(equalToConstant: 460).isActive = true  // More compact
+        // ✅ Wrap the stack in a doc container
+        let doc = FlippedDocumentView()
+        doc.translatesAutoresizingMaskIntoConstraints = false
+        doc.addSubview(stackView)
         
-        stackView.addArrangedSubview(tableScrollView)
-        
-        // Buttons for managing exclusions
-        let exclusionsButtonStack = NSStackView()
-        exclusionsButtonStack.orientation = .horizontal
-        exclusionsButtonStack.spacing = 8
-        
-        let addExclusionButton = NSButton(title: "Add App...", target: self, action: #selector(addExcludedApp))
-        addExclusionButton.bezelStyle = .automatic  // Modern, adaptive style
-        exclusionsButtonStack.addArrangedSubview(addExclusionButton)
-        
-        let removeExclusionButton = NSButton(title: "Remove App", target: self, action: #selector(removeExcludedApp))
-        removeExclusionButton.bezelStyle = .automatic  // Modern, adaptive style
-        exclusionsButtonStack.addArrangedSubview(removeExclusionButton)
-        
-        let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
-        resetExclusionsButton.bezelStyle = .automatic  // Modern, adaptive style
-        exclusionsButtonStack.addArrangedSubview(resetExclusionsButton)
-        
-        stackView.addArrangedSubview(exclusionsButtonStack)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // MARK: - History Section (all in one row)
-        let historySectionLabel = NSTextField(labelWithString: "History")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            historySectionLabel.font = roundedFont  // SF Pro Rounded for subsection headers
-        } else {
-            historySectionLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(historySectionLabel)
-        
-        let historyControlStack = NSStackView()
-        historyControlStack.orientation = .horizontal
-        historyControlStack.spacing = 12
-        historyControlStack.alignment = .centerY
-        
-        // Max Items
-        let maxItemsLabel = NSTextField(labelWithString: "Maximum items:")
-        maxItemsLabel.font = NSFont.systemFont(ofSize: 13)
-        maxItemsLabel.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(maxItemsLabel)
-        
-        let maxItemsPopup = NSPopUpButton()
-        maxItemsPopup.autoenablesItems = false
-        let maxItemsOptions = [10, 25, 50, 100, 200]
-        for option in maxItemsOptions {
-            maxItemsPopup.addItem(withTitle: "\(option) items")
-        }
-        if let currentIndex = maxItemsOptions.firstIndex(of: ClipboardHistoryManager.shared.maxItems) {
-            maxItemsPopup.selectItem(at: currentIndex)
-        } else {
-            maxItemsPopup.selectItem(at: 3) // Default to 100
-        }
-        maxItemsPopup.target = self
-        maxItemsPopup.action = #selector(maxItemsChanged(_:))
-        maxItemsPopup.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(maxItemsPopup)
-        
-        // Small spacer
-        let spacer1 = NSView()
-        spacer1.widthAnchor.constraint(equalToConstant: 8).isActive = true
-        spacer1.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(spacer1)
-        
-        // Retention Period
-        let retentionLabel = NSTextField(labelWithString: "Delete after:")
-        retentionLabel.font = NSFont.systemFont(ofSize: 13)
-        retentionLabel.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(retentionLabel)
-        
-        let retentionPopup = NSPopUpButton()
-        retentionPopup.autoenablesItems = false
-        for period in ClipboardHistoryManager.RetentionPeriod.allCases {
-            retentionPopup.addItem(withTitle: period.rawValue)
-        }
-        retentionPopup.selectItem(withTitle: ClipboardHistoryManager.shared.retentionPeriod.rawValue)
-        retentionPopup.target = self
-        retentionPopup.action = #selector(retentionPeriodChanged(_:))
-        retentionPopup.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(retentionPopup)
-        
-        // Flexible spacer
-        let spacer2 = NSView()
-        spacer2.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        historyControlStack.addArrangedSubview(spacer2)
-        
-        // Clear Button
-        let clearButton = NSButton(title: "Clear All History", target: self, action: #selector(clearHistoryClicked))
-        clearButton.bezelStyle = .automatic  // Modern, adaptive style
-        clearButton.setContentHuggingPriority(.required, for: .horizontal)
-        historyControlStack.addArrangedSubview(clearButton)
-        
-        stackView.addArrangedSubview(historyControlStack)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // MARK: - Image Compression Section
-        let compressionHeader = NSTextField(labelWithString: "Image Compression")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            compressionHeader.font = roundedFont
-        } else {
-            compressionHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(compressionHeader)
-        
-        let compressionDesc = NSTextField(labelWithString: "Optimize images to save space")
-        compressionDesc.font = NSFont.systemFont(ofSize: 11)
-        compressionDesc.textColor = .secondaryLabelColor
-        stackView.addArrangedSubview(compressionDesc)
-        
-        // Compress Images Checkbox
-        let compressCheckbox = NSButton(
-            checkboxWithTitle: "Compress images in history",
-            target: self,
-            action: #selector(toggleImageCompression)
-        )
-        compressCheckbox.state = ClipboardHistoryManager.shared.compressImages ? .on : .off
-        stackView.addArrangedSubview(compressCheckbox)
-        
-        // Max Image Size
-        let maxSizeStack = NSStackView()
-        maxSizeStack.orientation = .horizontal
-        maxSizeStack.spacing = 8
-        
-        let maxSizeLabel = NSTextField(labelWithString: "Maximum image size:")
-        maxSizeLabel.alignment = .right
-        maxSizeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        maxSizeStack.addArrangedSubview(maxSizeLabel)
-        
-        let maxSizePopup = NSPopUpButton()
-        maxSizePopup.addItems(withTitles: ["1024px", "2048px", "4096px", "8192px"])
-        let currentMaxSize = ClipboardHistoryManager.shared.maxImageSize
-        let sizeIndex: Int = {
-            switch Int(currentMaxSize) {
-            case 1024: return 0
-            case 2048: return 1
-            case 4096: return 2
-            case 8192: return 3
-            default: return 1
-            }
-        }()
-        maxSizePopup.selectItem(at: sizeIndex)
-        maxSizePopup.target = self
-        maxSizePopup.action = #selector(maxImageSizeChanged)
-        maxSizeStack.addArrangedSubview(maxSizePopup)
-        
-        stackView.addArrangedSubview(maxSizeStack)
-        
-        // Compression Quality Slider
-        let qualityStack = NSStackView()
-        qualityStack.orientation = .horizontal
-        qualityStack.spacing = 8
-        
-        let qualityLabel = NSTextField(labelWithString: "Compression quality:")
-        qualityLabel.alignment = .right
-        qualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        qualityStack.addArrangedSubview(qualityLabel)
-        
-        let qualitySlider = NSSlider(value: ClipboardHistoryManager.shared.compressionQuality,
-                                     minValue: 0.3,
-                                     maxValue: 1.0,
-                                     target: self,
-                                     action: #selector(compressionQualityChanged))
-        qualitySlider.numberOfTickMarks = 0
-        qualityStack.addArrangedSubview(qualitySlider)
-        
-        let qualityValueLabel = NSTextField(labelWithString: "\(Int(ClipboardHistoryManager.shared.compressionQuality * 100))%")
-        qualityValueLabel.tag = 999 // Tag to update later
-        qualityValueLabel.alignment = .left
-        qualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        qualityStack.addArrangedSubview(qualityValueLabel)
-        
-        stackView.addArrangedSubview(qualityStack)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // Image Export Settings Section
-        let exportHeader = NSTextField(labelWithString: "Image Export Settings")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            exportHeader.font = roundedFont
-        } else {
-            exportHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(exportHeader)
-        
-        let exportDesc = NSTextField(labelWithString: "Configure how images are exported when saved from history")
-        exportDesc.font = NSFont.systemFont(ofSize: 11)
-        exportDesc.textColor = .secondaryLabelColor
-        stackView.addArrangedSubview(exportDesc)
-        
-        // File Format
-        let formatStack = NSStackView()
-        formatStack.orientation = .horizontal
-        formatStack.spacing = 8
-        
-        let formatLabel = NSTextField(labelWithString: "File format:")
-        formatLabel.alignment = .right
-        formatLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        formatStack.addArrangedSubview(formatLabel)
-        
-        let formatPopup = NSPopUpButton()
-        formatPopup.addItems(withTitles: ["PNG", "JPEG", "TIFF"])
-        let currentFormat = ClipboardHistoryManager.shared.imageExportFormat
-        switch currentFormat {
-        case .png: formatPopup.selectItem(at: 0)
-        case .jpeg: formatPopup.selectItem(at: 1)
-        case .tiff: formatPopup.selectItem(at: 2)
-        }
-        formatPopup.target = self
-        formatPopup.action = #selector(exportFormatChanged)
-        formatStack.addArrangedSubview(formatPopup)
-        
-        stackView.addArrangedSubview(formatStack)
-        
-        // Retina Scaling
-        let retinaCheckbox = NSButton(
-            checkboxWithTitle: "Scale Retina screenshots to 1x",
-            target: self,
-            action: #selector(toggleScaleRetina)
-        )
-        retinaCheckbox.state = ClipboardHistoryManager.shared.scaleRetinaTo1x ? .on : .off
-        stackView.addArrangedSubview(retinaCheckbox)
-        
-        // sRGB Conversion
-        let srgbCheckbox = NSButton(
-            checkboxWithTitle: "Convert to sRGB profile",
-            target: self,
-            action: #selector(toggleConvertSRGB)
-        )
-        srgbCheckbox.state = ClipboardHistoryManager.shared.convertToSRGB ? .on : .off
-        stackView.addArrangedSubview(srgbCheckbox)
-        
-        // Border
-        let borderCheckbox = NSButton(
-            checkboxWithTitle: "Add 1px border to all screenshots",
-            target: self,
-            action: #selector(toggleAddBorder)
-        )
-        borderCheckbox.state = ClipboardHistoryManager.shared.addBorderToScreenshots ? .on : .off
-        stackView.addArrangedSubview(borderCheckbox)
-        
-        // JPEG Quality (only visible when JPEG is selected)
-        let jpegQualityStack = NSStackView()
-        jpegQualityStack.orientation = .horizontal
-        jpegQualityStack.spacing = 8
-        jpegQualityStack.identifier = NSUserInterfaceItemIdentifier("jpegQualityStack")
-        jpegQualityStack.isHidden = currentFormat != .jpeg
-        
-        let jpegQualityLabel = NSTextField(labelWithString: "JPEG quality:")
-        jpegQualityLabel.alignment = .right
-        jpegQualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        jpegQualityStack.addArrangedSubview(jpegQualityLabel)
-        
-        let jpegQualitySlider = NSSlider(
-            value: ClipboardHistoryManager.shared.jpegExportQuality,
-            minValue: 0.5,
-            maxValue: 1.0,
-            target: self,
-            action: #selector(jpegExportQualityChanged)
-        )
-        jpegQualitySlider.numberOfTickMarks = 0
-        jpegQualityStack.addArrangedSubview(jpegQualitySlider)
-        
-        let jpegQualityValueLabel = NSTextField(
-            labelWithString: "\(Int(ClipboardHistoryManager.shared.jpegExportQuality * 100))%"
-        )
-        jpegQualityValueLabel.identifier = NSUserInterfaceItemIdentifier("jpegQualityValueLabel")
-        jpegQualityValueLabel.alignment = .left
-        jpegQualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        jpegQualityStack.addArrangedSubview(jpegQualityValueLabel)
-        
-        stackView.addArrangedSubview(jpegQualityStack)
-        
-        stackView.addArrangedSubview(createSeparatorLine())
-        
-        // MARK: - Statistics Section (at bottom)
-        let statsLabel = NSTextField(labelWithString: "Statistics")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
-            statsLabel.font = roundedFont  // SF Pro Rounded for subsection headers
-        } else {
-            statsLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        stackView.addArrangedSubview(statsLabel)
-        
-        let statsStack = NSStackView()
-        statsStack.orientation = .vertical
-        statsStack.alignment = .leading
-        statsStack.spacing = 4
-        
-        let totalItemsLabel = NSTextField(labelWithString: "Total items: \(ClipboardHistoryManager.shared.totalItems)")
-        totalItemsLabel.font = NSFont.systemFont(ofSize: 11)
-        totalItemsLabel.textColor = .secondaryLabelColor
-        statsStack.addArrangedSubview(totalItemsLabel)
-        
-        if let oldestDate = ClipboardHistoryManager.shared.oldestItemDate {
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = .full
-            let oldestText = formatter.localizedString(for: oldestDate, relativeTo: Date())
-            let oldestLabel = NSTextField(labelWithString: "Oldest item: \(oldestText)")
-            oldestLabel.font = NSFont.systemFont(ofSize: 11)
-            oldestLabel.textColor = .secondaryLabelColor
-            statsStack.addArrangedSubview(oldestLabel)
-        }
-        
-        // Storage usage
-        let storageText = ClipboardHistoryManager.shared.totalStorageSizeFormatted
-        let maxStorageText = ClipboardHistoryManager.shared.formatBytes(ClipboardHistoryManager.shared.maxStorageSize)
-        let storageLabel = NSTextField(labelWithString: "Storage: \(storageText) / \(maxStorageText)")
-        storageLabel.font = NSFont.systemFont(ofSize: 11)
-        storageLabel.textColor = .secondaryLabelColor
-        statsStack.addArrangedSubview(storageLabel)
-        
-        stackView.addArrangedSubview(statsStack)
-        
-        // Spacer
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 20).isActive = true
-        stackView.addArrangedSubview(spacer)
-        
-        // Layout constraints
+        // Pin stack to doc
+        stackView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            stackView.widthAnchor.constraint(greaterThanOrEqualToConstant: 550)  // Match card width
+            stackView.topAnchor.constraint(equalTo: doc.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: doc.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: doc.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: doc.bottomAnchor)
         ])
         
+        // Use the container as the document view
+        scrollView.documentView = doc
+        container.addSubview(scrollView)
+        
+        // ✅ Pin doc container to clip view (not stackView)
+        pinDocumentViewToClipView(doc, in: scrollView)
+        
+        // Makes the very bottom reachable/comfortable
+        scrollView.contentInsets.bottom = 24
+        
+        // Scroll view fills the tab container
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        
+        scrollViews["settings"] = scrollView
+        
         return container
+    }
+    
+    // MARK: - Legacy Methods (kept for compatibility)
+    
+    private func createSeparatorLine() -> NSView {
+        let separator = NSBox()
+        separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return separator
+    }
+    
+    private func createSpacer(height: CGFloat) -> NSView {
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
+        return spacer
+    }
+    
+    private func formatStorageSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
     
     // MARK: - History Tab Actions
@@ -769,6 +541,10 @@ class SettingsWindow: NSWindowController {
         }
     }
     
+    @objc private func deleteExcludedApp() {
+        removeExcludedApp()
+    }
+    
     @objc private func removeExcludedApp() {
         let selectedRow = appExclusionsTableView.selectedRow
         
@@ -900,196 +676,203 @@ class SettingsWindow: NSWindowController {
         logger.info("JPEG export quality changed to: \(Int(quality * 100))%")
     }
     
-    // swiftlint:disable:next function_body_length
     private func createAboutTab() -> NSView {
         let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
+        container.translatesAutoresizingMaskIntoConstraints = true
+        container.autoresizingMask = [.width, .height]
         
-        let mainStack = NSStackView()
-        mainStack.orientation = .vertical
-        mainStack.spacing = 12
-        mainStack.alignment = .leading
-        mainStack.translatesAutoresizingMaskIntoConstraints = false
-        mainStack.edgeInsets = NSEdgeInsets(top: 16, left: 24, bottom: 16, right: 24)  // More compact and consistent
+        // Scroll view (same pattern as other tabs)
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
         
-        // Top section: Icon + App Info (side by side)
+        // Vertical stack of cards centered with fixed width
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 10
+        stack.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+        
+        let cardWidth: CGFloat = 550
+        
+        // 1) Top header card (icon, version, update controls)
+        let headerCard = createSectionCard(content: buildAboutHeaderContent())
+        headerCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stack.addArrangedSubview(headerCard)
+        
+        // 2) Analytics card
+        let analyticsCard = createSectionCard(content: buildAboutAnalyticsContent())
+        analyticsCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stack.addArrangedSubview(analyticsCard)
+        
+        // 3) Links card (Acknowledgments on left, buttons on right)
+        let linksCard = createSectionCard(content: buildAboutLinksContent())
+        linksCard.widthAnchor.constraint(equalToConstant: cardWidth).isActive = true
+        stack.addArrangedSubview(linksCard)
+        
+        // Set vertical hugging on all About cards to prevent stretching
+        [headerCard, analyticsCard, linksCard].forEach {
+            $0.setContentHuggingPriority(.required, for: .vertical)
+            $0.setContentCompressionResistancePriority(.required, for: .vertical)
+        }
+        
+        // tiny spacer at bottom so last card isn't flush
+        stack.addArrangedSubview(createSpacer(height: 8))
+        
+        // Wrap in flipped doc
+        let doc = FlippedDocumentView()
+        doc.translatesAutoresizingMaskIntoConstraints = false
+        doc.addSubview(stack)
+        
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: doc.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: doc.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: doc.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: doc.bottomAnchor)
+        ])
+        
+        scrollView.documentView = doc
+        pinDocumentViewToClipView(doc, in: scrollView)    // same helper you use elsewhere
+        scrollView.contentInsets.bottom = 24
+        
+        container.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        
+        // Register for scroll-to-top behavior when selecting the tab
+        scrollViews["about"] = scrollView
+        
+        return container
+    }
+    
+    private func buildAboutHeaderContent() -> NSView {
         let topStack = NSStackView()
         topStack.orientation = .horizontal
         topStack.spacing = 16
         topStack.alignment = .top
         
-        // App Icon
+        // App icon
         let iconView = NSImageView()
         iconView.image = NSImage(named: NSImage.applicationIconName)
         iconView.imageScaling = .scaleProportionallyUpOrDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.addFloatingShadow(offset: NSSize(width: 0, height: 4), radius: 12, opacity: 0.2)
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 96),  // More compact
+            iconView.widthAnchor.constraint(equalToConstant: 96),
             iconView.heightAnchor.constraint(equalToConstant: 96)
         ])
         topStack.addArrangedSubview(iconView)
         
-        // Right side: Name, version, button
+        // Right side: name, version, update controls
         let rightStack = NSStackView()
         rightStack.orientation = .vertical
-        rightStack.spacing = 4
+        rightStack.spacing = 6
         rightStack.alignment = .leading
         
-        // App Name
         let appNameLabel = NSTextField(labelWithString: "Clnbrd")
         appNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
-        appNameLabel.alignment = .left
         rightStack.addArrangedSubview(appNameLabel)
         
-        // Version
         let versionLabel = NSTextField(labelWithString: VersionManager.fullVersion)
-        versionLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        versionLabel.font = NSFont.systemFont(ofSize: 13)
         versionLabel.textColor = .labelColor
-        versionLabel.alignment = .left
         rightStack.addArrangedSubview(versionLabel)
         
-        rightStack.addArrangedSubview(createSpacer(height: 8))
+        // Buttons + checkbox on same row
+        let updateRow = NSStackView()
+        updateRow.orientation = .horizontal
+        updateRow.spacing = 16
+        updateRow.alignment = .centerY
         
-        // Update buttons stack
-        let updateButtonsStack = NSStackView()
-        updateButtonsStack.orientation = .vertical
-        updateButtonsStack.spacing = 8
-        updateButtonsStack.alignment = .leading
-        
-        // Horizontal stack for button + checkbox on same line
-        let updateStack = NSStackView()
-        updateStack.orientation = .horizontal
-        updateStack.spacing = 16
-        updateStack.alignment = .centerY
-        
-        // Check for Updates Button
         let updateButton = NSButton(title: "Check for Updates", target: self, action: #selector(checkForUpdates))
-        updateButton.bezelStyle = .automatic  // Modern, adaptive style
-        updateStack.addArrangedSubview(updateButton)
+        updateButton.bezelStyle = .automatic
+        updateRow.addArrangedSubview(updateButton)
         
-        // Auto-update checkbox (on same line)
-        let autoUpdateCheckbox = NSButton(checkboxWithTitle: "Automatically check for updates", target: self, action: #selector(toggleAutoUpdate))
-        autoUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
-        updateStack.addArrangedSubview(autoUpdateCheckbox)
+        let autoUpdate = NSButton(checkboxWithTitle: "Automatically check for updates",
+                                  target: self,
+                                  action: #selector(toggleAutoUpdate))
+        autoUpdate.state = UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks") ? .on : .off
+        updateRow.addArrangedSubview(autoUpdate)
         
-        updateButtonsStack.addArrangedSubview(updateStack)
+        rightStack.addArrangedSubview(updateRow)
         
-        // Revert to Stable button (only show if on beta)
+        // Optional revert button
         if VersionManager.version.contains("beta") {
             let revertButton = NSButton(title: "Revert to Stable Release", target: self, action: #selector(revertToStable))
-            revertButton.bezelStyle = .automatic  // Modern, adaptive style
-            updateButtonsStack.addArrangedSubview(revertButton)
+            revertButton.bezelStyle = .automatic
+            rightStack.addArrangedSubview(revertButton)
         }
         
-        rightStack.addArrangedSubview(updateButtonsStack)
-        
-        // Copyright - matches description text styling
-        let copyrightLabel = NSTextField(labelWithString: "© Olive Design Studios 2025 All Rights Reserved.")
-        copyrightLabel.font = NSFont.systemFont(ofSize: 11)
-        copyrightLabel.textColor = .secondaryLabelColor
-        copyrightLabel.alignment = .left
-        rightStack.addArrangedSubview(copyrightLabel)
+        let copyright = NSTextField(labelWithString: "© Olive Design Studios 2025 All Rights Reserved.")
+        copyright.font = NSFont.systemFont(ofSize: 11)
+        copyright.textColor = .secondaryLabelColor
+        rightStack.addArrangedSubview(copyright)
         
         topStack.addArrangedSubview(rightStack)
+        return topStack
+    }
+    
+    private func buildAboutAnalyticsContent() -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
         
-        mainStack.addArrangedSubview(topStack)
-        
-        // Separator
-        mainStack.addArrangedSubview(createSpacer(height: 12))
-        let separator1 = createFullWidthSeparator()
-        mainStack.addArrangedSubview(separator1)
-        mainStack.addArrangedSubview(createSpacer(height: 12))
-        
-        // Appearance section
-        let appearanceLabel = NSTextField(labelWithString: "Appearance")
-        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {  // Consistent with other sections
-            appearanceLabel.font = roundedFont
-        } else {
-            appearanceLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-        }
-        mainStack.addArrangedSubview(appearanceLabel)
-        
-        let appearanceControl = NSSegmentedControl(labels: ["Auto", "Light", "Dark"], trackingMode: .selectOne, target: self, action: #selector(appearanceChanged(_:)))
-        appearanceControl.segmentStyle = .rounded
-        appearanceControl.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Set current selection based on saved preference
-        let currentAppearance = UserDefaults.standard.string(forKey: "AppearanceMode") ?? "auto"
-        switch currentAppearance {
-        case "light": appearanceControl.selectedSegment = 1
-        case "dark": appearanceControl.selectedSegment = 2
-        default: appearanceControl.selectedSegment = 0 // auto
-        }
-        
-        NSLayoutConstraint.activate([
-            appearanceControl.widthAnchor.constraint(equalToConstant: 220)  // More compact
-        ])
-        mainStack.addArrangedSubview(appearanceControl)
-        
-        let appearanceDescription = NSTextField(wrappingLabelWithString: "Choose how Clnbrd looks. Auto follows your system appearance.")
-        appearanceDescription.font = NSFont.systemFont(ofSize: 11)
-        appearanceDescription.textColor = .secondaryLabelColor
-        appearanceDescription.preferredMaxLayoutWidth = 480  // More compact
-        appearanceDescription.alignment = .left
-        mainStack.addArrangedSubview(appearanceDescription)
-        
-        mainStack.addArrangedSubview(createSpacer(height: 12))
-        
-        // Analytics section
-        let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics", target: self, action: #selector(toggleAnalyticsInSettings))
+        let analyticsCheckbox = NSButton(checkboxWithTitle: "Share my usage statistics",
+                                         target: self,
+                                         action: #selector(toggleAnalyticsInSettings))
         analyticsCheckbox.state = AnalyticsManager.shared.isAnalyticsEnabled() ? .on : .off
-        mainStack.addArrangedSubview(analyticsCheckbox)
+        stack.addArrangedSubview(analyticsCheckbox)
         
-        let analyticsDescription = NSTextField(wrappingLabelWithString: "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
-        analyticsDescription.font = NSFont.systemFont(ofSize: 11)
-        analyticsDescription.textColor = .secondaryLabelColor
-        analyticsDescription.preferredMaxLayoutWidth = 480  // More compact
-        analyticsDescription.alignment = .left
-        mainStack.addArrangedSubview(analyticsDescription)
+        let analyticsDesc = NSTextField(wrappingLabelWithString:
+            "Help us improve Clnbrd by allowing us to collect completely anonymous usage data.")
+        analyticsDesc.font = NSFont.systemFont(ofSize: 11)
+        analyticsDesc.textColor = .secondaryLabelColor
+        analyticsDesc.preferredMaxLayoutWidth = 480
+        stack.addArrangedSubview(analyticsDesc)
         
-        // Launch at Login (removed - not needed in About tab per design)
+        return stack
+    }
+    
+    private func buildAboutLinksContent() -> NSView {
+        // Acknowledgments (left) + flexible spacer + three buttons (right)
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 12
         
-        // Compact spacing
-        mainStack.addArrangedSubview(createSpacer(height: 12))
+        let ack = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
+        row.addArrangedSubview(ack)
         
-        // Bottom section: Acknowledgments on left, buttons on right (same line)
-        let bottomStack = NSStackView()
-        bottomStack.orientation = .horizontal
-        bottomStack.spacing = 12
-        bottomStack.alignment = .centerY
-        bottomStack.translatesAutoresizingMaskIntoConstraints = false
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        row.addArrangedSubview(spacer)
         
-        // Acknowledgments link on left
-        let acknowledgementsLabel = createClickableLink(text: "Acknowledgments", action: #selector(showAcknowledgments))
-        acknowledgementsLabel.alignment = .left
-        bottomStack.addArrangedSubview(acknowledgementsLabel)
+        let buttons = NSStackView()
+        buttons.orientation = .horizontal
+        buttons.spacing = 12
+        buttons.alignment = .centerY
         
-        // Spacer to push buttons to right
-        let bottomSpacer = NSView()
-        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
-        bottomStack.addArrangedSubview(bottomSpacer)
+        let whatsNew = NSButton(title: "What's New", target: self, action: #selector(showWhatsNew))
+        whatsNew.bezelStyle = .automatic
+        let website  = NSButton(title: "Visit Website", target: self, action: #selector(openWebsite))
+        website.bezelStyle = .automatic
+        let contact  = NSButton(title: "Contact Us", target: self, action: #selector(contactUs))
+        contact.bezelStyle = .automatic
         
-        // Right-aligned buttons
-        let buttonStack = createAboutButtons()
-        bottomStack.addArrangedSubview(buttonStack)
+        [whatsNew, website, contact].forEach { buttons.addArrangedSubview($0) }
+        row.addArrangedSubview(buttons)
         
-        mainStack.addArrangedSubview(bottomStack)
-        
-        container.addSubview(mainStack)
-        
-        NSLayoutConstraint.activate([
-            mainStack.topAnchor.constraint(equalTo: container.topAnchor),
-            mainStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            mainStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            mainStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
-            separator1.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
-            
-            bottomStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
-            bottomSpacer.widthAnchor.constraint(greaterThanOrEqualToConstant: 20)
-        ])
-        
-        return container
+        return row
     }
     
     private func createFullWidthSeparator() -> NSBox {
@@ -1236,7 +1019,7 @@ class SettingsWindow: NSWindowController {
     
     private func setupClipboardSafetySection(_ stackView: NSStackView) {
         stackView.addArrangedSubview(createSpacer(height: 12))  // More compact
-        stackView.addArrangedSubview(createSectionHeader("⚡ Performance & Safety"))
+        stackView.addArrangedSubview(createSectionHeader("Performance + Safety"))
         stackView.addArrangedSubview(createSpacer(height: 4))
         
         let descriptionLabel = NSTextField(labelWithString: "Protect against large clipboard items (like InDesign objects) that can cause freezing")
@@ -1367,20 +1150,17 @@ class SettingsWindow: NSWindowController {
         container.spacing = 6  // More compact
         container.translatesAutoresizingMaskIntoConstraints = false
         
-        container.addArrangedSubview(createSectionHeader("⚡ Performance & Safety"))
+        container.addArrangedSubview(createSectionHeader("Performance + Safety"))
         
-        let descriptionLabel = NSTextField(labelWithString: "Protect against large clipboard items (like InDesign objects) that can cause freezing")
+        let descriptionLabel = NSTextField(labelWithString: "Protect against large clipboard items")
         descriptionLabel.font = NSFont.systemFont(ofSize: 11)
         descriptionLabel.textColor = .secondaryLabelColor
         descriptionLabel.isEditable = false
         descriptionLabel.isBordered = false
         descriptionLabel.backgroundColor = .clear
-        descriptionLabel.lineBreakMode = .byWordWrapping
-        descriptionLabel.maximumNumberOfLines = 0
-        descriptionLabel.preferredMaxLayoutWidth = 520
         container.addArrangedSubview(descriptionLabel)
         
-        container.addArrangedSubview(createSpacer(height: 8))
+        container.addArrangedSubview(createSpacer(height: 6))
         
         // Skip large items checkbox
         let skipLargeCheckbox = NSButton(checkboxWithTitle: "Skip processing large clipboard items", target: self, action: #selector(skipLargeItemsChanged(_:)))
@@ -1388,7 +1168,7 @@ class SettingsWindow: NSWindowController {
         skipLargeCheckbox.toolTip = "When enabled, clipboard items larger than the size limit will be skipped to prevent freezing"
         container.addArrangedSubview(skipLargeCheckbox)
         
-        container.addArrangedSubview(createSpacer(height: 12))
+        container.addArrangedSubview(createSpacer(height: 8))
         
         // Max clipboard size slider
         let maxSizeContainer = createSliderSetting(
@@ -1401,7 +1181,7 @@ class SettingsWindow: NSWindowController {
         )
         container.addArrangedSubview(maxSizeContainer)
         
-        container.addArrangedSubview(createSpacer(height: 8))
+        container.addArrangedSubview(createSpacer(height: 6))
         
         // Timeout slider
         let timeoutContainer = createSliderSetting(
@@ -1414,14 +1194,6 @@ class SettingsWindow: NSWindowController {
         )
         container.addArrangedSubview(timeoutContainer)
         
-        let timeoutHelpLabel = NSTextField(labelWithString: "How long to wait before aborting slow clipboard operations")
-        timeoutHelpLabel.font = NSFont.systemFont(ofSize: 10)
-        timeoutHelpLabel.textColor = .tertiaryLabelColor
-        timeoutHelpLabel.isEditable = false
-        timeoutHelpLabel.isBordered = false
-        timeoutHelpLabel.backgroundColor = .clear
-        container.addArrangedSubview(timeoutHelpLabel)
-        
         return container
     }
     
@@ -1433,7 +1205,7 @@ class SettingsWindow: NSWindowController {
         container.spacing = 6  // More compact
         container.translatesAutoresizingMaskIntoConstraints = false
         
-        container.addArrangedSubview(createSectionHeader("🔧 Custom Find & Replace Rules"))
+        container.addArrangedSubview(createSectionHeader("Custom Find & Replace Rules"))
         
         let helpLabel = NSTextField(labelWithString: "Add your own text replacements (applied before built-in rules):")
         helpLabel.font = NSFont.systemFont(ofSize: 11)
@@ -1498,6 +1270,441 @@ class SettingsWindow: NSWindowController {
             appearanceControl.widthAnchor.constraint(equalToConstant: 220)
         ])
         container.addArrangedSubview(appearanceControl)
+        
+        return container
+    }
+    
+    /// Creates the app exclusions section content for Settings tab
+    private func createAppExclusionsSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let exclusionsHeader = NSTextField(labelWithString: "App Exclusions")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            exclusionsHeader.font = roundedFont
+        } else {
+            exclusionsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(exclusionsHeader)
+        
+        let exclusionsDesc = NSTextField(labelWithString: "Don't capture clipboard from these apps (e.g., password managers)")
+        exclusionsDesc.font = NSFont.systemFont(ofSize: 11)
+        exclusionsDesc.textColor = .secondaryLabelColor
+        exclusionsDesc.lineBreakMode = .byWordWrapping
+        exclusionsDesc.maximumNumberOfLines = 2
+        exclusionsDesc.preferredMaxLayoutWidth = 500
+        container.addArrangedSubview(exclusionsDesc)
+        
+        // Table View for excluded apps
+        appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+        
+        // ✅ FIX: Create a wrapper view to contain the table's scroll view
+        let tableContainer = NSView()
+        tableContainer.translatesAutoresizingMaskIntoConstraints = false
+        tableContainer.wantsLayer = true
+        
+        // ✅ Create scroll view WITHOUT setting frame - pure Auto Layout
+        let tableScrollView = NSScrollView()
+        tableScrollView.translatesAutoresizingMaskIntoConstraints = false
+        tableScrollView.hasVerticalScroller = true
+        tableScrollView.borderType = .bezelBorder
+        tableScrollView.drawsBackground = true
+        tableScrollView.backgroundColor = NSColor.textBackgroundColor
+        tableScrollView.autohidesScrollers = true
+        
+        appExclusionsTableView = NSTableView()
+        appExclusionsTableView.dataSource = self
+        appExclusionsTableView.delegate = self
+        appExclusionsTableView.headerView = nil
+        appExclusionsTableView.allowsEmptySelection = true
+        appExclusionsTableView.allowsMultipleSelection = false
+        appExclusionsTableView.style = .plain
+        appExclusionsTableView.usesAlternatingRowBackgroundColors = true
+        appExclusionsTableView.backgroundColor = .textBackgroundColor
+        appExclusionsTableView.gridStyleMask = []
+        appExclusionsTableView.rowSizeStyle = .default
+        
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("appName"))
+        column.title = "App Name"
+        column.width = 480
+        appExclusionsTableView.addTableColumn(column)
+        
+        tableScrollView.documentView = appExclusionsTableView
+        
+        // ✅ Add scroll view to wrapper container
+        tableContainer.addSubview(tableScrollView)
+        
+        // ✅ Pin scroll view to wrapper with explicit constraints
+        NSLayoutConstraint.activate([
+            tableScrollView.topAnchor.constraint(equalTo: tableContainer.topAnchor),
+            tableScrollView.leadingAnchor.constraint(equalTo: tableContainer.leadingAnchor),
+            tableScrollView.trailingAnchor.constraint(equalTo: tableContainer.trailingAnchor),
+            tableScrollView.bottomAnchor.constraint(equalTo: tableContainer.bottomAnchor),
+            
+            // ✅ Set fixed size on the WRAPPER, not the scroll view
+            tableContainer.heightAnchor.constraint(equalToConstant: 120),
+            tableContainer.widthAnchor.constraint(equalToConstant: 500)
+        ])
+        
+        // ✅ Add the wrapper to the container
+        container.addArrangedSubview(tableContainer)
+        
+        // Buttons row (one line, right-aligned)
+        let actionsRow = NSStackView()
+        actionsRow.orientation = .horizontal
+        actionsRow.alignment = .centerY
+        actionsRow.spacing = 8
+        actionsRow.translatesAutoresizingMaskIntoConstraints = false
+        
+        // flexible spacer pushes buttons to the right
+        let spring = NSView()
+        spring.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spring.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        actionsRow.addArrangedSubview(spring)
+        
+        let addAppButton = NSButton(title: "Add App", target: self, action: #selector(addExcludedApp))
+        addAppButton.bezelStyle = .rounded
+        addAppButton.font = NSFont.systemFont(ofSize: 11)
+        
+        let deleteAppButton = NSButton(title: "Delete App", target: self, action: #selector(deleteExcludedApp))
+        deleteAppButton.bezelStyle = .rounded
+        deleteAppButton.font = NSFont.systemFont(ofSize: 11)
+        
+        let resetExclusionsButton = NSButton(title: "Reset to Defaults", target: self, action: #selector(resetExcludedApps))
+        resetExclusionsButton.bezelStyle = .rounded
+        resetExclusionsButton.font = NSFont.systemFont(ofSize: 11)
+        
+        actionsRow.addArrangedSubview(addAppButton)
+        actionsRow.addArrangedSubview(deleteAppButton)
+        actionsRow.addArrangedSubview(resetExclusionsButton)
+        
+        container.addArrangedSubview(actionsRow)
+        
+        return container
+    }
+    
+    /// Creates the history section content for Settings tab
+    private func createHistorySectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let historyHeader = NSTextField(labelWithString: "History")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            historyHeader.font = roundedFont
+        } else {
+            historyHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(historyHeader)
+        
+        let historyControlStack = NSStackView()
+        historyControlStack.orientation = .horizontal
+        historyControlStack.spacing = 20
+        historyControlStack.alignment = .centerY
+        
+        // Retention Period
+        let retentionLabel = NSTextField(labelWithString: "Keep items for:")
+        retentionLabel.font = NSFont.systemFont(ofSize: 12)
+        retentionLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        historyControlStack.addArrangedSubview(retentionLabel)
+        
+        let retentionPopup = NSPopUpButton()
+        retentionPopup.addItems(withTitles: ["1 Day", "3 Days", "1 Week", "1 Month", "Forever"])
+        let currentRetention = ClipboardHistoryManager.shared.retentionPeriod
+        switch currentRetention {
+        case .oneDay: retentionPopup.selectItem(at: 0)
+        case .threeDays: retentionPopup.selectItem(at: 1)
+        case .oneWeek: retentionPopup.selectItem(at: 2)
+        case .oneMonth: retentionPopup.selectItem(at: 3)
+        case .forever: retentionPopup.selectItem(at: 4)
+        }
+        retentionPopup.target = self
+        retentionPopup.action = #selector(retentionPeriodChanged)
+        historyControlStack.addArrangedSubview(retentionPopup)
+        
+        // Max Items
+        let maxItemsLabel = NSTextField(labelWithString: "Max items:")
+        maxItemsLabel.font = NSFont.systemFont(ofSize: 12)
+        maxItemsLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        historyControlStack.addArrangedSubview(maxItemsLabel)
+        
+        let maxItemsPopup = NSPopUpButton()
+        maxItemsPopup.addItems(withTitles: ["50", "100", "200", "500", "1000"])
+        let currentMaxItems = ClipboardHistoryManager.shared.maxItems
+        let maxItemsIndex: Int = {
+            switch currentMaxItems {
+            case 50: return 0
+            case 100: return 1
+            case 200: return 2
+            case 500: return 3
+            case 1000: return 4
+            default: return 1
+            }
+        }()
+        maxItemsPopup.selectItem(at: maxItemsIndex)
+        maxItemsPopup.target = self
+        maxItemsPopup.action = #selector(maxItemsChanged)
+        historyControlStack.addArrangedSubview(maxItemsPopup)
+        
+        container.addArrangedSubview(historyControlStack)
+        
+        return container
+    }
+    
+    /// Creates the image compression section content for Settings tab
+    private func createImageCompressionSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let compressionHeader = NSTextField(labelWithString: "Image Compression")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            compressionHeader.font = roundedFont
+        } else {
+            compressionHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(compressionHeader)
+        
+        let compressionDesc = NSTextField(labelWithString: "Optimize images to save space")
+        compressionDesc.font = NSFont.systemFont(ofSize: 11)
+        compressionDesc.textColor = .secondaryLabelColor
+        container.addArrangedSubview(compressionDesc)
+        
+        // Compress Images Checkbox
+        let compressCheckbox = NSButton(
+            checkboxWithTitle: "Compress images in history",
+            target: self,
+            action: #selector(toggleImageCompression)
+        )
+        compressCheckbox.state = ClipboardHistoryManager.shared.compressImages ? .on : .off
+        container.addArrangedSubview(compressCheckbox)
+        
+        // Max Image Size
+        let maxSizeStack = NSStackView()
+        maxSizeStack.orientation = .horizontal
+        maxSizeStack.spacing = 8
+        
+        let maxSizeLabel = NSTextField(labelWithString: "Maximum image size:")
+        maxSizeLabel.alignment = .right
+        maxSizeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        maxSizeStack.addArrangedSubview(maxSizeLabel)
+        
+        let maxSizePopup = NSPopUpButton()
+        maxSizePopup.addItems(withTitles: ["1024px", "2048px", "4096px", "8192px"])
+        let currentMaxSize = ClipboardHistoryManager.shared.maxImageSize
+        let sizeIndex: Int = {
+            switch Int(currentMaxSize) {
+            case 1024: return 0
+            case 2048: return 1
+            case 4096: return 2
+            case 8192: return 3
+            default: return 1
+            }
+        }()
+        maxSizePopup.selectItem(at: sizeIndex)
+        maxSizePopup.target = self
+        maxSizePopup.action = #selector(maxImageSizeChanged)
+        maxSizeStack.addArrangedSubview(maxSizePopup)
+        
+        container.addArrangedSubview(maxSizeStack)
+        
+        // Compression Quality Slider
+        let qualityStack = NSStackView()
+        qualityStack.orientation = .horizontal
+        qualityStack.spacing = 8
+        
+        let qualityLabel = NSTextField(labelWithString: "Compression quality:")
+        qualityLabel.alignment = .right
+        qualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        qualityStack.addArrangedSubview(qualityLabel)
+        
+        let qualitySlider = NSSlider(value: ClipboardHistoryManager.shared.compressionQuality,
+                                     minValue: 0.3,
+                                     maxValue: 1.0,
+                                     target: self,
+                                     action: #selector(compressionQualityChanged))
+        qualitySlider.numberOfTickMarks = 0
+        qualityStack.addArrangedSubview(qualitySlider)
+        
+        let qualityValueLabel = NSTextField(labelWithString: "\(Int(ClipboardHistoryManager.shared.compressionQuality * 100))%")
+        qualityValueLabel.tag = 999 // Tag to update later
+        qualityValueLabel.alignment = .left
+        qualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        qualityStack.addArrangedSubview(qualityValueLabel)
+        
+        container.addArrangedSubview(qualityStack)
+        
+        return container
+    }
+    
+    /// Creates the image export section content for Settings tab
+    private func createImageExportSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let exportHeader = NSTextField(labelWithString: "Image Export Settings")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            exportHeader.font = roundedFont
+        } else {
+            exportHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(exportHeader)
+        
+        let exportDesc = NSTextField(labelWithString: "Configure how images are exported when saved from history")
+        exportDesc.font = NSFont.systemFont(ofSize: 11)
+        exportDesc.textColor = .secondaryLabelColor
+        container.addArrangedSubview(exportDesc)
+        
+        // COMPACT: Two-column layout for export settings
+        let exportGrid = NSStackView()
+        exportGrid.orientation = .vertical
+        exportGrid.spacing = 8
+        exportGrid.alignment = .leading
+        
+        // Row 1: Format + Retina scaling
+        let row1 = NSStackView()
+        row1.orientation = .horizontal
+        row1.spacing = 20
+        row1.alignment = .centerY
+        
+        // Format (compact)
+        let formatLabel = NSTextField(labelWithString: "Format:")
+        formatLabel.font = NSFont.systemFont(ofSize: 12)
+        formatLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        row1.addArrangedSubview(formatLabel)
+        
+        let formatPopup = NSPopUpButton()
+        formatPopup.addItems(withTitles: ["PNG", "JPEG", "TIFF"])
+        let currentFormat = ClipboardHistoryManager.shared.imageExportFormat
+        switch currentFormat {
+        case .png: formatPopup.selectItem(at: 0)
+        case .jpeg: formatPopup.selectItem(at: 1)
+        case .tiff: formatPopup.selectItem(at: 2)
+        }
+        formatPopup.target = self
+        formatPopup.action = #selector(exportFormatChanged)
+        formatPopup.translatesAutoresizingMaskIntoConstraints = false
+        formatPopup.widthAnchor.constraint(equalToConstant: 80).isActive = true
+        row1.addArrangedSubview(formatPopup)
+        
+        // Retina checkbox (compact)
+        let retinaCheckbox = NSButton(
+            checkboxWithTitle: "Scale Retina to 1x",
+            target: self,
+            action: #selector(toggleScaleRetina)
+        )
+        retinaCheckbox.state = ClipboardHistoryManager.shared.scaleRetinaTo1x ? .on : .off
+        retinaCheckbox.font = NSFont.systemFont(ofSize: 11)
+        row1.addArrangedSubview(retinaCheckbox)
+        
+        exportGrid.addArrangedSubview(row1)
+        
+        // Row 2: sRGB + Border
+        let row2 = NSStackView()
+        row2.orientation = .horizontal
+        row2.spacing = 20
+        row2.alignment = .centerY
+        
+        let srgbCheckbox = NSButton(
+            checkboxWithTitle: "Convert to sRGB",
+            target: self,
+            action: #selector(toggleConvertSRGB)
+        )
+        srgbCheckbox.state = ClipboardHistoryManager.shared.convertToSRGB ? .on : .off
+        srgbCheckbox.font = NSFont.systemFont(ofSize: 11)
+        row2.addArrangedSubview(srgbCheckbox)
+        
+        let borderCheckbox = NSButton(
+            checkboxWithTitle: "Add 1px border",
+            target: self,
+            action: #selector(toggleAddBorder)
+        )
+        borderCheckbox.state = ClipboardHistoryManager.shared.addBorderToScreenshots ? .on : .off
+        borderCheckbox.font = NSFont.systemFont(ofSize: 11)
+        row2.addArrangedSubview(borderCheckbox)
+        
+        exportGrid.addArrangedSubview(row2)
+        
+        // JPEG Quality (only visible when JPEG is selected) - compact
+        let jpegQualityStack = NSStackView()
+        jpegQualityStack.orientation = .horizontal
+        jpegQualityStack.spacing = 8
+        jpegQualityStack.identifier = NSUserInterfaceItemIdentifier("jpegQualityStack")
+        jpegQualityStack.isHidden = currentFormat != .jpeg
+        
+        let jpegQualityLabel = NSTextField(labelWithString: "JPEG quality:")
+        jpegQualityLabel.font = NSFont.systemFont(ofSize: 12)
+        jpegQualityLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        jpegQualityStack.addArrangedSubview(jpegQualityLabel)
+        
+        let jpegQualitySlider = NSSlider(
+            value: ClipboardHistoryManager.shared.jpegExportQuality,
+            minValue: 0.5,
+            maxValue: 1.0,
+            target: self,
+            action: #selector(jpegExportQualityChanged)
+        )
+        jpegQualitySlider.numberOfTickMarks = 0
+        jpegQualitySlider.translatesAutoresizingMaskIntoConstraints = false
+        jpegQualitySlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
+        jpegQualityStack.addArrangedSubview(jpegQualitySlider)
+        
+        let jpegQualityValueLabel = NSTextField(
+            labelWithString: "\(Int(ClipboardHistoryManager.shared.jpegExportQuality * 100))%"
+        )
+        jpegQualityValueLabel.identifier = NSUserInterfaceItemIdentifier("jpegQualityValueLabel")
+        jpegQualityValueLabel.font = NSFont.systemFont(ofSize: 11)
+        jpegQualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        jpegQualityStack.addArrangedSubview(jpegQualityValueLabel)
+        
+        exportGrid.addArrangedSubview(jpegQualityStack)
+        
+        container.addArrangedSubview(exportGrid)
+        
+        return container
+    }
+    
+    /// Creates the statistics section content for Settings tab
+    private func createStatisticsSectionContent() -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .leading
+        container.spacing = 6
+        container.translatesAutoresizingMaskIntoConstraints = false
+        
+        let statsHeader = NSTextField(labelWithString: "Statistics")
+        if let roundedFont = NSFont.systemFont(ofSize: 15, weight: .semibold).rounded() {
+            statsHeader.font = roundedFont
+        } else {
+            statsHeader.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        }
+        container.addArrangedSubview(statsHeader)
+        
+        let statsStack = NSStackView()
+        statsStack.orientation = .horizontal
+        statsStack.spacing = 20
+        statsStack.alignment = .centerY
+        
+        let totalItemsLabel = NSTextField(labelWithString: "Total items: \(ClipboardHistoryManager.shared.totalItems)")
+        totalItemsLabel.font = NSFont.systemFont(ofSize: 12)
+        statsStack.addArrangedSubview(totalItemsLabel)
+        
+        let storageLabel = NSTextField(labelWithString: "Storage used: \(formatStorageSize(ClipboardHistoryManager.shared.totalStorageSize))")
+        storageLabel.font = NSFont.systemFont(ofSize: 12)
+        storageLabel.textColor = .secondaryLabelColor
+        statsStack.addArrangedSubview(storageLabel)
+        
+        container.addArrangedSubview(statsStack)
         
         return container
     }
@@ -1824,25 +2031,6 @@ class SettingsWindow: NSWindowController {
         }
         
         logger.info("🔧 Set up profile dropdown with \(self.profileDropdown.numberOfItems) total items")
-    }
-    
-    func createSpacer(height: CGFloat) -> NSView {
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            spacer.heightAnchor.constraint(equalToConstant: height)
-        ])
-        return spacer
-    }
-    
-    func createSeparatorLine() -> NSView {
-        let separator = NSBox()
-        separator.boxType = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        separator.widthAnchor.constraint(equalToConstant: 540).isActive = true
-        
-        return separator
     }
     
     func createCheckbox(title: String, tooltip: String, isOn: Bool, tag: Int) -> NSButton {
@@ -3086,50 +3274,16 @@ extension SettingsWindow: NSTableViewDataSource, NSTableViewDelegate {
 
 extension SettingsWindow: NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
-        // Window became active, scroll to top
-        scrollToTop()
+        scrollCurrentTabToTop()
     }
 }
 
 // MARK: - NSTabViewDelegate
 extension SettingsWindow: NSTabViewDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        // Update window title based on selected tab
-        guard let tabViewItem = tabViewItem, let window = window else { return }
-        window.title = tabViewItem.label
-        
-        // Scroll to top when Settings tab is selected
-        if tabViewItem.identifier as? String == "settings" {
-            // Find the scroll view in the Settings tab
-            if let tabView = tabViewItem.view,
-               let scrollView = findScrollView(in: tabView) {
-                DispatchQueue.main.async {
-                    scrollView.documentView?.scroll(NSPoint(x: 0, y: scrollView.documentView?.bounds.height ?? 0))
-                    scrollView.reflectScrolledClipView(scrollView.contentView)
-                }
-            }
-        }
-        
-        // Adjust window size based on tab
-        let currentFrame = window.frame
-        let newHeight: CGFloat
-        
-        if tabViewItem.identifier as? String == "about" {
-            // About tab should be shorter
-            newHeight = 400
-        } else {
-            // Rules tab can be taller
-            newHeight = 550
-        }
-        
-        // Animate to new size if different
-        if abs(currentFrame.height - newHeight) > 10 {
-            var newFrame = currentFrame
-            newFrame.size.height = newHeight
-            // Keep the top-left corner in the same position
-            newFrame.origin.y = currentFrame.origin.y + (currentFrame.height - newHeight)
-            
-            window.setFrame(newFrame, display: true, animate: true)
+        window?.title = tabViewItem?.label ?? window?.title ?? ""
+        DispatchQueue.main.async { [weak self] in
+            self?.scrollCurrentTabToTop()
         }
     }
     
@@ -3251,8 +3405,8 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
     
     /// Container for card border layers
     private struct CardBorders {
-        let borderLayer: CALayer
-        let innerShadowLayer: CALayer
+        let borderLayer: CAShapeLayer
+        let innerShadowLayer: CAShapeLayer
     }
     
     /// Creates a MAXIMUM liquid glass card with all premium effects (Option A)
@@ -3260,6 +3414,10 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.wantsLayer = true
+        
+        // Disable implicit animations during card setup for better performance
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         
         let layers = createCardLayers(cornerRadius: cornerRadius)
         let shadows = createCardShadows(container: container, cornerRadius: cornerRadius)
@@ -3272,13 +3430,24 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
             content: content
         )
         
-        setupCardHoverView(
-            container: container,
-            layers: layers,
-            shadows: shadows,
-            borders: borders,
-            backdropBlur: layers.backdropBlur
-        )
+        // Defer expensive hover setup to improve startup performance
+        DispatchQueue.main.async {
+            self.setupCardHoverView(
+                container: container,
+                layers: layers,
+                shadows: shadows,
+                borders: borders,
+                backdropBlur: layers.backdropBlur
+            )
+        }
+        
+        // Enable rasterization for better scroll performance
+        if let layer = container.layer {
+            layer.shouldRasterize = true
+            layer.rasterizationScale = NSScreen.main?.backingScaleFactor ?? 2.0
+        }
+        
+        CATransaction.commit()
         
         return container
     }
@@ -3301,8 +3470,12 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         materialView.blendingMode = .withinWindow
         materialView.wantsLayer = true
         materialView.layer?.cornerRadius = cornerRadius
-        materialView.layer?.masksToBounds = false
+        materialView.layer?.masksToBounds = true  // Enable corner radius clipping
         materialView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add border directly to materialView
+        materialView.layer?.borderWidth = 1.0
+        materialView.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
         
         let colorOverlay = CALayer()
         colorOverlay.cornerRadius = cornerRadius
@@ -3317,7 +3490,7 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         ]
         gradientLayer.locations = [0.0, 0.15, 0.4]
         gradientLayer.cornerRadius = cornerRadius
-        gradientLayer.opacity = 0
+        gradientLayer.opacity = 1.0  // Always visible (provides blue tinge)
         
         let innerGlow = CAGradientLayer()
         innerGlow.colors = [
@@ -3361,18 +3534,24 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         
         return CardShadows(contactShadow: contactShadow, accentShadow: accentShadow)
     }
-    
-    /// Creates border layers for the card
-    private func createCardBorders(cornerRadius: CGFloat) -> CardBorders {
-        let borderLayer = CALayer()
-        borderLayer.cornerRadius = cornerRadius
-        borderLayer.borderWidth = 0.5
-        borderLayer.borderColor = NSColor.separatorColor.withAlphaComponent(0.15).cgColor
         
-        let innerShadowLayer = CALayer()
-        innerShadowLayer.cornerRadius = cornerRadius - 1
-        innerShadowLayer.borderWidth = 0.5
-        innerShadowLayer.borderColor = NSColor.black.withAlphaComponent(0.05).cgColor
+    /// Creates border layers for the card using shape layers for better visibility
+    private func createCardBorders(cornerRadius: CGFloat) -> CardBorders {
+        // Outer border using CAShapeLayer for crisp rendering
+        let borderLayer = CAShapeLayer()
+        borderLayer.fillColor = nil
+        borderLayer.strokeColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        borderLayer.lineWidth = 1.0
+        borderLayer.lineCap = .round
+        borderLayer.lineJoin = .round
+        
+        // Inner shadow border
+        let innerShadowLayer = CAShapeLayer()
+        innerShadowLayer.fillColor = nil
+        innerShadowLayer.strokeColor = NSColor.black.withAlphaComponent(0.15).cgColor
+        innerShadowLayer.lineWidth = 0.5
+        innerShadowLayer.lineCap = .round
+        innerShadowLayer.lineJoin = .round
         
         return CardBorders(borderLayer: borderLayer, innerShadowLayer: innerShadowLayer)
     }
@@ -3384,11 +3563,31 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
         materialView: NSVisualEffectView,
         content: NSView
     ) {
+        // Set vertical hugging & compression resistance to prevent stretching
+        container.setContentHuggingPriority(.required, for: .vertical)
+        container.setContentCompressionResistancePriority(.required, for: .vertical)
+        
+        materialView.setContentHuggingPriority(.required, for: .vertical)
+        materialView.setContentCompressionResistancePriority(.required, for: .vertical)
+        
+        content.setContentHuggingPriority(.required, for: .vertical)
+        content.setContentCompressionResistancePriority(.required, for: .vertical)
+        
         container.addSubview(backdropBlur)
         container.addSubview(materialView)
         
         content.translatesAutoresizingMaskIntoConstraints = false
         materialView.addSubview(content)
+        
+        // Use lessThanOrEqualTo for bottom to prevent stretching
+        let bottomLE = content.bottomAnchor.constraint(
+            lessThanOrEqualTo: materialView.bottomAnchor, constant: -12
+        )
+        
+        // Ensure the card is at least content height + insets (12 + 12 = 24)
+        let minH = materialView.heightAnchor.constraint(
+            greaterThanOrEqualTo: content.heightAnchor, constant: 24
+        )
         
         NSLayoutConstraint.activate([
             backdropBlur.topAnchor.constraint(equalTo: container.topAnchor),
@@ -3404,7 +3603,8 @@ extension SettingsWindow: HotkeyRecorderButtonDelegate {
             content.topAnchor.constraint(equalTo: materialView.topAnchor, constant: 12),
             content.leadingAnchor.constraint(equalTo: materialView.leadingAnchor, constant: 12),
             content.trailingAnchor.constraint(equalTo: materialView.trailingAnchor, constant: -12),
-            content.bottomAnchor.constraint(equalTo: materialView.bottomAnchor, constant: -12)
+            bottomLE,
+            minH
         ])
     }
     
@@ -3540,8 +3740,8 @@ class MaximumGlassCardView: NSView {
     weak var colorOverlay: CALayer?
     weak var gradientLayer: CAGradientLayer?
     weak var innerGlow: CAGradientLayer?
-    weak var borderLayer: CALayer?
-    weak var innerShadowLayer: CALayer?
+    weak var borderLayer: CAShapeLayer?
+    weak var innerShadowLayer: CAShapeLayer?
     weak var containerLayer: CALayer?
     weak var contactShadow: CALayer?
     weak var accentShadow: CALayer?
@@ -3571,8 +3771,20 @@ class MaximumGlassCardView: NSView {
         colorOverlay?.frame = materialBounds
         gradientLayer?.frame = materialBounds
         innerGlow?.frame = CGRect(x: 0, y: 0, width: materialBounds.width, height: 2)
-        borderLayer?.frame = materialBounds
-        innerShadowLayer?.frame = materialBounds.insetBy(dx: 1, dy: 1)
+        
+        // Set up shape layer paths for borders using CGPath
+        if let borderLayer = borderLayer {
+            borderLayer.frame = materialBounds
+            let borderPath = CGPath(roundedRect: materialBounds, cornerWidth: 12, cornerHeight: 12, transform: nil)
+            borderLayer.path = borderPath
+        }
+        if let innerShadowLayer = innerShadowLayer {
+            let insetBounds = materialBounds.insetBy(dx: 1, dy: 1)
+            innerShadowLayer.frame = materialBounds
+            let innerPath = CGPath(roundedRect: insetBounds, cornerWidth: 11, cornerHeight: 11, transform: nil)
+            innerShadowLayer.path = innerPath
+        }
+        
         contactShadow?.frame = bounds
         accentShadow?.frame = bounds
         
