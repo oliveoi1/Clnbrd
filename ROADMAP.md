@@ -1,11 +1,19 @@
 # Clnbrd Development Roadmap
 
-**Last Updated:** October 15, 2025  
-**Current Version:** 1.4.0-beta.9 (Build 62 - Latest Beta) ✅
+**Last Updated:** October 16, 2025  
+**Current Version:** 1.4.0-beta.10 (Build 63 - Latest Beta) ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 58-62 - Beta Series)
+## 🎉 Recent Accomplishments (Build 58-63 - Beta Series)
+
+### ✅ Build 63 - Website Update (October 16, 2025)
+- [x] **Website Links Updated**
+  - Updated all URLs to new domain https://olvbrd.com
+  - Visit Website button in settings and about window
+  - Share app feature updated with new URL
+  - **Status:** ✅ Complete
+  - **Impact:** Professional branding with proper domain!
 
 ### ✅ Build 62 - Production Ready (October 15, 2025)
 - [x] **Professional Update Notifications**
