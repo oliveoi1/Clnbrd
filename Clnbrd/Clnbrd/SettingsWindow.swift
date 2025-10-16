@@ -2750,7 +2750,7 @@ class SettingsWindow: NSWindowController {
         logger.info("Visit Website clicked")
         SentryManager.shared.trackUserAction("settings_visit_website")
         
-        if let url = URL(string: "http://olvbrd.x10.network/wp/") {
+        if let url = URL(string: "https://olvbrd.com") {
             NSWorkspace.shared.open(url)
         }
     }

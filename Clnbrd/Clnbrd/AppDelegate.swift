@@ -684,7 +684,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         Perfect for content writers, developers, and professionals who work with text from multiple sources.
         
-        Learn more: http://olvbrd.x10.network/wp/
+        Learn more: https://olvbrd.com
         
         #Clnbrd #MacApp #Productivity
         """
