@@ -1,20 +1,25 @@
 # Clnbrd Development Roadmap
 
 **Last Updated:** October 16, 2025  
-**Current Version:** 1.4.0-beta.11 (Build 64 - Latest Beta) ✅
+**Current Version:** 1.4.0 (Build 64 - Stable Release) ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 58-64 - Beta Series)
+## 🎉 Version 1.4.0 - Stable Release (Build 64)
+
+**Released:** October 16, 2025  
+**Status:** ✅ Production Ready
+
+This marks the promotion of the beta series to stable production release. All features have been tested and are ready for general use.
 
 ### ✅ Build 64 - Update Notification Fix (October 16, 2025)
-- [x] **Critical Bug Fix**
+- [x] **Critical Bug Fix - Now Stable!**
   - Fixed SparkleUpdaterDelegate not connecting to MenuBarManager
   - Yellow dot badge now appears when updates available
   - Menu notification now displays properly
   - Added debug logging for update detection
-  - **Status:** ✅ Complete
-  - **Impact:** Update notifications now work as designed!
+  - **Status:** ✅ Stable Release
+  - **Impact:** Professional update experience like major Mac apps!
 
 ### ✅ Build 63 - Website Update (October 16, 2025)
 - [x] **Website Links Updated**
