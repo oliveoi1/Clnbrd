@@ -7,6 +7,60 @@
         <language>en</language> <!-- Updated Thu Oct 16 2025 -->
         
         <item>
+            <title>🐛 Version 1.4.0-beta.11 (Build 64) - UPDATE NOTIFICATION FIX</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.11</link>
+            <sparkle:version>64</sparkle:version>
+            <sparkle:shortVersionString>1.4.0-beta.11</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>🐛 BETA RELEASE - Critical Update Notification Fix</h2>
+                
+                <p><strong style="color: orange;">This is a BETA release fixing the update notification system. 
+                Build 52 (v1.3) remains the stable release.</strong></p>
+                
+                <h3>🐛 Build 64 - Update Notification Fix</h3>
+                <ul>
+                    <li><strong>🟡 Yellow Dot Fixed</strong> - Badge now appears on menu bar when updates available</li>
+                    <li><strong>📢 Menu Notification Fixed</strong> - "A new update is available..." now displays</li>
+                    <li><strong>🔧 Delegate Connection</strong> - SparkleUpdaterDelegate properly connected to MenuBarManager</li>
+                    <li><strong>📝 Debug Logging</strong> - Added detailed logging for update detection</li>
+                </ul>
+                
+                <h3>🌐 Previous Updates (Build 63)</h3>
+                <ul>
+                    <li><strong>Website Updated</strong> - All links now point to https://olvbrd.com</li>
+                    <li><strong>Visit Website</strong> - Updated in settings and about window</li>
+                    <li><strong>Share App</strong> - Updated with new website URL</li>
+                </ul>
+                
+                <h3>✨ All Previous Beta Features Included</h3>
+                <ul>
+                    <li>Complete onboarding system with permission handling</li>
+                    <li>Clipboard History Strip with ⌘⇧V hotkey</li>
+                    <li>Screenshot capture with ⌘⌥C</li>
+                    <li>Modern "liquid glass" UI aesthetic</li>
+                    <li>Light/Dark/Auto appearance modes</li>
+                    <li>Compact card layouts with proper sizing</li>
+                    <li>Performance optimizations</li>
+                </ul>
+                
+                <h3>Technical Details</h3>
+                <ul>
+                    <li>Fully notarized for macOS Sequoia</li>
+                    <li>Universal binary (Apple Silicon + Intel)</li>
+                    <li>Compatible with macOS 15.5+</li>
+                </ul>
+            ]]></description>
+            <pubDate>Thu, 16 Oct 2025 08:15:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.11/Clnbrd-v1.4.0-beta.11-Build64-notarized-stapled.zip" 
+                sparkle:version="64" 
+                sparkle:shortVersionString="1.4.0-beta.11" 
+                length="2555182"
+                type="application/octet-stream"
+            />
+        </item>
+        
+        <item>
             <title>⚠️ Version 1.4.0-beta.10 (Build 63) - WEBSITE UPDATED</title>
             <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.10</link>
             <sparkle:version>63</sparkle:version>
