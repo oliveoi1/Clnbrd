@@ -155,7 +155,13 @@ class SettingsWindow: NSWindowController {
         settingsTab.view = settingsView
         mainTabView.addTabViewItem(settingsTab)
         
-        // Tab 3: About
+        // Tab 3: Preview
+        let previewTab = NSTabViewItem(identifier: "preview")
+        previewTab.label = "Preview"
+        previewTab.view = createPreviewTab()
+        mainTabView.addTabViewItem(previewTab)
+        
+        // Tab 4: About
         let aboutTab = NSTabViewItem(identifier: "about")
         aboutTab.label = "About"
         aboutTab.view = createAboutTab()
@@ -874,6 +880,317 @@ class SettingsWindow: NSWindowController {
         
         return row
     }
+    
+    // MARK: - Preview Tab
+    
+    private func createPreviewTab() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = true
+        container.autoresizingMask = [.width, .height]
+        
+        // Main vertical split view (top: input, bottom: output)
+        let splitView = NSSplitView()
+        splitView.translatesAutoresizingMaskIntoConstraints = false
+        splitView.isVertical = false
+        splitView.dividerStyle = .thin
+        
+        // TOP SECTION: Input area
+        let topSection = createPreviewInputSection()
+        splitView.addArrangedSubview(topSection)
+        
+        // BOTTOM SECTION: Results area
+        let bottomSection = createPreviewResultsSection()
+        splitView.addArrangedSubview(bottomSection)
+        
+        container.addSubview(splitView)
+        
+        NSLayoutConstraint.activate([
+            splitView.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+            splitView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            splitView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+            splitView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -20)
+        ])
+        
+        // Set initial split proportions (50/50)
+        splitView.setPosition(300, ofDividerAt: 0)
+        
+        return container
+    }
+    
+    private func createPreviewInputSection() -> NSView {
+        let section = createSectionCard(content: buildPreviewInputContent())
+        return section
+    }
+    
+    private func buildPreviewInputContent() -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 12
+        stack.alignment = .leading
+        
+        // Header with title and paste button
+        let header = NSStackView()
+        header.orientation = .horizontal
+        header.spacing = 12
+        header.alignment = .centerY
+        
+        let titleLabel = NSTextField(labelWithString: "Paste your text here:")
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        header.addArrangedSubview(titleLabel)
+        
+        // Flexible spacer
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        header.addArrangedSubview(spacer)
+        
+        let pasteButton = NSButton(title: "Paste from Clipboard", target: self, action: #selector(pasteIntoPreview))
+        pasteButton.bezelStyle = .rounded
+        pasteButton.font = NSFont.systemFont(ofSize: 11)
+        header.addArrangedSubview(pasteButton)
+        
+        let cleanButton = NSButton(title: "Clean Text", target: self, action: #selector(cleanPreviewText))
+        cleanButton.bezelStyle = .rounded
+        cleanButton.font = NSFont.systemFont(ofSize: 11)
+        cleanButton.keyEquivalent = "\r" // Return key
+        header.addArrangedSubview(cleanButton)
+        
+        stack.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        
+        // Text input area
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .lineBorder
+        
+        let textView = NSTextView()
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.5)
+        textView.string = "Paste or type your text here to see how Clnbrd will clean it..."
+        
+        scrollView.documentView = textView
+        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        
+        stack.addArrangedSubview(scrollView)
+        scrollView.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        
+        // Store reference for later use
+        previewInputTextView = textView
+        
+        return stack
+    }
+    
+    private func createPreviewResultsSection() -> NSView {
+        let section = createSectionCard(content: buildPreviewResultsContent())
+        return section
+    }
+    
+    private func buildPreviewResultsContent() -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 12
+        stack.alignment = .leading
+        
+        // Stats bar showing detection results
+        let statsBar = createPreviewStatsBar()
+        stack.addArrangedSubview(statsBar)
+        statsBar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        
+        // Result header
+        let resultLabel = NSTextField(labelWithString: "Result:")
+        resultLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        stack.addArrangedSubview(resultLabel)
+        
+        // Results text area (read-only)
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .lineBorder
+        
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.3)
+        textView.string = "Cleaned text will appear here..."
+        
+        scrollView.documentView = textView
+        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        
+        stack.addArrangedSubview(scrollView)
+        scrollView.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        
+        // Copy button
+        let copyButton = NSButton(title: "Copy Result", target: self, action: #selector(copyPreviewResult))
+        copyButton.bezelStyle = .rounded
+        copyButton.font = NSFont.systemFont(ofSize: 11)
+        stack.addArrangedSubview(copyButton)
+        
+        // Store reference for later use
+        previewOutputTextView = textView
+        
+        return stack
+    }
+    
+    private func createPreviewStatsBar() -> NSView {
+        let bar = NSStackView()
+        bar.orientation = .horizontal
+        bar.spacing = 20
+        bar.alignment = .centerY
+        bar.distribution = .fillEqually
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Hidden characters count
+        let hiddenLabel = createStatLabel(icon: "👁", text: "0 hidden characters found", color: .systemOrange)
+        bar.addArrangedSubview(hiddenLabel)
+        previewHiddenLabel = hiddenLabel
+        
+        // AI watermarks detected
+        let watermarkLabel = createStatLabel(icon: "🤖", text: "No AI watermarks", color: .systemBlue)
+        bar.addArrangedSubview(watermarkLabel)
+        previewWatermarkLabel = watermarkLabel
+        
+        // Rules applied
+        let rulesLabel = createStatLabel(icon: "✨", text: "0 rules applied", color: .systemGreen)
+        bar.addArrangedSubview(rulesLabel)
+        previewRulesLabel = rulesLabel
+        
+        bar.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        
+        return bar
+    }
+    
+    private func createStatLabel(icon: String, text: String, color: NSColor) -> NSTextField {
+        let label = NSTextField(labelWithString: "\(icon) \(text)")
+        label.font = NSFont.systemFont(ofSize: 11)
+        label.textColor = color
+        label.alignment = .center
+        return label
+    }
+    
+    // MARK: - Preview Tab Actions
+    
+    @objc private func pasteIntoPreview() {
+        let pasteboard = NSPasteboard.general
+        if let string = pasteboard.string(forType: .string) {
+            previewInputTextView?.string = string
+        }
+    }
+    
+    @objc private func cleanPreviewText() {
+        guard let inputText = previewInputTextView?.string, !inputText.isEmpty else {
+            previewOutputTextView?.string = "No text to clean"
+            return
+        }
+        
+        // Analyze the text and apply cleaning
+        let analysis = analyzeTextForPreview(inputText)
+        
+        // Update stats
+        previewHiddenLabel?.stringValue = "👁 \(analysis.hiddenCharCount) hidden characters found"
+        previewWatermarkLabel?.stringValue = "🤖 \(analysis.watermarks.isEmpty ? "No AI watermarks" : "\(analysis.watermarks.count) watermark(s): \(analysis.watermarks.joined(separator: ", "))")"
+        previewRulesLabel?.stringValue = "✨ \(analysis.rulesApplied.count) rule(s) applied"
+        
+        // Show cleaned text
+        previewOutputTextView?.string = analysis.cleanedText
+    }
+    
+    @objc private func copyPreviewResult() {
+        guard let resultText = previewOutputTextView?.string, !resultText.isEmpty else { return }
+        
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(resultText, forType: .string)
+        
+        logger.info("Preview result copied to clipboard")
+    }
+    
+    // MARK: - Preview Analysis
+    
+    private struct PreviewAnalysis {
+        let cleanedText: String
+        let hiddenCharCount: Int
+        let watermarks: [String]
+        let rulesApplied: [String]
+    }
+    
+    private func analyzeTextForPreview(_ text: String) -> PreviewAnalysis {
+        var cleanedText = text
+        var hiddenCount = 0
+        var detectedWatermarks: [String] = []
+        var appliedRules: [String] = []
+        
+        // 1. Detect hidden/invisible characters
+        let invisibleChars: [Character] = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{FEFF}", "\u{00A0}"]
+        for char in invisibleChars {
+            let count = text.filter { $0 == char }.count
+            hiddenCount += count
+        }
+        
+        // 2. Detect AI watermarks
+        let watermarkPatterns = [
+            ("ChatGPT", "ChatGPT"),
+            ("Claude", "Claude"),
+            ("Gemini", "Gemini"),
+            ("Copilot", "Copilot"),
+            ("—", "Em dash (—)")
+        ]
+        
+        for (pattern, name) in watermarkPatterns {
+            if text.contains(pattern) {
+                detectedWatermarks.append(name)
+            }
+        }
+        
+        // 3. Apply cleaning rules
+        let cleaningRules = PreferencesManager.shared.loadCleaningRules()
+        cleanedText = cleaningRules.apply(to: text)
+        
+        // Determine which rules were applied by comparing
+        if text != cleanedText {
+            if text.contains("http") && !cleanedText.contains("http") && cleaningRules.removeUrls {
+                appliedRules.append("Remove URLs")
+            }
+            if text.contains("—") && !cleanedText.contains("—") && cleaningRules.removeEmdashes {
+                appliedRules.append("Replace em dashes")
+            }
+            if hiddenCount > 0 && cleaningRules.removeZeroWidthChars {
+                appliedRules.append("Remove hidden characters")
+            }
+            if text.contains("<") && !cleanedText.contains("<") && cleaningRules.removeHtmlTags {
+                appliedRules.append("Remove HTML tags")
+            }
+            if cleaningRules.removeExtraLineBreaks {
+                let originalLines = text.components(separatedBy: .newlines).count
+                let cleanedLines = cleanedText.components(separatedBy: .newlines).count
+                if originalLines != cleanedLines {
+                    appliedRules.append("Remove extra line breaks")
+                }
+            }
+        }
+        
+        return PreviewAnalysis(
+            cleanedText: cleanedText,
+            hiddenCharCount: hiddenCount,
+            watermarks: detectedWatermarks,
+            rulesApplied: appliedRules
+        )
+    }
+    
+    // MARK: - Preview Properties
+    
+    private var previewInputTextView: NSTextView?
+    private var previewOutputTextView: NSTextView?
+    private var previewHiddenLabel: NSTextField?
+    private var previewWatermarkLabel: NSTextField?
+    private var previewRulesLabel: NSTextField?
     
     private func createFullWidthSeparator() -> NSBox {
         let separator = NSBox()
