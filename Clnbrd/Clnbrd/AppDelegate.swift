@@ -740,6 +740,55 @@ class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate {
     
     func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
         logger.info("✅ No updates found - app is up to date")
+        
+        // Hide notification if it's showing
+        DispatchQueue.main.async { [weak self] in
+            if let menuBarManager = self?.menuBarManager {
+                menuBarManager.hideUpdateNotification()
+            }
+        }
+    }
+    
+    // Called when user chooses "Remind Me Later" or "Skip This Version"
+    func userDidSkipThisVersion(_ update: SUAppcastItem) {
+        let version = update.displayVersionString
+        logger.info("⏭️ User skipped update: \(version)")
+        
+        // Keep showing notification since update is still available
+        DispatchQueue.main.async { [weak self] in
+            if let menuBarManager = self?.menuBarManager {
+                logger.info("   Keeping update notification visible")
+                menuBarManager.showUpdateAvailable(version: version)
+            }
+        }
+    }
+    
+    // Called when update dialog is dismissed without installing
+    func updater(_ updater: SPUUpdater, userDidMake choice: SPUUserUpdateChoice, forUpdate updateItem: SUAppcastItem, state: SPUUserUpdateState) {
+        let version = updateItem.displayVersionString
+        logger.info("📋 User made choice for update \(version): \(choice.rawValue)")
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let menuBarManager = self.menuBarManager else { return }
+            
+            switch choice {
+            case .install:
+                logger.info("   User chose to install - hiding notification")
+                menuBarManager.hideUpdateNotification()
+                
+            case .skip:
+                logger.info("   User chose to skip - keeping notification visible")
+                menuBarManager.showUpdateAvailable(version: version)
+                
+            case .dismiss:
+                logger.info("   User dismissed - keeping notification visible")
+                menuBarManager.showUpdateAvailable(version: version)
+                
+            @unknown default:
+                logger.info("   Unknown choice - keeping notification visible")
+                menuBarManager.showUpdateAvailable(version: version)
+            }
+        }
     }
 }
 
