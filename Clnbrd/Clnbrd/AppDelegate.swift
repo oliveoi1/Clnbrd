@@ -168,6 +168,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize Sparkle updater with delegate
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: delegate, userDriverDelegate: nil)
         super.init()
+        
+        // Connect the delegate to menuBarManager after super.init()
+        self.sparkleDelegate?.menuBarManager = self.menuBarManager
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -715,11 +718,22 @@ class SparkleUpdaterDelegate: NSObject, SPUUpdaterDelegate {
         // Update available - show notification
         let version = item.displayVersionString
         logger.info("📦 Update found: version \(version)")
+        logger.info("   menuBarManager exists: \(self.menuBarManager != nil)")
         
-        DispatchQueue.main.async {
-            // Get the menu bar manager from AppDelegate
-            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-                appDelegate.menuBarManager.showUpdateAvailable(version: version)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Show notification using menuBarManager
+            if let menuBarManager = self.menuBarManager {
+                logger.info("   Showing update notification via menuBarManager")
+                menuBarManager.showUpdateAvailable(version: version)
+            } else {
+                logger.warning("   ⚠️ menuBarManager is nil - can't show notification!")
+                // Fallback: try getting from AppDelegate
+                if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                    logger.info("   Fallback: showing via AppDelegate.menuBarManager")
+                    appDelegate.menuBarManager.showUpdateAvailable(version: version)
+                }
             }
         }
     }
