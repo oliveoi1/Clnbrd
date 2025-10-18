@@ -1,11 +1,20 @@
 # Clnbrd Development Roadmap
 
 **Last Updated:** October 16, 2025  
-**Current Version:** 1.4.0-beta.10 (Build 63 - Latest Beta) ✅
+**Current Version:** 1.4.0-beta.11 (Build 64 - Latest Beta) ✅
 
 ---
 
-## 🎉 Recent Accomplishments (Build 58-63 - Beta Series)
+## 🎉 Recent Accomplishments (Build 58-64 - Beta Series)
+
+### ✅ Build 64 - Update Notification Fix (October 16, 2025)
+- [x] **Critical Bug Fix**
+  - Fixed SparkleUpdaterDelegate not connecting to MenuBarManager
+  - Yellow dot badge now appears when updates available
+  - Menu notification now displays properly
+  - Added debug logging for update detection
+  - **Status:** ✅ Complete
+  - **Impact:** Update notifications now work as designed!
 
 ### ✅ Build 63 - Website Update (October 16, 2025)
 - [x] **Website Links Updated**
