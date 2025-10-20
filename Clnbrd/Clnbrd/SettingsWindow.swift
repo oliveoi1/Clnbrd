@@ -13,6 +13,252 @@ final class FlippedDocumentView: NSView {
     override var isFlipped: Bool { true }
 }
 
+/// Card view with hover effect
+final class HoverCardView: NSView {
+    private var trackingArea: NSTrackingArea?
+    private var gradientLayer: CAGradientLayer?
+    private var isHovered = false
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupView()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+    
+    private func setupView() {
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        
+        // Create gradient layer (initially hidden)
+        let gradient = CAGradientLayer()
+        gradient.startPoint = CGPoint(x: 0, y: 0)
+        gradient.endPoint = CGPoint(x: 1, y: 1)
+        gradient.cornerRadius = 8
+        gradient.opacity = 0
+        self.gradientLayer = gradient
+        layer?.insertSublayer(gradient, at: 0)
+        
+        updateAppearance()
+    }
+    
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+    
+    private func updateAppearance() {
+        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        
+        if isDarkMode {
+            // Dark mode: slightly lighter than background
+            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            layer?.borderWidth = 0.5
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+            
+            // Dark mode gradient: brighter colors
+            gradientLayer?.colors = [
+                NSColor.systemBlue.withAlphaComponent(0.15).cgColor,
+                NSColor.systemPurple.withAlphaComponent(0.15).cgColor
+            ]
+        } else {
+            // Light mode: use control background
+            layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+            layer?.borderWidth = 0.5
+            layer?.borderColor = NSColor.separatorColor.cgColor
+            
+            // Light mode gradient: subtle colors
+            gradientLayer?.colors = [
+                NSColor.systemBlue.withAlphaComponent(0.05).cgColor,
+                NSColor.systemPurple.withAlphaComponent(0.05).cgColor
+            ]
+        }
+        
+        // Reapply hover state if needed
+        if isHovered {
+            applyHoverState(animated: false)
+        }
+    }
+    
+    override func layout() {
+        super.layout()
+        gradientLayer?.frame = bounds
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let trackingArea = trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        
+        let options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways]
+        trackingArea = NSTrackingArea(rect: bounds, options: options, owner: self, userInfo: nil)
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        isHovered = true
+        applyHoverState(animated: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        isHovered = false
+        applyNormalState(animated: true)
+    }
+    
+    private func applyHoverState(animated: Bool) {
+        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let hoverBorderColor = isDarkMode 
+            ? NSColor.systemBlue.withAlphaComponent(0.4).cgColor
+            : NSColor.systemBlue.withAlphaComponent(0.3).cgColor
+        
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                layer?.borderColor = hoverBorderColor
+                layer?.borderWidth = 1.0
+                gradientLayer?.opacity = 1.0
+            }
+        } else {
+            layer?.borderColor = hoverBorderColor
+            layer?.borderWidth = 1.0
+            gradientLayer?.opacity = 1.0
+        }
+    }
+    
+    private func applyNormalState(animated: Bool) {
+        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let normalBorderColor = isDarkMode 
+            ? NSColor.white.withAlphaComponent(0.1).cgColor
+            : NSColor.separatorColor.cgColor
+        
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                layer?.borderColor = normalBorderColor
+                layer?.borderWidth = 0.5
+                gradientLayer?.opacity = 0
+            }
+        } else {
+            layer?.borderColor = normalBorderColor
+            layer?.borderWidth = 0.5
+            gradientLayer?.opacity = 0
+        }
+    }
+}
+
+/// Navigation direction for history browsing
+enum NavigationDirection {
+    case left, right
+}
+
+/// Navigation arrow view with hover effects
+final class NavigationArrowView: NSView {
+    private var trackingArea: NSTrackingArea?
+    private let arrowImageView: NSImageView
+    private let bgLayer: CAGradientLayer
+    private let direction: NavigationDirection
+    
+    init(direction: NavigationDirection) {
+        self.direction = direction
+        self.arrowImageView = NSImageView()
+        self.bgLayer = CAGradientLayer()
+        
+        super.init(frame: .zero)
+        
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        
+        // Setup background gradient
+        if direction == .left {
+            bgLayer.colors = [
+                NSColor.black.withAlphaComponent(0.4).cgColor,
+                NSColor.clear.cgColor
+            ]
+            bgLayer.startPoint = CGPoint(x: 0, y: 0.5)
+            bgLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        } else {
+            bgLayer.colors = [
+                NSColor.clear.cgColor,
+                NSColor.black.withAlphaComponent(0.4).cgColor
+            ]
+            bgLayer.startPoint = CGPoint(x: 0, y: 0.5)
+            bgLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        }
+        bgLayer.opacity = 0
+        layer = bgLayer
+        
+        // Setup arrow image
+        let symbolName = direction == .left ? "chevron.left.circle.fill" : "chevron.right.circle.fill"
+        arrowImageView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 32, weight: .semibold))
+        arrowImageView.contentTintColor = .white
+        arrowImageView.translatesAutoresizingMaskIntoConstraints = false
+        arrowImageView.alphaValue = 0
+        
+        addSubview(arrowImageView)
+        
+        NSLayoutConstraint.activate([
+            arrowImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            arrowImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            arrowImageView.widthAnchor.constraint(equalToConstant: 32),
+            arrowImageView.heightAnchor.constraint(equalToConstant: 32)
+        ])
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let trackingArea = trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        showArrow()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        hideArrow()
+    }
+    
+    func showArrow() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            bgLayer.opacity = 1.0
+            arrowImageView.animator().alphaValue = 1.0
+        }
+    }
+    
+    func hideArrow() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            bgLayer.opacity = 0
+            arrowImageView.animator().alphaValue = 0
+        }
+    }
+}
+
 /// Extension for consistent scroll-to-top behavior with flipped document views
 private extension NSScrollView {
     func scrollToTopFlipped() {
@@ -108,7 +354,6 @@ class SettingsWindow: NSWindowController {
         else { return }
         sv.scrollToTopFlipped()
     }
-    
     
     private func scrollAllScrollViewsToTop(in view: NSView) {
         if let scrollView = view as? NSScrollView {
@@ -522,27 +767,44 @@ class SettingsWindow: NSWindowController {
     }
     
     @objc private func addExcludedApp() {
-        let alert = NSAlert()
-        alert.messageText = "Add Excluded App"
-        alert.informativeText = "Enter the exact name of the app to exclude from history capture:"
-        alert.addButton(withTitle: "Add")
-        alert.addButton(withTitle: "Cancel")
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Select Application to Exclude"
+        openPanel.message = "Choose an application to exclude from clipboard history capture"
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.allowedContentTypes = [.application]
+        openPanel.directoryURL = URL(fileURLWithPath: "/Applications")
+        openPanel.canCreateDirectories = false
+        openPanel.showsHiddenFiles = false
         
-        let inputTextField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        inputTextField.placeholderString = "e.g., 1Password"
-        alert.accessoryView = inputTextField
-        
-        alert.window.initialFirstResponder = inputTextField
-        
-        if alert.runModal() == .alertFirstButtonReturn {
-            let appName = inputTextField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !appName.isEmpty {
-                ClipboardHistoryManager.shared.excludedApps.insert(appName)
-                logger.info("Added excluded app: \(appName)")
+        openPanel.begin { [weak self] response in
+            guard let self = self else { return }
+            
+            if response == .OK, let selectedURL = openPanel.url {
+                // Get the app name from the bundle or file name
+                let appName: String
                 
-                // Refresh table view
-                appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
-                appExclusionsTableView.reloadData()
+                // Try to get the display name from the bundle
+                if let bundle = Bundle(url: selectedURL),
+                   let bundleName = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String {
+                    appName = bundleName
+                } else if let bundle = Bundle(url: selectedURL),
+                          let bundleName = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String {
+                    appName = bundleName
+                } else {
+                    // Fall back to file name without .app extension
+                    appName = selectedURL.deletingPathExtension().lastPathComponent
+                }
+                
+                if !appName.isEmpty {
+                    ClipboardHistoryManager.shared.excludedApps.insert(appName)
+                    logger.info("Added excluded app: \(appName) from path: \(selectedURL.path)")
+                    
+                    // Refresh table view
+                    self.appExclusionsData = Array(ClipboardHistoryManager.shared.excludedApps).sorted()
+                    self.appExclusionsTableView.reloadData()
+                }
             }
         }
     }
@@ -888,31 +1150,379 @@ class SettingsWindow: NSWindowController {
         container.translatesAutoresizingMaskIntoConstraints = true
         container.autoresizingMask = [.width, .height]
         
-        // Main vertical split view (top: input, bottom: output)
+        // Main horizontal split view (left: controls, right: diff view)
+        let mainSplitView = NSSplitView()
+        mainSplitView.translatesAutoresizingMaskIntoConstraints = false
+        mainSplitView.isVertical = true // Horizontal split
+        mainSplitView.dividerStyle = .thin
+        
+        // LEFT PANEL: Rule toggles and controls
+        let controlsPanel = createPreviewControlsPanel()
+        mainSplitView.addArrangedSubview(controlsPanel)
+        
+        // RIGHT PANEL: Input/Output diff view
+        let diffPanel = createPreviewDiffPanel()
+        mainSplitView.addArrangedSubview(diffPanel)
+        
+        container.addSubview(mainSplitView)
+        
+        NSLayoutConstraint.activate([
+            mainSplitView.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
+            mainSplitView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            mainSplitView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+            mainSplitView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -20),
+            controlsPanel.widthAnchor.constraint(greaterThanOrEqualToConstant: 200)
+        ])
+        
+        // Set initial split proportions (30% controls, 70% diff)
+        mainSplitView.setPosition(220, ofDividerAt: 0)
+        
+        return container
+    }
+    
+    // MARK: - Preview Controls Panel (Left Side)
+    
+    private func createPreviewControlsStack(in documentView: NSView) -> NSStackView {
+        let mainStack = NSStackView()
+        mainStack.orientation = .vertical
+        mainStack.spacing = 16
+        mainStack.alignment = .leading
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        documentView.addSubview(mainStack)
+        NSLayoutConstraint.activate([
+            mainStack.topAnchor.constraint(equalTo: documentView.topAnchor, constant: 12),
+            mainStack.leadingAnchor.constraint(equalTo: documentView.leadingAnchor, constant: 12),
+            mainStack.trailingAnchor.constraint(equalTo: documentView.trailingAnchor, constant: -12),
+            mainStack.bottomAnchor.constraint(equalTo: documentView.bottomAnchor, constant: -12)
+        ])
+        
+        return mainStack
+    }
+    
+    private func createSearchHistoryCard() -> NSView {
+        let cardContainer = HoverCardView()
+        
+        let cardStack = NSStackView()
+        cardStack.orientation = .vertical
+        cardStack.spacing = 8
+        cardStack.alignment = .leading
+        cardStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        // Search field with navigation
+        let searchStack = NSStackView()
+        searchStack.orientation = .horizontal
+        searchStack.spacing = 8
+        searchStack.alignment = .centerY
+        
+        // Search field
+        let searchField = NSSearchField()
+        searchField.placeholderString = "Search history..."
+        searchField.font = NSFont.systemFont(ofSize: 11)
+        searchField.target = self
+        searchField.action = #selector(historySearchTextChanged)
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        searchStack.addArrangedSubview(searchField)
+        historySearchField = searchField
+        
+        // Navigation buttons
+        let prevButton = NSButton(title: "←", target: self, action: #selector(navigateToPreviousSearchResult))
+        prevButton.bezelStyle = .rounded
+        prevButton.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        prevButton.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        searchStack.addArrangedSubview(prevButton)
+        
+        let nextButton = NSButton(title: "→", target: self, action: #selector(navigateToNextSearchResult))
+        nextButton.bezelStyle = .rounded
+        nextButton.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        nextButton.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        searchStack.addArrangedSubview(nextButton)
+        
+        cardStack.addArrangedSubview(searchStack)
+        
+        // Set constraints
+        NSLayoutConstraint.activate([
+            searchField.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+            searchStack.widthAnchor.constraint(equalTo: cardStack.widthAnchor)
+        ])
+        
+        cardContainer.addSubview(cardStack)
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor)
+        ])
+        
+        return cardContainer
+    }
+    
+    private func createProfileAndControlsCard() -> NSView {
+        let cardStack = NSStackView()
+        cardStack.orientation = .vertical
+        cardStack.spacing = 8
+        cardStack.alignment = .leading
+        cardStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        // Add visual card background with hover effect
+        let cardContainer = HoverCardView()
+        
+        // Profile dropdown
+        let previewProfileDropdown = NSPopUpButton(frame: .zero, pullsDown: false)
+        previewProfileDropdown.identifier = NSUserInterfaceItemIdentifier("previewProfileDropdown")
+        previewProfileDropdown.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        previewProfileDropdown.target = self
+        previewProfileDropdown.action = #selector(previewProfileChanged)
+        cardStack.addArrangedSubview(previewProfileDropdown)
+        self.previewProfileDropdown = previewProfileDropdown
+        
+        cardContainer.addSubview(cardStack)
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor)
+        ])
+        
+        return cardContainer
+    }
+    
+    private func createRulesCard() -> NSView {
+        let cardContainer = HoverCardView()
+        
+        let cardStack = NSStackView()
+        cardStack.orientation = .vertical
+        cardStack.spacing = 6
+        cardStack.alignment = .leading
+        cardStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        // Rules header
+        let rulesLabel = NSTextField(labelWithString: "Rules:")
+        rulesLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        cardStack.addArrangedSubview(rulesLabel)
+        
+        // Create toggle for each rule
+        previewRuleToggles = [:]
+        previewRuleIndicators = [:]
+        
+        let ruleDefinitions: [(key: String, title: String, defaultValue: Bool)] = [
+            ("removeZeroWidthChars", "Remove invisible characters", true),
+            ("removeEmdashes", "Replace em-dashes", true),
+            ("normalizeSpaces", "Normalize spaces", true),
+            ("convertSmartQuotes", "Convert smart quotes", true),
+            ("normalizeLineBreaks", "Normalize line breaks", true),
+            ("removeTrailingSpaces", "Remove trailing spaces", true),
+            ("removeEmojis", "Remove emojis", false),
+            ("removeExtraLineBreaks", "Remove extra line breaks", true),
+            ("removeLeadingTrailingWhitespace", "Trim lines", true),
+            ("removeUrlTracking", "Remove URL tracking", true),
+            ("removeUrls", "Remove URL protocols", true),
+            ("removeHtmlTags", "Remove HTML tags", true),
+            ("removeExtraPunctuation", "Remove extra punctuation", true)
+        ]
+        
+        for ruleDef in ruleDefinitions {
+            let ruleRow = NSStackView()
+            ruleRow.orientation = .horizontal
+            ruleRow.spacing = 8
+            ruleRow.alignment = .centerY
+            ruleRow.distribution = .fill
+            
+            let toggle = NSButton(checkboxWithTitle: ruleDef.title, target: self, action: #selector(previewRuleToggled(_:)))
+            toggle.state = ruleDef.defaultValue ? .on : .off
+            toggle.font = NSFont.systemFont(ofSize: 10)
+            toggle.identifier = NSUserInterfaceItemIdentifier(ruleDef.key)
+            ruleRow.addArrangedSubview(toggle)
+            
+            let spacer = NSView()
+            spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            ruleRow.addArrangedSubview(spacer)
+            
+            let indicator = NSTextField(labelWithString: "●")
+            indicator.font = NSFont.systemFont(ofSize: 12)
+            indicator.textColor = .systemYellow
+            indicator.identifier = NSUserInterfaceItemIdentifier("\(ruleDef.key)_indicator")
+            indicator.isHidden = true
+            indicator.toolTip = "Detected in text"
+            indicator.alignment = .right
+            indicator.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+            ruleRow.addArrangedSubview(indicator)
+            
+            cardStack.addArrangedSubview(ruleRow)
+            previewRuleToggles[ruleDef.key] = toggle
+            previewRuleIndicators[ruleDef.key] = indicator
+        }
+        
+        cardContainer.addSubview(cardStack)
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor)
+        ])
+        
+        return cardContainer
+    }
+    
+    private func createResultsCard() -> NSView {
+        let cardContainer = HoverCardView()
+        
+        let cardStack = NSStackView()
+        cardStack.orientation = .vertical
+        cardStack.spacing = 8
+        cardStack.alignment = .leading
+        cardStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        // Results header
+        let resultsLabel = NSTextField(labelWithString: "Results:")
+        resultsLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        cardStack.addArrangedSubview(resultsLabel)
+        
+        // Stats label
+        previewStatsLabel = createMultilineLabel(text: "Paste text to analyze")
+        previewStatsLabel?.font = NSFont.systemFont(ofSize: 9)
+        previewStatsLabel?.textColor = .secondaryLabelColor
+        cardStack.addArrangedSubview(previewStatsLabel!)
+        
+        cardContainer.addSubview(cardStack)
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor)
+        ])
+        
+        return cardContainer
+    }
+    
+    private func createCustomRulesButtonCard() -> NSView {
+        let cardContainer = HoverCardView()
+        
+        let cardStack = NSStackView()
+        cardStack.orientation = .horizontal
+        cardStack.spacing = 8
+        cardStack.alignment = .centerY
+        cardStack.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        
+        let customLabel = NSTextField(labelWithString: "Custom Find/Replace:")
+        customLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        cardStack.addArrangedSubview(customLabel)
+        
+        // Count label
+        let countLabel = NSTextField(labelWithString: "(\(cleaningRules.customRules.count) rules)")
+        countLabel.font = NSFont.systemFont(ofSize: 10)
+        countLabel.textColor = .secondaryLabelColor
+        customRulesCountLabel = countLabel  // Store reference for updates
+        cardStack.addArrangedSubview(countLabel)
+        
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        cardStack.addArrangedSubview(spacer)
+        
+        let manageButton = NSButton(title: "Manage Rules...", target: self, action: #selector(openCustomRulesSheet))
+        manageButton.bezelStyle = .rounded
+        manageButton.font = NSFont.systemFont(ofSize: 11)
+        cardStack.addArrangedSubview(manageButton)
+        
+        cardContainer.addSubview(cardStack)
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: cardContainer.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: cardContainer.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: cardContainer.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: cardContainer.bottomAnchor)
+        ])
+        
+        return cardContainer
+    }
+    
+    private func createPreviewControlsPanel() -> NSView {
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.backgroundColor = .clear
+        
+        let documentView = FlippedDocumentView()
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = documentView
+        pinDocumentViewToClipView(documentView, in: scrollView)
+        
+        let mainStack = createPreviewControlsStack(in: documentView)
+        
+        // CARD 1: Search History
+        let searchCard = createSearchHistoryCard()
+        mainStack.addArrangedSubview(searchCard)
+        searchCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor, constant: -24).isActive = true
+        
+        // CARD 2: Profile & Clipboard Controls
+        let controlsCard = createProfileAndControlsCard()
+        mainStack.addArrangedSubview(controlsCard)
+        controlsCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor, constant: -24).isActive = true
+        
+        // CARD 3: Rule toggles section
+        let rulesCard = createRulesCard()
+        mainStack.addArrangedSubview(rulesCard)
+        rulesCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor, constant: -24).isActive = true
+        
+        // CARD 4: Custom Rules Button
+        let customRulesCard = createCustomRulesButtonCard()
+        mainStack.addArrangedSubview(customRulesCard)
+        customRulesCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor, constant: -24).isActive = true
+        
+        // CARD 5: Results section
+        let resultsCard = createResultsCard()
+        mainStack.addArrangedSubview(resultsCard)
+        resultsCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor, constant: -24).isActive = true
+        
+        return scrollView
+    }
+    
+    private func createMultilineLabel(text: String) -> NSTextField {
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = NSFont.systemFont(ofSize: 10)
+        label.textColor = .labelColor
+        label.maximumNumberOfLines = 0
+        return label
+    }
+    
+    // MARK: - Preview Diff Panel (Right Side)
+    
+    private func createPreviewDiffPanel() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = true
+        
+        // Vertical split: top = input, bottom = output with diff highlighting
         let splitView = NSSplitView()
         splitView.translatesAutoresizingMaskIntoConstraints = false
         splitView.isVertical = false
         splitView.dividerStyle = .thin
         
-        // TOP SECTION: Input area
-        let topSection = createPreviewInputSection()
-        splitView.addArrangedSubview(topSection)
+        // TOP: Input area
+        let inputSection = createPreviewInputSection()
+        splitView.addArrangedSubview(inputSection)
         
-        // BOTTOM SECTION: Results area
-        let bottomSection = createPreviewResultsSection()
-        splitView.addArrangedSubview(bottomSection)
+        // BOTTOM: Output with diff highlighting
+        let outputSection = createPreviewOutputWithDiff()
+        splitView.addArrangedSubview(outputSection)
         
         container.addSubview(splitView)
         
         NSLayoutConstraint.activate([
-            splitView.topAnchor.constraint(equalTo: container.topAnchor, constant: 20),
-            splitView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
-            splitView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
-            splitView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -20)
+            splitView.topAnchor.constraint(equalTo: container.topAnchor),
+            splitView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            splitView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            splitView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
         
-        // Set initial split proportions (50/50)
-        splitView.setPosition(300, ofDividerAt: 0)
+        splitView.setPosition(250, ofDividerAt: 0)
         
         return container
     }
@@ -925,18 +1535,23 @@ class SettingsWindow: NSWindowController {
     private func buildPreviewInputContent() -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
-        stack.spacing = 12
+        stack.spacing = 8
         stack.alignment = .leading
         
-        // Header with title and paste button
+        // Header with copy button
         let header = NSStackView()
         header.orientation = .horizontal
         header.spacing = 12
         header.alignment = .centerY
         
-        let titleLabel = NSTextField(labelWithString: "Paste your text here:")
-        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        let titleLabel = NSTextField(labelWithString: "Original Text:")
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         header.addArrangedSubview(titleLabel)
+        
+        let navIndicator = NSTextField(labelWithString: "← → Navigate History")
+        navIndicator.font = NSFont.systemFont(ofSize: 9)
+        navIndicator.textColor = .secondaryLabelColor
+        header.addArrangedSubview(navIndicator)
         
         // Flexible spacer
         let spacer = NSView()
@@ -944,21 +1559,20 @@ class SettingsWindow: NSWindowController {
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         header.addArrangedSubview(spacer)
         
-        let pasteButton = NSButton(title: "Paste from Clipboard", target: self, action: #selector(pasteIntoPreview))
-        pasteButton.bezelStyle = .rounded
-        pasteButton.font = NSFont.systemFont(ofSize: 11)
-        header.addArrangedSubview(pasteButton)
-        
-        let cleanButton = NSButton(title: "Clean Text", target: self, action: #selector(cleanPreviewText))
-        cleanButton.bezelStyle = .rounded
-        cleanButton.font = NSFont.systemFont(ofSize: 11)
-        cleanButton.keyEquivalent = "\r" // Return key
-        header.addArrangedSubview(cleanButton)
+        let copyButton = NSButton(title: "Copy", target: self, action: #selector(copyOriginalText))
+        copyButton.bezelStyle = .rounded
+        copyButton.font = NSFont.systemFont(ofSize: 10)
+        header.addArrangedSubview(copyButton)
         
         stack.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         
-        // Text input area
+        // Create container for navigation overlays
+        let navContainer = NSView()
+        navContainer.translatesAutoresizingMaskIntoConstraints = false
+        previewNavigationContainer = navContainer
+        
+        // Text input area with live monitoring
         let scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
@@ -968,45 +1582,364 @@ class SettingsWindow: NSWindowController {
         let textView = NSTextView()
         textView.isEditable = true
         textView.isSelectable = true
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.5)
-        textView.string = "Paste or type your text here to see how Clnbrd will clean it..."
+        textView.string = "Paste text here or navigate history using the arrows..."
+        textView.delegate = self
         
         scrollView.documentView = textView
-        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
-        
-        stack.addArrangedSubview(scrollView)
-        scrollView.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        
-        // Store reference for later use
         previewInputTextView = textView
+        
+        // Add scroll view to container
+        navContainer.addSubview(scrollView)
+        
+        // Create navigation arrow overlays
+        let leftArrow = createNavigationArrow(direction: .left)
+        let rightArrow = createNavigationArrow(direction: .right)
+        
+        leftArrowView = leftArrow
+        rightArrowView = rightArrow
+        
+        navContainer.addSubview(leftArrow)
+        navContainer.addSubview(rightArrow)
+        
+        // Setup constraints
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: navContainer.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: navContainer.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: navContainer.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: navContainer.bottomAnchor),
+            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 120),
+            
+            // Left arrow overlay
+            leftArrow.topAnchor.constraint(equalTo: navContainer.topAnchor),
+            leftArrow.leadingAnchor.constraint(equalTo: navContainer.leadingAnchor),
+            leftArrow.bottomAnchor.constraint(equalTo: navContainer.bottomAnchor),
+            leftArrow.widthAnchor.constraint(equalToConstant: 60),
+            
+            // Right arrow overlay
+            rightArrow.topAnchor.constraint(equalTo: navContainer.topAnchor),
+            rightArrow.trailingAnchor.constraint(equalTo: navContainer.trailingAnchor),
+            rightArrow.bottomAnchor.constraint(equalTo: navContainer.bottomAnchor),
+            rightArrow.widthAnchor.constraint(equalToConstant: 60)
+        ])
+        
+        stack.addArrangedSubview(navContainer)
+        navContainer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         
         return stack
     }
     
-    private func createPreviewResultsSection() -> NSView {
-        let section = createSectionCard(content: buildPreviewResultsContent())
+    private func createNavigationArrow(direction: NavigationDirection) -> NSView {
+        let arrow = NavigationArrowView(direction: direction)
+        
+        // Add click gesture
+        let clickGesture = NSClickGestureRecognizer(
+            target: self, 
+            action: direction == .left ? #selector(navigateToPreviousHistoryItem) : #selector(navigateToNextHistoryItem)
+        )
+        arrow.addGestureRecognizer(clickGesture)
+        
+        return arrow
+    }
+    
+    @objc private func navigateToPreviousHistoryItem() {
+        let items = isSearchActive ? filteredHistoryItems : ClipboardHistoryManager.shared.items
+        guard !items.isEmpty else { return }
+        
+        // Move to previous item (newer)
+        if currentPreviewHistoryIndex > 0 {
+            currentPreviewHistoryIndex -= 1
+            loadHistoryItemAtCurrentIndex()
+        }
+    }
+    
+    @objc private func navigateToNextHistoryItem() {
+        let items = isSearchActive ? filteredHistoryItems : ClipboardHistoryManager.shared.items
+        guard !items.isEmpty else { return }
+        
+        // Move to next item (older)
+        if currentPreviewHistoryIndex < items.count - 1 {
+            currentPreviewHistoryIndex += 1
+            loadHistoryItemAtCurrentIndex()
+        }
+    }
+    
+    @objc private func historySearchTextChanged() {
+        guard let searchText = historySearchField?.stringValue else { return }
+        
+        if searchText.isEmpty {
+            // Clear search
+            isSearchActive = false
+            filteredHistoryItems = []
+            currentPreviewHistoryIndex = 0
+            loadHistoryItemAtCurrentIndex()
+        } else {
+            // Filter history items
+            isSearchActive = true
+            filteredHistoryItems = ClipboardHistoryManager.shared.items.filter { item in
+                guard let text = item.plainText else { return false }
+                return text.localizedCaseInsensitiveContains(searchText)
+            }
+            
+            if !filteredHistoryItems.isEmpty {
+                currentPreviewHistoryIndex = 0
+                loadHistoryItemAtCurrentIndex()
+            } else {
+                previewInputTextView?.string = "[No results found for '\(searchText)']"
+                previewOutputTextView?.string = ""
+            }
+            
+            logger.info("Search found \(self.filteredHistoryItems.count) results for '\(searchText)'")
+        }
+    }
+    
+    @objc private func navigateToPreviousSearchResult() {
+        navigateToPreviousHistoryItem()
+    }
+    
+    @objc private func navigateToNextSearchResult() {
+        navigateToNextHistoryItem()
+    }
+    
+    private func loadHistoryItemAtCurrentIndex() {
+        let items = isSearchActive ? filteredHistoryItems : ClipboardHistoryManager.shared.items
+        guard currentPreviewHistoryIndex >= 0 && currentPreviewHistoryIndex < items.count else { return }
+        
+        let item = items[currentPreviewHistoryIndex]
+        
+        // Load the item into the preview
+        if let plainText = item.plainText {
+            previewInputTextView?.string = plainText
+            updateInteractivePreview()
+        } else if item.imageData != nil {
+            previewInputTextView?.string = "[Image content - item \(self.currentPreviewHistoryIndex + 1) of \(items.count)]"
+            previewOutputTextView?.string = "[Cannot clean image content]"
+        }
+        
+        // Update arrow visibility
+        updateNavigationArrowVisibility()
+        
+        let source = isSearchActive ? "search results" : "history"
+        logger.info("Navigated to \(source) item \(self.currentPreviewHistoryIndex + 1) of \(items.count)")
+    }
+    
+    private func updateNavigationArrowVisibility() {
+        let items = isSearchActive ? filteredHistoryItems : ClipboardHistoryManager.shared.items
+        
+        // Hide left arrow if at the beginning (newest)
+        if currentPreviewHistoryIndex == 0 {
+            (leftArrowView as? NavigationArrowView)?.hideArrow()
+        }
+        
+        // Hide right arrow if at the end (oldest)
+        if currentPreviewHistoryIndex >= items.count - 1 {
+            (rightArrowView as? NavigationArrowView)?.hideArrow()
+        }
+    }
+    
+    @objc private func openCustomRulesSheet() {
+        // Create sheet window
+        let sheet = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 580, height: 500),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        sheet.title = "Manage Custom Rules"
+        sheet.minSize = NSSize(width: 500, height: 400)
+        
+        // Create content view
+        let contentView = createCustomRulesSheetContent()
+        sheet.contentView = contentView
+        
+        customRulesSheet = sheet
+        
+        // Show as sheet
+        if let window = self.window {
+            window.beginSheet(sheet) { _ in
+                self.customRulesSheet = nil
+                // Reload preview after closing sheet
+                self.updateInteractivePreview()
+            }
+        }
+    }
+    
+    private func createCustomRulesSheetContent() -> NSView {
+        let container = NSView()
+        
+        // Main stack
+        let mainStack = NSStackView()
+        mainStack.orientation = .vertical
+        mainStack.spacing = 12
+        mainStack.alignment = .leading
+        mainStack.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Header with add button
+        let headerStack = createSheetHeaderStack()
+        mainStack.addArrangedSubview(headerStack)
+        headerStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor).isActive = true
+        
+        // Create card for rules
+        let rulesCard = createSheetRulesCard()
+        mainStack.addArrangedSubview(rulesCard)
+        rulesCard.widthAnchor.constraint(equalTo: mainStack.widthAnchor).isActive = true
+        
+        // Button row
+        let buttonStack = createSheetButtonStack()
+        mainStack.addArrangedSubview(buttonStack)
+        buttonStack.widthAnchor.constraint(equalTo: mainStack.widthAnchor).isActive = true
+        
+        container.addSubview(mainStack)
+        NSLayoutConstraint.activate([
+            mainStack.topAnchor.constraint(equalTo: container.topAnchor),
+            mainStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            mainStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            mainStack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        
+        // Populate rules
+        refreshCustomRulesInPreview()
+        
+        return container
+    }
+    
+    @objc private func addCustomRuleFromSheet() {
+        addCustomRuleFromPreview()
+    }
+    
+    @objc private func closeCustomRulesSheet() {
+        if let sheet = customRulesSheet, let window = self.window {
+            window.endSheet(sheet)
+        }
+    }
+    
+    private func createSheetHeaderStack() -> NSStackView {
+        let headerStack = NSStackView()
+        headerStack.orientation = .horizontal
+        headerStack.spacing = 16
+        headerStack.alignment = .centerY
+        
+        let titleLabel = NSTextField(labelWithString: "Custom Find & Replace Rules")
+        titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        titleLabel.textColor = .labelColor
+        headerStack.addArrangedSubview(titleLabel)
+        
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        headerStack.addArrangedSubview(spacer)
+        
+        let addButton = NSButton(title: "+ Add Rule", target: self, action: #selector(addCustomRuleFromSheet))
+        addButton.bezelStyle = .rounded
+        addButton.font = NSFont.systemFont(ofSize: 11)
+        addButton.controlSize = .regular
+        headerStack.addArrangedSubview(addButton)
+        
+        return headerStack
+    }
+    
+    private func createSheetRulesCard() -> HoverCardView {
+        let rulesCard = HoverCardView()
+        rulesCard.translatesAutoresizingMaskIntoConstraints = false
+        
+        let cardContentStack = NSStackView()
+        cardContentStack.orientation = .vertical
+        cardContentStack.spacing = 0
+        cardContentStack.alignment = .leading
+        cardContentStack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        cardContentStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = false
+        scrollView.borderType = .noBorder
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.drawsBackground = false
+        
+        let rulesStack = NSStackView()
+        rulesStack.orientation = .vertical
+        rulesStack.spacing = 8
+        rulesStack.alignment = .left
+        rulesStack.distribution = .fill
+        rulesStack.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        rulesStack.translatesAutoresizingMaskIntoConstraints = false
+        customRulesPreviewStack = rulesStack
+        
+        scrollView.documentView = rulesStack
+        rulesStack.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor, constant: -16).isActive = true
+        
+        cardContentStack.addArrangedSubview(scrollView)
+        rulesCard.addSubview(cardContentStack)
+        
+        NSLayoutConstraint.activate([
+            cardContentStack.topAnchor.constraint(equalTo: rulesCard.topAnchor),
+            cardContentStack.leadingAnchor.constraint(equalTo: rulesCard.leadingAnchor),
+            cardContentStack.trailingAnchor.constraint(equalTo: rulesCard.trailingAnchor),
+            cardContentStack.bottomAnchor.constraint(equalTo: rulesCard.bottomAnchor),
+            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 320)
+        ])
+        
+        return rulesCard
+    }
+    
+    private func createSheetButtonStack() -> NSStackView {
+        let buttonStack = NSStackView()
+        buttonStack.orientation = .horizontal
+        buttonStack.spacing = 12
+        buttonStack.alignment = .centerY
+        
+        let buttonSpacer = NSView()
+        buttonSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        buttonStack.addArrangedSubview(buttonSpacer)
+        
+        let doneButton = NSButton(title: "Done", target: self, action: #selector(closeCustomRulesSheet))
+        doneButton.bezelStyle = .rounded
+        doneButton.keyEquivalent = "\r"
+        doneButton.font = NSFont.systemFont(ofSize: 12)
+        doneButton.controlSize = .regular
+        buttonStack.addArrangedSubview(doneButton)
+        
+        return buttonStack
+    }
+    
+    private func createPreviewOutputWithDiff() -> NSView {
+        let section = createSectionCard(content: buildPreviewOutputWithDiffContent())
         return section
     }
     
-    private func buildPreviewResultsContent() -> NSView {
+    private func buildPreviewOutputWithDiffContent() -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
-        stack.spacing = 12
+        stack.spacing = 8
         stack.alignment = .leading
         
-        // Stats bar showing detection results
-        let statsBar = createPreviewStatsBar()
-        stack.addArrangedSubview(statsBar)
-        statsBar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        // Header with copy button
+        let header = NSStackView()
+        header.orientation = .horizontal
+        header.spacing = 12
+        header.alignment = .centerY
         
-        // Result header
-        let resultLabel = NSTextField(labelWithString: "Result:")
-        resultLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        stack.addArrangedSubview(resultLabel)
+        let titleLabel = NSTextField(labelWithString: "Cleaned Text (with highlighting):")
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        header.addArrangedSubview(titleLabel)
         
-        // Results text area (read-only)
+        // Flexible spacer
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        header.addArrangedSubview(spacer)
+        
+        let copyButton = NSButton(title: "Copy", target: self, action: #selector(copyPreviewResult))
+        copyButton.bezelStyle = .rounded
+        copyButton.font = NSFont.systemFont(ofSize: 10)
+        header.addArrangedSubview(copyButton)
+        
+        stack.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        
+        // Results text area with diff highlighting
         let scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.hasVerticalScroller = true
@@ -1016,22 +1949,20 @@ class SettingsWindow: NSWindowController {
         let textView = NSTextView()
         textView.isEditable = false
         textView.isSelectable = true
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.3)
-        textView.string = "Cleaned text will appear here..."
+        textView.string = "Cleaned text will appear here with color highlighting..."
         
         scrollView.documentView = textView
-        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
         
         stack.addArrangedSubview(scrollView)
         scrollView.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         
-        // Copy button
-        let copyButton = NSButton(title: "Copy Result", target: self, action: #selector(copyPreviewResult))
-        copyButton.bezelStyle = .rounded
-        copyButton.font = NSFont.systemFont(ofSize: 11)
-        stack.addArrangedSubview(copyButton)
+        // Legend
+        let legend = createDiffLegend()
+        stack.addArrangedSubview(legend)
         
         // Store reference for later use
         previewOutputTextView = textView
@@ -1039,158 +1970,1071 @@ class SettingsWindow: NSWindowController {
         return stack
     }
     
-    private func createPreviewStatsBar() -> NSView {
-        let bar = NSStackView()
-        bar.orientation = .horizontal
-        bar.spacing = 20
-        bar.alignment = .centerY
-        bar.distribution = .fillEqually
-        bar.translatesAutoresizingMaskIntoConstraints = false
+    private func createDiffLegend() -> NSView {
+        let legend = NSStackView()
+        legend.orientation = .horizontal
+        legend.spacing = 16
+        legend.alignment = .centerY
         
-        // Hidden characters count
-        let hiddenLabel = createStatLabel(icon: "👁", text: "0 hidden characters found", color: .systemOrange)
-        bar.addArrangedSubview(hiddenLabel)
-        previewHiddenLabel = hiddenLabel
+        // Green for added/replaced
+        let greenBox = createColorBox(color: NSColor.systemGreen.withAlphaComponent(0.2))
+        let greenLabel = NSTextField(labelWithString: "Added/Replaced")
+        greenLabel.font = NSFont.systemFont(ofSize: 9)
+        greenLabel.textColor = .secondaryLabelColor
+        legend.addArrangedSubview(greenBox)
+        legend.addArrangedSubview(greenLabel)
         
-        // AI watermarks detected
-        let watermarkLabel = createStatLabel(icon: "🤖", text: "No AI watermarks", color: .systemBlue)
-        bar.addArrangedSubview(watermarkLabel)
-        previewWatermarkLabel = watermarkLabel
+        // Red for removed
+        let redBox = createColorBox(color: NSColor.systemRed.withAlphaComponent(0.2))
+        let redLabel = NSTextField(labelWithString: "Removed")
+        redLabel.font = NSFont.systemFont(ofSize: 9)
+        redLabel.textColor = .secondaryLabelColor
+        legend.addArrangedSubview(redBox)
+        legend.addArrangedSubview(redLabel)
         
-        // Rules applied
-        let rulesLabel = createStatLabel(icon: "✨", text: "0 rules applied", color: .systemGreen)
-        bar.addArrangedSubview(rulesLabel)
-        previewRulesLabel = rulesLabel
+        // Yellow for modified
+        let yellowBox = createColorBox(color: NSColor.systemYellow.withAlphaComponent(0.2))
+        let yellowLabel = NSTextField(labelWithString: "Modified")
+        yellowLabel.font = NSFont.systemFont(ofSize: 9)
+        yellowLabel.textColor = .secondaryLabelColor
+        legend.addArrangedSubview(yellowBox)
+        legend.addArrangedSubview(yellowLabel)
         
-        bar.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        
-        return bar
+        return legend
     }
     
-    private func createStatLabel(icon: String, text: String, color: NSColor) -> NSTextField {
-        let label = NSTextField(labelWithString: "\(icon) \(text)")
-        label.font = NSFont.systemFont(ofSize: 11)
-        label.textColor = color
-        label.alignment = .center
-        return label
+    private func createColorBox(color: NSColor) -> NSView {
+        let box = NSView()
+        box.wantsLayer = true
+        box.layer?.backgroundColor = color.cgColor
+        box.layer?.cornerRadius = 2
+        box.layer?.borderWidth = 0.5
+        box.layer?.borderColor = NSColor.separatorColor.cgColor
+        box.translatesAutoresizingMaskIntoConstraints = false
+        box.widthAnchor.constraint(equalToConstant: 12).isActive = true
+        box.heightAnchor.constraint(equalToConstant: 12).isActive = true
+        return box
     }
     
     // MARK: - Preview Tab Actions
     
-    @objc private func pasteIntoPreview() {
+    @objc private func pasteIntoInteractivePreview() {
         let pasteboard = NSPasteboard.general
-        if let string = pasteboard.string(forType: .string) {
-            previewInputTextView?.string = string
-        }
-    }
-    
-    @objc private func cleanPreviewText() {
-        guard let inputText = previewInputTextView?.string, !inputText.isEmpty else {
-            previewOutputTextView?.string = "No text to clean"
+        
+        // Reset to latest clipboard item (index 0)
+        currentPreviewHistoryIndex = 0
+        
+        // Check if clipboard has an image
+        if pasteboard.types?.contains(.tiff) == true || pasteboard.types?.contains(.png) == true {
+            previewInputTextView?.string = "[Image in clipboard - cannot preview image cleaning. Please copy text to preview.]"
+            previewOutputTextView?.string = "[Image detected]"
+            previewStatsLabel?.stringValue = "⚠️ Clipboard contains an image"
             return
         }
         
-        // Analyze the text and apply cleaning
-        let analysis = analyzeTextForPreview(inputText)
-        
-        // Update stats
-        previewHiddenLabel?.stringValue = "👁 \(analysis.hiddenCharCount) hidden characters found"
-        previewWatermarkLabel?.stringValue = "🤖 \(analysis.watermarks.isEmpty ? "No AI watermarks" : "\(analysis.watermarks.count) watermark(s): \(analysis.watermarks.joined(separator: ", "))")"
-        previewRulesLabel?.stringValue = "✨ \(analysis.rulesApplied.count) rule(s) applied"
-        
-        // Show cleaned text
-        previewOutputTextView?.string = analysis.cleanedText
+        // Try to get text from clipboard
+        if let string = pasteboard.string(forType: .string), !string.isEmpty {
+            previewInputTextView?.string = string
+            updateInteractivePreview()
+            
+            // Update navigation visibility
+            updateNavigationArrowVisibility()
+        } else {
+            previewInputTextView?.string = "[No text in clipboard. Copy some text to preview cleaning.]"
+            previewOutputTextView?.string = ""
+            previewStatsLabel?.stringValue = "No text to analyze"
+        }
     }
     
-    @objc private func copyPreviewResult() {
-        guard let resultText = previewOutputTextView?.string, !resultText.isEmpty else { return }
+    @objc private func showClipboardHistoryFromPreview() {
+        logger.info("Show clipboard history requested from Preview tab")
         
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(resultText, forType: .string)
-        
-        logger.info("Preview result copied to clipboard")
-    }
-    
-    // MARK: - Preview Analysis
-    
-    private struct PreviewAnalysis {
-        let cleanedText: String
-        let hiddenCharCount: Int
-        let watermarks: [String]
-        let rulesApplied: [String]
-    }
-    
-    private func analyzeTextForPreview(_ text: String) -> PreviewAnalysis {
-        var cleanedText = text
-        var hiddenCount = 0
-        var detectedWatermarks: [String] = []
-        var appliedRules: [String] = []
-        
-        // 1. Detect hidden/invisible characters
-        let invisibleChars: [Character] = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{FEFF}", "\u{00A0}"]
-        for char in invisibleChars {
-            let count = text.filter { $0 == char }.count
-            hiddenCount += count
+        // Get the app delegate and show history window
+        guard let appDelegate = NSApplication.shared.delegate as? AppDelegate else {
+            logger.error("Could not get AppDelegate")
+            return
         }
         
-        // 2. Detect AI watermarks
-        let watermarkPatterns = [
-            ("ChatGPT", "ChatGPT"),
-            ("Claude", "Claude"),
-            ("Gemini", "Gemini"),
-            ("Copilot", "Copilot"),
-            ("—", "Em dash (—)")
-        ]
+        logger.info("Got AppDelegate, calling menuBarManager.showClipboardHistory()")
         
-        for (pattern, name) in watermarkPatterns {
-            if text.contains(pattern) {
-                detectedWatermarks.append(name)
-            }
+        // Ensure history window is initialized
+        if appDelegate.menuBarManager.historyWindow == nil {
+            logger.warning("History window was nil, it should be initialized in MenuBarManager")
         }
         
-        // 3. Apply cleaning rules
-        let cleaningRules = PreferencesManager.shared.loadCleaningRules()
-        cleanedText = cleaningRules.apply(to: text)
+        // Show the clipboard history window
+        appDelegate.menuBarManager.showClipboardHistory()
+        logger.info("Called showClipboardHistory()")
+    }
+    
+    @objc private func previewRuleToggled(_ sender: NSButton) {
+        // Update the current profile's rules
+        savePreviewRulesToCurrentProfile()
         
-        // Determine which rules were applied by comparing
-        if text != cleanedText {
-            if text.contains("http") && !cleanedText.contains("http") && cleaningRules.removeUrls {
-                appliedRules.append("Remove URLs")
+        // Sync with main Rules tab
+        syncProfileToRulesTab()
+        
+        // Immediately update preview when any rule is toggled
+        updateInteractivePreview()
+    }
+    
+    @objc private func previewProfileChanged(_ sender: NSPopUpButton) {
+        // Load the selected profile
+        guard let profileId = sender.selectedItem?.representedObject as? UUID else { return }
+        
+        let profile = ProfileManager.shared.getAllProfiles().first { $0.id == profileId }
+        guard let selectedProfile = profile else { return }
+        
+        // Update current profile
+        currentProfileId = selectedProfile.id
+        cleaningRules = selectedProfile.rules
+        ProfileManager.shared.setActiveProfile(id: selectedProfile.id)
+        
+        // Update checkboxes to match profile
+        loadPreviewRulesFromCurrentProfile()
+        
+        // Sync with main Rules tab
+        syncProfileToRulesTab()
+        
+        // Update preview
+        updateInteractivePreview()
+    }
+    
+    private func updateInteractivePreview() {
+        guard let inputText = previewInputTextView?.string, !inputText.isEmpty else {
+            previewOutputTextView?.string = "Enter text to see preview..."
+            previewStatsLabel?.stringValue = "No text to analyze"
+            return
+        }
+        
+        // Create a temporary CleaningRules object based on current toggles
+        let tempRules = CleaningRules()
+        tempRules.removeZeroWidthChars = previewRuleToggles["removeZeroWidthChars"]?.state == .on
+        tempRules.removeEmdashes = previewRuleToggles["removeEmdashes"]?.state == .on
+        tempRules.convertSmartQuotes = previewRuleToggles["convertSmartQuotes"]?.state == .on
+        tempRules.normalizeSpaces = previewRuleToggles["normalizeSpaces"]?.state == .on
+        tempRules.normalizeLineBreaks = previewRuleToggles["normalizeLineBreaks"]?.state == .on
+        tempRules.removeTrailingSpaces = previewRuleToggles["removeTrailingSpaces"]?.state == .on
+        tempRules.removeExtraLineBreaks = previewRuleToggles["removeExtraLineBreaks"]?.state == .on
+        tempRules.removeLeadingTrailingWhitespace = previewRuleToggles["removeLeadingTrailingWhitespace"]?.state == .on
+        tempRules.removeUrlTracking = previewRuleToggles["removeUrlTracking"]?.state == .on
+        tempRules.removeUrls = previewRuleToggles["removeUrls"]?.state == .on
+        tempRules.removeHtmlTags = previewRuleToggles["removeHtmlTags"]?.state == .on
+        tempRules.removeExtraPunctuation = previewRuleToggles["removeExtraPunctuation"]?.state == .on
+        tempRules.removeEmojis = previewRuleToggles["removeEmojis"]?.state == .on
+        
+        // Include custom rules from the current profile
+        tempRules.customRules = cleaningRules.customRules
+        
+        // Apply rules and analyze
+        let cleanedText = tempRules.apply(to: inputText)
+        let analysis = analyzeChanges(original: inputText, cleaned: cleanedText, rules: tempRules)
+        
+        // Store cleaned text for copy operation (without highlighting)
+        lastCleanedPreviewText = cleanedText
+        
+        // Highlight detected issues in INPUT text (yellow = issues found)
+        highlightInputTextIssues(inputText: inputText, detectedIssues: analysis.detectedRuleKeys)
+        
+        // Update output with diff highlighting (green/red = what changed)
+        updateOutputWithDiffHighlighting(original: inputText, cleaned: cleanedText, changes: analysis.changes)
+        
+        // Update statistics
+        updatePreviewStatistics(analysis: analysis)
+    }
+    
+    private func highlightInputTextIssues(inputText: String, detectedIssues: Set<String>) {
+        guard let textView = previewInputTextView else { return }
+        
+        let attributedString = NSMutableAttributedString(string: inputText)
+        let fullRange = NSRange(location: 0, length: attributedString.length)
+        
+        // Base style
+        attributedString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular), range: fullRange)
+        attributedString.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
+        
+        // Highlight detected issues in yellow (exact matches only)
+        if detectedIssues.contains("removeEmdashes") {
+            highlightExactMatches(in: attributedString, pattern: "—", color: .systemYellow, tooltip: "Em dash — will be replaced")
+            highlightExactMatches(in: attributedString, pattern: "–", color: .systemYellow, tooltip: "En dash – will be replaced")
+        }
+        if detectedIssues.contains("convertSmartQuotes") {
+            highlightExactMatches(in: attributedString, pattern: "\u{201C}", color: .systemYellow, tooltip: "Smart quote \u{201C} will be converted")
+            highlightExactMatches(in: attributedString, pattern: "\u{201D}", color: .systemYellow, tooltip: "Smart quote \u{201D} will be converted")
+            highlightExactMatches(in: attributedString, pattern: "\u{2018}", color: .systemYellow, tooltip: "Smart quote \u{2018} will be converted")
+            highlightExactMatches(in: attributedString, pattern: "\u{2019}", color: .systemYellow, tooltip: "Smart quote \u{2019} will be converted")
+        }
+        if detectedIssues.contains("normalizeSpaces") {
+            highlightRegexMatches(in: attributedString, pattern: "  +", color: .systemYellow, tooltip: "Multiple spaces will be normalized")
+        }
+        if detectedIssues.contains("removeHtmlTags") {
+            highlightRegexMatches(in: attributedString, pattern: "<[^>]+>", color: .systemYellow, tooltip: "HTML tag will be removed")
+        }
+        if detectedIssues.contains("removeExtraPunctuation") {
+            highlightRegexMatches(in: attributedString, pattern: "[.!?]{2,}", color: .systemYellow, tooltip: "Extra punctuation will be removed")
+            highlightRegexMatches(in: attributedString, pattern: "[,;:]{2,}", color: .systemYellow, tooltip: "Extra punctuation will be removed")
+        }
+        if detectedIssues.contains("removeUrls") {
+            highlightRegexMatches(in: attributedString, pattern: "https?://[^\\s]+", color: .systemYellow, tooltip: "URL will be removed")
+        }
+        if detectedIssues.contains("removeEmojis") {
+            // Highlight emojis (excluding ASCII characters)
+            highlightEmojis(in: attributedString, color: .systemYellow, tooltip: "Emoji will be removed")
+        }
+        if detectedIssues.contains("removeZeroWidthChars") {
+            // Highlight zero-width characters with a special marker
+            highlightZeroWidthChars(in: attributedString, color: .systemOrange, tooltip: "Zero-width character (invisible)")
+        }
+        
+        textView.textStorage?.setAttributedString(attributedString)
+    }
+    
+    private func highlightExactMatches(in attributedString: NSMutableAttributedString, pattern: String, color: NSColor, tooltip: String) {
+        let text = attributedString.string
+        var searchRange = NSRange(location: 0, length: text.count)
+        
+        while searchRange.length > 0 {
+            let range = (text as NSString).range(of: pattern, options: [], range: searchRange)
+            if range.location == NSNotFound {
+                break
             }
-            if text.contains("—") && !cleanedText.contains("—") && cleaningRules.removeEmdashes {
-                appliedRules.append("Replace em dashes")
+            
+            // Highlight only the exact match
+            attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.4), range: range)
+            attributedString.addAttribute(.toolTip, value: tooltip, range: range)
+            
+            // Move past this match
+            let nextStart = range.location + range.length
+            searchRange = NSRange(location: nextStart, length: text.count - nextStart)
+        }
+    }
+    
+    private func highlightRegexMatches(in attributedString: NSMutableAttributedString, pattern: String, color: NSColor, tooltip: String) {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return }
+        
+        let text = attributedString.string
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.count))
+        
+        for match in matches {
+            attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.4), range: match.range)
+            attributedString.addAttribute(.toolTip, value: tooltip, range: match.range)
+        }
+    }
+    
+    private func highlightEmojis(in attributedString: NSMutableAttributedString, color: NSColor, tooltip: String) {
+        let text = attributedString.string
+        
+        for (index, scalar) in text.unicodeScalars.enumerated() {
+            // Skip ASCII printable characters (includes 0-9, A-Z, a-z, punctuation)
+            if (0x20...0x7E).contains(scalar.value) {
+                continue
             }
-            if hiddenCount > 0 && cleaningRules.removeZeroWidthChars {
-                appliedRules.append("Remove hidden characters")
+            
+            if scalar.properties.isEmoji || scalar.properties.isEmojiPresentation {
+                let utf16Index = text.utf16.index(text.utf16.startIndex, offsetBy: index)
+                let nsRange = NSRange(utf16Index..<text.utf16.index(after: utf16Index), in: text)
+                
+                attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.4), range: nsRange)
+                attributedString.addAttribute(.toolTip, value: "\(tooltip): \(scalar)", range: nsRange)
             }
-            if text.contains("<") && !cleanedText.contains("<") && cleaningRules.removeHtmlTags {
-                appliedRules.append("Remove HTML tags")
+        }
+    }
+    
+    private func highlightZeroWidthChars(in attributedString: NSMutableAttributedString, color: NSColor, tooltip: String) {
+        let text = attributedString.string
+        let zeroWidthChars: [UnicodeScalar] = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{FEFF}"]
+        
+        for (index, scalar) in text.unicodeScalars.enumerated() where zeroWidthChars.contains(scalar) {
+            // Insert a visible marker for zero-width characters
+            let markerIndex = text.index(text.startIndex, offsetBy: index)
+            let nsRange = NSRange(markerIndex..<text.index(after: markerIndex), in: text)
+            
+            // Add a special background and strikethrough to make it visible
+            attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.6), range: nsRange)
+            attributedString.addAttribute(.toolTip, value: "\(tooltip): U+\(String(scalar.value, radix: 16, uppercase: true))", range: nsRange)
+            
+            // Add a replacement glyph to make it visible
+            attributedString.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.thick.rawValue, range: nsRange)
+            attributedString.addAttribute(.strikethroughColor, value: NSColor.systemOrange, range: nsRange)
+        }
+    }
+    
+    private func highlightPattern(in attributedString: NSMutableAttributedString, pattern: String, color: NSColor, useRegex: Bool = false) {
+        let text = attributedString.string
+        
+        if useRegex {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.count))
+                for match in matches {
+                    attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.3), range: match.range)
+                }
             }
-            if cleaningRules.removeExtraLineBreaks {
-                let originalLines = text.components(separatedBy: .newlines).count
-                let cleanedLines = cleanedText.components(separatedBy: .newlines).count
-                if originalLines != cleanedLines {
-                    appliedRules.append("Remove extra line breaks")
+        } else {
+            var searchRange = NSRange(location: 0, length: text.count)
+            var range = (text as NSString).range(of: pattern, options: [], range: searchRange)
+            while range.location != NSNotFound {
+                attributedString.addAttribute(.backgroundColor, value: color.withAlphaComponent(0.3), range: range)
+                searchRange = NSRange(location: range.location + range.length, length: text.count - (range.location + range.length))
+                if searchRange.length > 0 {
+                    range = (text as NSString).range(of: pattern, options: [], range: searchRange)
+                } else {
+                    break
+                }
+            }
+        }
+    }
+    
+    private func updateOutputWithDiffHighlighting(original: String, cleaned: String, changes: [TextChange]) {
+        guard let textView = previewOutputTextView else { return }
+        
+        // Build output with visual markers for removed content
+        let outputWithMarkers = buildOutputWithRemovalMarkers(original: original, cleaned: cleaned)
+        
+        let attributedString = NSMutableAttributedString(string: outputWithMarkers.text)
+        let fullRange = NSRange(location: 0, length: attributedString.length)
+        
+        // Base style
+        attributedString.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular), range: fullRange)
+        attributedString.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
+        
+        // Highlight removal markers in red
+        for marker in outputWithMarkers.markers where marker.location < attributedString.length {
+            let markerRange = NSRange(location: marker.location, length: min(marker.length, attributedString.length - marker.location))
+            attributedString.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.3), range: markerRange)
+            attributedString.addAttribute(.foregroundColor, value: NSColor.systemRed, range: markerRange)
+            attributedString.addAttribute(.toolTip, value: "Removed: \(marker.removedText)", range: markerRange)
+        }
+        
+        // Highlight actual changes
+        for change in changes {
+            let range = NSRange(location: change.location, length: change.length)
+            if range.location + range.length <= attributedString.length {
+                switch change.type {
+                case .added:
+                    attributedString.addAttribute(.backgroundColor, value: NSColor.systemGreen.withAlphaComponent(0.2), range: range)
+                    attributedString.addAttribute(.toolTip, value: "Content was added/replaced here", range: range)
+                case .modified:
+                    attributedString.addAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.2), range: range)
+                    attributedString.addAttribute(.toolTip, value: "Content was modified", range: range)
+                case .removed:
+                    break // Handled by markers above
                 }
             }
         }
         
-        return PreviewAnalysis(
-            cleanedText: cleanedText,
+        textView.textStorage?.setAttributedString(attributedString)
+    }
+    
+    private struct RemovalMarker {
+        let location: Int
+        let length: Int
+        let removedText: String
+    }
+    
+    private struct OutputWithMarkers {
+        let text: String
+        let markers: [RemovalMarker]
+    }
+    
+    private func buildOutputWithRemovalMarkers(original: String, cleaned: String) -> OutputWithMarkers {
+        var result = cleaned
+        var markers: [RemovalMarker] = []
+        var offset = 0
+        
+        // Find major removals (em dashes, smart quotes, HTML tags, etc.)
+        let origChars = Array(original)
+        let cleanedChars = Array(cleaned)
+        
+        var i = 0
+        var j = 0
+        
+        while i < origChars.count {
+            if j < cleanedChars.count && origChars[i] == cleanedChars[j] {
+                // Characters match
+                i += 1
+                j += 1
+            } else {
+                // Something was removed or changed
+                var removedChars: [Character] = []
+                
+                // Collect removed characters
+                while i < origChars.count && (j >= cleanedChars.count || origChars[i] != cleanedChars[j]) {
+                    removedChars.append(origChars[i])
+                    i += 1
+                    
+                    // Check if we found a match ahead
+                    if j < cleanedChars.count && i < origChars.count && origChars[i] == cleanedChars[j] {
+                        break
+                    }
+                }
+                
+                // Insert marker if significant content was removed
+                let removedText = String(removedChars)
+                if !removedText.trimmingCharacters(in: .whitespaces).isEmpty && removedText.count <= 20 {
+                    let marker = "⌫"  // Delete symbol
+                    let insertPos = j + offset
+                    
+                    if insertPos <= result.count {
+                        let index = result.index(result.startIndex, offsetBy: insertPos)
+                        result.insert(contentsOf: marker, at: index)
+                        
+                        markers.append(RemovalMarker(
+                            location: insertPos,
+                            length: marker.count,
+                            removedText: removedText
+                        ))
+                        
+                        offset += marker.count
+                    }
+                }
+            }
+        }
+        
+        return OutputWithMarkers(text: result, markers: markers)
+    }
+    
+    private func updatePreviewStatistics(analysis: PreviewAnalysisDetailed) {
+        var statsText = ""
+        
+        // Character counts
+        statsText += "📊 \(analysis.originalLength) → \(analysis.cleanedLength) chars"
+        if analysis.originalLength != analysis.cleanedLength {
+            let diff = analysis.originalLength - analysis.cleanedLength
+            statsText += " (\(diff > 0 ? "-" : "+")\(abs(diff)))"
+        }
+        statsText += "\n"
+        
+        // Hidden characters
+        if analysis.hiddenCharCount > 0 {
+            statsText += "👁 \(analysis.hiddenCharCount) hidden char(s)\n"
+        }
+        
+        // Issues detected
+        if analysis.issuesDetected > 0 {
+            statsText += "\n⚠️ \(analysis.issuesDetected) issue(s) detected"
+        } else {
+            statsText += "\n✨ No issues found"
+        }
+        
+        previewStatsLabel?.stringValue = statsText
+        
+        // Update visual indicators next to checkboxes (shows what's in the text)
+        updateRuleIndicators(detectedIssues: analysis.detectedRuleKeys)
+    }
+    
+    private func updateRuleIndicators(detectedIssues: Set<String>) {
+        // Hide all indicators first
+        for (_, indicator) in previewRuleIndicators {
+            indicator.isHidden = true
+        }
+        
+        // Show yellow dots for detected issues (regardless of checkbox state)
+        for ruleKey in detectedIssues {
+            if let indicator = previewRuleIndicators[ruleKey] {
+                indicator.isHidden = false
+            }
+        }
+    }
+    
+    @objc private func copyPreviewResult() {
+        guard !lastCleanedPreviewText.isEmpty else { return }
+        
+        // Copy the cleaned text without any highlighting or formatting
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(lastCleanedPreviewText, forType: .string)
+        
+        logger.info("Preview result copied to clipboard (plain text)")
+    }
+    
+    @objc private func copyOriginalText() {
+        guard let originalText = previewInputTextView?.string, !originalText.isEmpty else { return }
+        
+        // Copy the original text to clipboard
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(originalText, forType: .string)
+        
+        logger.info("Original text copied to clipboard")
+    }
+    
+    // MARK: - Preview Profile Management
+    
+    private func loadPreviewRulesFromCurrentProfile() {
+        let profile = ProfileManager.shared.getActiveProfile()
+        cleaningRules = profile.rules
+        currentProfileId = profile.id
+        
+        // Update checkboxes to match profile rules
+        previewRuleToggles["removeZeroWidthChars"]?.state = cleaningRules.removeZeroWidthChars ? .on : .off
+        previewRuleToggles["removeEmdashes"]?.state = cleaningRules.removeEmdashes ? .on : .off
+        previewRuleToggles["convertSmartQuotes"]?.state = cleaningRules.convertSmartQuotes ? .on : .off
+        previewRuleToggles["normalizeSpaces"]?.state = cleaningRules.normalizeSpaces ? .on : .off
+        previewRuleToggles["normalizeLineBreaks"]?.state = cleaningRules.normalizeLineBreaks ? .on : .off
+        previewRuleToggles["removeTrailingSpaces"]?.state = cleaningRules.removeTrailingSpaces ? .on : .off
+        previewRuleToggles["removeExtraLineBreaks"]?.state = cleaningRules.removeExtraLineBreaks ? .on : .off
+        previewRuleToggles["removeLeadingTrailingWhitespace"]?.state = cleaningRules.removeLeadingTrailingWhitespace ? .on : .off
+        previewRuleToggles["removeUrlTracking"]?.state = cleaningRules.removeUrlTracking ? .on : .off
+        previewRuleToggles["removeUrls"]?.state = cleaningRules.removeUrls ? .on : .off
+        previewRuleToggles["removeHtmlTags"]?.state = cleaningRules.removeHtmlTags ? .on : .off
+        previewRuleToggles["removeExtraPunctuation"]?.state = cleaningRules.removeExtraPunctuation ? .on : .off
+        previewRuleToggles["removeEmojis"]?.state = cleaningRules.removeEmojis ? .on : .off
+        
+        // Refresh custom rules display
+        refreshCustomRulesInPreview()
+    }
+    
+    private func refreshCustomRulesInPreview() {
+        guard let stack = customRulesPreviewStack else {
+            logger.warning("customRulesPreviewStack is nil, cannot refresh")
+            return
+        }
+        
+        let ruleCount = self.cleaningRules.customRules.count
+        logger.info("Refreshing custom rules in preview, count: \(ruleCount)")
+        
+        // Update the count label
+        customRulesCountLabel?.stringValue = "(\(ruleCount) rule\(ruleCount == 1 ? "" : "s"))"
+        
+        // Clear existing custom rule views
+        for view in stack.arrangedSubviews {
+            stack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        
+        // Remove old custom rule references from dictionaries
+        previewRuleToggles.keys.filter { $0.hasPrefix("custom_") }.forEach { key in
+            previewRuleToggles.removeValue(forKey: key)
+            previewRuleIndicators.removeValue(forKey: key)
+        }
+        
+        // Add each custom rule with edit/delete controls
+        for (index, rule) in cleaningRules.customRules.enumerated() {
+            let key = "custom_\(index)"
+            let (ruleContainer, checkbox, indicator) = createCustomRuleRow(index: index, rule: rule, key: key)
+            
+            stack.addArrangedSubview(ruleContainer)
+            logger.info("Added rule container #\(index + 1) to stack")
+            
+            previewRuleToggles[key] = checkbox
+            previewRuleIndicators[key] = indicator
+        }
+        
+        logger.info("Total arranged subviews in stack: \(stack.arrangedSubviews.count)")
+        
+        // Show message if no custom rules
+        if cleaningRules.customRules.isEmpty {
+            let emptyLabel = NSTextField(labelWithString: "No custom rules yet. Click '+ Add Rule' above to create your first rule.")
+            emptyLabel.font = NSFont.systemFont(ofSize: 11)
+            emptyLabel.textColor = .secondaryLabelColor
+            emptyLabel.alignment = .center
+            stack.addArrangedSubview(emptyLabel)
+        }
+    }
+    
+    private func createCustomRuleRow(index: Int, rule: CustomRule, key: String) -> (NSStackView, NSButton, NSTextField) {
+        // Create main container for the rule
+        let ruleContainer = NSStackView()
+        ruleContainer.orientation = .horizontal
+        ruleContainer.spacing = 8
+        ruleContainer.alignment = .centerY
+        ruleContainer.distribution = .fill
+        ruleContainer.edgeInsets = NSEdgeInsets(top: 6, left: 0, bottom: 6, right: 0)
+        
+        // Rule number label
+        let numberLabel = NSTextField(labelWithString: "#\(index + 1)")
+        numberLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        numberLabel.textColor = .secondaryLabelColor
+        numberLabel.alignment = .right
+        numberLabel.translatesAutoresizingMaskIntoConstraints = false
+        numberLabel.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        numberLabel.setContentHuggingPriority(.required, for: .horizontal)
+        ruleContainer.addArrangedSubview(numberLabel)
+        
+        // Checkbox to enable/disable
+        let checkbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(previewRuleToggled(_:)))
+        checkbox.state = rule.enabled ? .on : .off
+        checkbox.identifier = NSUserInterfaceItemIdentifier(key)
+        checkbox.setContentHuggingPriority(.required, for: .horizontal)
+        checkbox.setContentCompressionResistancePriority(.required, for: .horizontal)
+        ruleContainer.addArrangedSubview(checkbox)
+        
+        // Find field (editable)
+        let findField = NSTextField()
+        findField.stringValue = rule.find
+        findField.font = NSFont.systemFont(ofSize: 12)
+        findField.placeholderString = "Find text..."
+        findField.tag = index * 2  // Even tags for find fields
+        findField.delegate = self
+        findField.isEditable = true
+        findField.isSelectable = true
+        findField.isBordered = true
+        findField.bezelStyle = .roundedBezel
+        findField.translatesAutoresizingMaskIntoConstraints = false
+        findField.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        findField.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        findField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        ruleContainer.addArrangedSubview(findField)
+        
+        // Arrow label
+        let arrowLabel = NSTextField(labelWithString: "→")
+        arrowLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        arrowLabel.textColor = .secondaryLabelColor
+        arrowLabel.setContentHuggingPriority(.required, for: .horizontal)
+        ruleContainer.addArrangedSubview(arrowLabel)
+        
+        // Replace field (editable)
+        let replaceField = NSTextField()
+        replaceField.stringValue = rule.replace
+        replaceField.font = NSFont.systemFont(ofSize: 12)
+        replaceField.placeholderString = "Replace with..."
+        replaceField.tag = index * 2 + 1  // Odd tags for replace fields
+        replaceField.delegate = self
+        replaceField.isEditable = true
+        replaceField.isSelectable = true
+        replaceField.isBordered = true
+        replaceField.bezelStyle = .roundedBezel
+        replaceField.translatesAutoresizingMaskIntoConstraints = false
+        replaceField.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        replaceField.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        replaceField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        ruleContainer.addArrangedSubview(replaceField)
+        
+        // Indicator (shows if detected in text)
+        let indicator = NSTextField(labelWithString: "●")
+        indicator.font = NSFont.systemFont(ofSize: 14)
+        indicator.textColor = .systemYellow
+        indicator.identifier = NSUserInterfaceItemIdentifier("\(key)_indicator")
+        indicator.isHidden = true
+        indicator.toolTip = "Detected in text"
+        indicator.alignment = .center
+        indicator.setContentHuggingPriority(.required, for: .horizontal)
+        ruleContainer.addArrangedSubview(indicator)
+        
+        // Delete button
+        let deleteButton = NSButton(title: "Delete", target: self, action: #selector(deleteCustomRuleFromPreview(_:)))
+        deleteButton.bezelStyle = .rounded
+        deleteButton.font = NSFont.systemFont(ofSize: 11)
+        deleteButton.tag = index
+        deleteButton.setContentHuggingPriority(.required, for: .horizontal)
+        ruleContainer.addArrangedSubview(deleteButton)
+        
+        return (ruleContainer, checkbox, indicator)
+    }
+    
+    @objc private func addCustomRuleFromPreview() {
+        logger.info("addCustomRuleFromPreview called")
+        let newRule = CustomRule(find: "", replace: "", enabled: true)
+        cleaningRules.customRules.append(newRule)
+        logger.info("Added rule, total count: \(self.cleaningRules.customRules.count)")
+        
+        // Save to active profile
+        let profileId = ProfileManager.shared.getActiveProfile().id
+        ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        
+        refreshCustomRulesInPreview()
+        updateInteractivePreview()
+        logger.info("Custom rule refresh complete")
+    }
+    
+    @objc private func deleteCustomRuleFromPreview(_ sender: NSButton) {
+        let index = sender.tag
+        guard index >= 0 && index < cleaningRules.customRules.count else { return }
+        
+        cleaningRules.customRules.remove(at: index)
+        
+        // Save to active profile
+        let profileId = ProfileManager.shared.getActiveProfile().id
+        ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        
+        refreshCustomRulesInPreview()
+        updateInteractivePreview()
+        logger.info("Deleted custom rule \(index) from Preview tab")
+    }
+    
+    private func savePreviewRulesToCurrentProfile() {
+        guard let currentId = currentProfileId else { return }
+        
+        // Update cleaningRules from checkboxes
+        cleaningRules.removeZeroWidthChars = previewRuleToggles["removeZeroWidthChars"]?.state == .on
+        cleaningRules.removeEmdashes = previewRuleToggles["removeEmdashes"]?.state == .on
+        cleaningRules.convertSmartQuotes = previewRuleToggles["convertSmartQuotes"]?.state == .on
+        cleaningRules.normalizeSpaces = previewRuleToggles["normalizeSpaces"]?.state == .on
+        cleaningRules.normalizeLineBreaks = previewRuleToggles["normalizeLineBreaks"]?.state == .on
+        cleaningRules.removeTrailingSpaces = previewRuleToggles["removeTrailingSpaces"]?.state == .on
+        cleaningRules.removeExtraLineBreaks = previewRuleToggles["removeExtraLineBreaks"]?.state == .on
+        cleaningRules.removeLeadingTrailingWhitespace = previewRuleToggles["removeLeadingTrailingWhitespace"]?.state == .on
+        cleaningRules.removeUrlTracking = previewRuleToggles["removeUrlTracking"]?.state == .on
+        cleaningRules.removeUrls = previewRuleToggles["removeUrls"]?.state == .on
+        cleaningRules.removeHtmlTags = previewRuleToggles["removeHtmlTags"]?.state == .on
+        cleaningRules.removeExtraPunctuation = previewRuleToggles["removeExtraPunctuation"]?.state == .on
+        cleaningRules.removeEmojis = previewRuleToggles["removeEmojis"]?.state == .on
+        
+        // Update custom rule enabled states from toggles
+        for index in cleaningRules.customRules.indices {
+            let key = "custom_\(index)"
+            if let toggle = previewRuleToggles[key] {
+                cleaningRules.customRules[index].enabled = (toggle.state == .on)
+            }
+        }
+        
+        // Save to profile manager
+        ProfileManager.shared.updateProfile(id: currentId, rules: cleaningRules)
+    }
+    
+    private func syncProfileToRulesTab() {
+        // Refresh the main Rules tab's UI
+        setupProfileDropdownMenu()
+        
+        // Update checkboxes in Rules tab to match profile
+        for (index, checkbox) in checkboxes.enumerated() {
+            switch index {
+            case 0: checkbox.state = cleaningRules.removeEmdashes ? .on : .off
+            case 1: checkbox.state = cleaningRules.normalizeSpaces ? .on : .off
+            case 2: checkbox.state = cleaningRules.removeZeroWidthChars ? .on : .off
+            case 3: checkbox.state = cleaningRules.normalizeLineBreaks ? .on : .off
+            case 4: checkbox.state = cleaningRules.removeTrailingSpaces ? .on : .off
+            case 5: checkbox.state = cleaningRules.convertSmartQuotes ? .on : .off
+            case 6: checkbox.state = cleaningRules.removeEmojis ? .on : .off
+            case 7: checkbox.state = cleaningRules.removeExtraLineBreaks ? .on : .off
+            case 8: checkbox.state = cleaningRules.removeLeadingTrailingWhitespace ? .on : .off
+            case 9: checkbox.state = cleaningRules.removeUrlTracking ? .on : .off
+            case 10: checkbox.state = cleaningRules.removeUrls ? .on : .off
+            case 11: checkbox.state = cleaningRules.removeHtmlTags ? .on : .off
+            case 12: checkbox.state = cleaningRules.removeExtraPunctuation ? .on : .off
+            default: break
+            }
+        }
+    }
+    
+    func setupPreviewProfileDropdown() {
+        guard let dropdown = previewProfileDropdown else { return }
+        
+        dropdown.removeAllItems()
+        
+        // Add profile names with "Profile:" prefix
+        let profiles = ProfileManager.shared.getAllProfiles()
+        let activeProfile = ProfileManager.shared.getActiveProfile()
+        
+        for profile in profiles {
+            dropdown.addItem(withTitle: "Profile: \(profile.name)")
+            if let item = dropdown.lastItem {
+                item.representedObject = profile.id
+            }
+        }
+        
+        // Add separator
+        dropdown.menu?.addItem(NSMenuItem.separator())
+        
+        // Add management options (like Rules tab)
+        let renameItem = NSMenuItem(title: "Rename Profile...", action: #selector(renameProfileFromPreview), keyEquivalent: "")
+        renameItem.target = self
+        dropdown.menu?.addItem(renameItem)
+        
+        let createItem = NSMenuItem(title: "Create New Profile...", action: #selector(createNewProfileFromPreview), keyEquivalent: "")
+        createItem.target = self
+        dropdown.menu?.addItem(createItem)
+        
+        let removeItem = NSMenuItem(title: "Remove Profile...", action: #selector(deleteProfileFromPreview), keyEquivalent: "")
+        removeItem.target = self
+        dropdown.menu?.addItem(removeItem)
+        
+        // Add another separator
+        dropdown.menu?.addItem(NSMenuItem.separator())
+        
+        // Add export/import/share options
+        let exportItem = NSMenuItem(title: "Export Profile...", action: #selector(exportProfile), keyEquivalent: "")
+        exportItem.target = self
+        dropdown.menu?.addItem(exportItem)
+        
+        let shareItem = NSMenuItem(title: "Share Profile...", action: #selector(shareProfile), keyEquivalent: "")
+        shareItem.target = self
+        dropdown.menu?.addItem(shareItem)
+        
+        let importItem = NSMenuItem(title: "Import Profile...", action: #selector(importProfile), keyEquivalent: "")
+        importItem.target = self
+        dropdown.menu?.addItem(importItem)
+        
+        // Select the active profile
+        if let index = profiles.firstIndex(where: { $0.id == activeProfile.id }) {
+            dropdown.selectItem(at: index)
+        }
+    }
+    
+    @objc private func createNewProfileFromPreview() {
+        createNewProfile()
+        setupPreviewProfileDropdown()
+    }
+    
+    @objc private func duplicateProfileFromPreview() {
+        guard let currentId = currentProfileId else { return }
+        let profiles = ProfileManager.shared.getAllProfiles()
+        guard let currentProfile = profiles.first(where: { $0.id == currentId }) else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Duplicate Profile"
+        alert.informativeText = "Enter a name for the duplicated profile:"
+        alert.alertStyle = .informational
+        
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        inputField.stringValue = "\(currentProfile.name) Copy"
+        inputField.placeholderString = "Profile name"
+        alert.accessoryView = inputField
+        alert.addButton(withTitle: "Duplicate")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let newName = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newName.isEmpty {
+                let newProfile = ProfileManager.shared.createProfile(basedOn: currentProfile, name: newName)
+                ProfileManager.shared.setActiveProfile(id: newProfile.id)
+                currentProfileId = newProfile.id
+                cleaningRules = newProfile.rules
+                setupPreviewProfileDropdown()
+                loadPreviewRulesFromCurrentProfile()
+            }
+        }
+    }
+    
+    @objc private func renameProfileFromPreview() {
+        guard let profileId = currentProfileId else { return }
+        let profiles = ProfileManager.shared.getAllProfiles()
+        guard let currentProfile = profiles.first(where: { $0.id == profileId }) else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Rename Profile"
+        alert.informativeText = "Enter a new name for this profile:"
+        alert.alertStyle = .informational
+        
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        inputField.stringValue = currentProfile.name
+        inputField.placeholderString = "Profile name"
+        alert.accessoryView = inputField
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let newName = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newName.isEmpty {
+                ProfileManager.shared.renameProfile(id: profileId, newName: newName)
+                setupPreviewProfileDropdown()
+                setupProfileDropdownMenu()
+            }
+        }
+    }
+    
+    @objc private func deleteProfileFromPreview() {
+        deleteCurrentProfile()
+        setupPreviewProfileDropdown()
+        loadPreviewRulesFromCurrentProfile()
+    }
+    
+    // MARK: - Preview Analysis
+    
+    private enum ChangeType {
+        case added
+        case removed
+        case modified
+    }
+    
+    private struct TextChange {
+        let type: ChangeType
+        let location: Int
+        let length: Int
+        let rule: String
+    }
+    
+    private struct PreviewAnalysisDetailed {
+        let originalLength: Int
+        let cleanedLength: Int
+        let hiddenCharCount: Int
+        let changes: [TextChange]
+        let issuesDetected: Int
+        let detectedRuleKeys: Set<String>
+    }
+    
+    private func analyzeChanges(original: String, cleaned: String, rules: CleaningRules) -> PreviewAnalysisDetailed {
+        let hiddenCount = countHiddenCharacters(in: original)
+        let detectedKeys = detectIssuesInText(original: original, hiddenCount: hiddenCount, rules: rules)
+        let changes = original != cleaned ? computeSimpleDiff(original: original, cleaned: cleaned) : []
+        
+        return PreviewAnalysisDetailed(
+            originalLength: original.count,
+            cleanedLength: cleaned.count,
             hiddenCharCount: hiddenCount,
-            watermarks: detectedWatermarks,
-            rulesApplied: appliedRules
+            changes: changes,
+            issuesDetected: detectedKeys.count,
+            detectedRuleKeys: detectedKeys
         )
+    }
+    
+    private func countHiddenCharacters(in text: String) -> Int {
+        let invisibleChars: [Character] = ["\u{200B}", "\u{200C}", "\u{200D}", "\u{FEFF}", "\u{00A0}", "\u{2060}", "\u{2061}", "\u{2062}", "\u{2063}", "\u{2064}"]
+        var hiddenCount = 0
+        for char in invisibleChars {
+            hiddenCount += text.filter { $0 == char }.count
+        }
+        return hiddenCount
+    }
+    
+    private func detectIssuesInText(original: String, hiddenCount: Int, rules: CleaningRules) -> Set<String> {
+        var detectedKeys: Set<String> = []
+        
+        // Check basic formatting issues
+        detectedKeys.formUnion(detectFormattingIssues(in: original, hiddenCount: hiddenCount))
+        
+        // Check whitespace issues
+        detectedKeys.formUnion(detectWhitespaceIssues(in: original))
+        
+        // Check content issues (URLs, HTML, punctuation, emojis)
+        detectedKeys.formUnion(detectContentIssues(in: original))
+        
+        // Check for custom rules
+        for (index, rule) in rules.customRules.enumerated() where !rule.find.isEmpty {
+            if original.contains(rule.find) {
+                detectedKeys.insert("custom_\(index)")
+            }
+        }
+        
+        return detectedKeys
+    }
+    
+    private func detectFormattingIssues(in text: String, hiddenCount: Int) -> Set<String> {
+        var issues: Set<String> = []
+        
+        if hiddenCount > 0 {
+            issues.insert("removeZeroWidthChars")
+        }
+        
+        if text.contains("—") || text.contains("–") {
+            issues.insert("removeEmdashes")
+        }
+        
+        if text.contains("\u{201C}") || text.contains("\u{201D}") || text.contains("\u{2018}") || text.contains("\u{2019}") {
+            issues.insert("convertSmartQuotes")
+        }
+        
+        return issues
+    }
+    
+    private func detectWhitespaceIssues(in text: String) -> Set<String> {
+        var issues: Set<String> = []
+        
+        if text.contains("  ") {
+            issues.insert("normalizeSpaces")
+        }
+        
+        if text.contains("\r\n") || text.contains("\r") {
+            issues.insert("normalizeLineBreaks")
+        }
+        
+        if text.range(of: " +\\n", options: .regularExpression) != nil {
+            issues.insert("removeTrailingSpaces")
+        }
+        
+        if text.range(of: "\\n{3,}", options: .regularExpression) != nil {
+            issues.insert("removeExtraLineBreaks")
+        }
+        
+        let lines = text.components(separatedBy: "\n")
+        if lines.contains(where: { $0 != $0.trimmingCharacters(in: .whitespaces) }) {
+            issues.insert("removeLeadingTrailingWhitespace")
+        }
+        
+        return issues
+    }
+    
+    private func detectContentIssues(in text: String) -> Set<String> {
+        var issues: Set<String> = []
+        
+        if text.contains("utm_") || text.contains("fbclid") || text.contains("gclid") {
+            issues.insert("removeUrlTracking")
+        }
+        
+        if text.contains("http://") || text.contains("https://") || text.contains("www.") {
+            issues.insert("removeUrls")
+        }
+        
+        if text.contains("<") && text.contains(">") {
+            issues.insert("removeHtmlTags")
+        }
+        
+        if text.range(of: "([.!?]){2,}", options: .regularExpression) != nil || text.range(of: "([,;:]){2,}", options: .regularExpression) != nil {
+            issues.insert("removeExtraPunctuation")
+        }
+        
+        let hasEmoji = text.unicodeScalars.contains { scalar in
+            if (0x20...0x7E).contains(scalar.value) {
+                return false
+            }
+            return scalar.properties.isEmoji || scalar.properties.isEmojiPresentation
+        }
+        if hasEmoji {
+            issues.insert("removeEmojis")
+        }
+        
+        return issues
+    }
+    
+    private func computeSimpleDiff(original: String, cleaned: String) -> [TextChange] {
+        var changes: [TextChange] = []
+        
+        // Simple character-by-character comparison
+        let origChars = Array(original)
+        let cleanedChars = Array(cleaned)
+        
+        var i = 0
+        var j = 0
+        
+        while i < origChars.count || j < cleanedChars.count {
+            if i < origChars.count && j < cleanedChars.count && origChars[i] == cleanedChars[j] {
+                // Characters match, continue
+                i += 1
+                j += 1
+            } else if j < cleanedChars.count {
+                // Character was added or modified in cleaned version
+                let start = j
+                while j < cleanedChars.count && (i >= origChars.count || origChars[i] != cleanedChars[j]) {
+                    j += 1
+                    if i < origChars.count {
+                        i += 1
+                    }
+                }
+                changes.append(TextChange(type: .modified, location: start, length: j - start, rule: ""))
+            } else {
+                // Characters were removed
+                i += 1
+            }
+        }
+        
+        return changes
     }
     
     // MARK: - Preview Properties
     
     private var previewInputTextView: NSTextView?
     private var previewOutputTextView: NSTextView?
-    private var previewHiddenLabel: NSTextField?
-    private var previewWatermarkLabel: NSTextField?
-    private var previewRulesLabel: NSTextField?
+    private var previewRuleToggles: [String: NSButton] = [:]
+    private var previewRuleIndicators: [String: NSTextField] = [:]
+    private var previewStatsLabel: NSTextField?
+    private var previewProfileDropdown: NSPopUpButton?
+    private var lastCleanedPreviewText: String = ""
+    private var customRulesPreviewStack: NSStackView?
+    private var customRulesCountLabel: NSTextField?
+    
+    // Navigation state for browsing clipboard history
+    private var currentPreviewHistoryIndex: Int = 0
+    private var previewNavigationContainer: NSView?
+    private var leftArrowView: NSView?
+    private var rightArrowView: NSView?
+    
+    // Search state for clipboard history
+    private var historySearchField: NSSearchField?
+    private var filteredHistoryItems: [ClipboardHistoryItem] = []
+    private var isSearchActive: Bool = false
+    private var customRulesSheet: NSWindow?
     
     private func createFullWidthSeparator() -> NSBox {
         let separator = NSBox()
@@ -1882,19 +3726,27 @@ class SettingsWindow: NSWindowController {
         exportDesc.textColor = .secondaryLabelColor
         container.addArrangedSubview(exportDesc)
         
-        // COMPACT: Two-column layout for export settings
         let exportGrid = NSStackView()
         exportGrid.orientation = .vertical
         exportGrid.spacing = 8
         exportGrid.alignment = .leading
         
-        // Row 1: Format + Retina scaling
+        let currentFormat = ClipboardHistoryManager.shared.imageExportFormat
+        exportGrid.addArrangedSubview(createImageExportRow1())
+        exportGrid.addArrangedSubview(createImageExportRow2())
+        exportGrid.addArrangedSubview(createJPEGQualityRow(currentFormat: currentFormat))
+        
+        container.addArrangedSubview(exportGrid)
+        
+        return container
+    }
+    
+    private func createImageExportRow1() -> NSStackView {
         let row1 = NSStackView()
         row1.orientation = .horizontal
         row1.spacing = 20
         row1.alignment = .centerY
         
-        // Format (compact)
         let formatLabel = NSTextField(labelWithString: "Format:")
         formatLabel.font = NSFont.systemFont(ofSize: 12)
         formatLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
@@ -1914,7 +3766,6 @@ class SettingsWindow: NSWindowController {
         formatPopup.widthAnchor.constraint(equalToConstant: 80).isActive = true
         row1.addArrangedSubview(formatPopup)
         
-        // Retina checkbox (compact)
         let retinaCheckbox = NSButton(
             checkboxWithTitle: "Scale Retina to 1x",
             target: self,
@@ -1924,9 +3775,10 @@ class SettingsWindow: NSWindowController {
         retinaCheckbox.font = NSFont.systemFont(ofSize: 11)
         row1.addArrangedSubview(retinaCheckbox)
         
-        exportGrid.addArrangedSubview(row1)
-        
-        // Row 2: sRGB + Border
+        return row1
+    }
+    
+    private func createImageExportRow2() -> NSStackView {
         let row2 = NSStackView()
         row2.orientation = .horizontal
         row2.spacing = 20
@@ -1950,9 +3802,10 @@ class SettingsWindow: NSWindowController {
         borderCheckbox.font = NSFont.systemFont(ofSize: 11)
         row2.addArrangedSubview(borderCheckbox)
         
-        exportGrid.addArrangedSubview(row2)
-        
-        // JPEG Quality (only visible when JPEG is selected) - compact
+        return row2
+    }
+    
+    private func createJPEGQualityRow(currentFormat: ClipboardHistoryManager.ImageExportFormat) -> NSStackView {
         let jpegQualityStack = NSStackView()
         jpegQualityStack.orientation = .horizontal
         jpegQualityStack.spacing = 8
@@ -1984,11 +3837,7 @@ class SettingsWindow: NSWindowController {
         jpegQualityValueLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         jpegQualityStack.addArrangedSubview(jpegQualityValueLabel)
         
-        exportGrid.addArrangedSubview(jpegQualityStack)
-        
-        container.addArrangedSubview(exportGrid)
-        
-        return container
+        return jpegQualityStack
     }
     
     /// Creates the statistics section content for Settings tab
@@ -2481,16 +4330,25 @@ class SettingsWindow: NSWindowController {
         
         let rowStack = NSStackView()
         rowStack.orientation = .horizontal
-        rowStack.spacing = 12
+        rowStack.spacing = 8
         rowStack.alignment = .centerY
-        rowStack.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+        rowStack.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 12)
         
-        // Add rule number
+        // Add checkbox to enable/disable rule
+        let checkbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleCustomRule(_:)))
+        checkbox.state = (index < cleaningRules.customRules.count && cleaningRules.customRules[index].enabled) ? .on : .off
+        checkbox.tag = index
+        checkbox.setButtonType(.switch)
+        checkbox.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        checkbox.widthAnchor.constraint(greaterThanOrEqualToConstant: 18).isActive = true
+        
+        // Add rule number (shown on right side)
         let ruleNumber = NSTextField(labelWithString: "\(index + 1).")
         ruleNumber.font = NSFont.boldSystemFont(ofSize: 12)
         ruleNumber.textColor = .secondaryLabelColor
+        ruleNumber.alignment = .right
         ruleNumber.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-        ruleNumber.widthAnchor.constraint(equalToConstant: 20).isActive = true
+        ruleNumber.widthAnchor.constraint(equalToConstant: 25).isActive = true
         
         let findLabel = NSTextField(labelWithString: "Find:")
         findLabel.font = NSFont.systemFont(ofSize: 11)
@@ -2521,18 +4379,20 @@ class SettingsWindow: NSWindowController {
         replaceField.widthAnchor.constraint(equalToConstant: 180).isActive = true
         
         let deleteButton = NSButton(title: "✕", target: self, action: #selector(deleteRule(_:)))
-        deleteButton.bezelStyle = .roundedDisclosure
+        deleteButton.bezelStyle = .inline
         deleteButton.tag = index
         deleteButton.setButtonType(.momentaryPushIn)
-        deleteButton.font = NSFont.systemFont(ofSize: 12)
-        deleteButton.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        deleteButton.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        deleteButton.contentTintColor = .systemRed
+        deleteButton.widthAnchor.constraint(equalToConstant: 24).isActive = true
         
-        rowStack.addArrangedSubview(ruleNumber)
+        rowStack.addArrangedSubview(checkbox)
         rowStack.addArrangedSubview(findLabel)
         rowStack.addArrangedSubview(findField)
         rowStack.addArrangedSubview(replaceLabel)
         rowStack.addArrangedSubview(replaceField)
         rowStack.addArrangedSubview(deleteButton)
+        rowStack.addArrangedSubview(ruleNumber)
         
         container.addSubview(rowStack)
         rowStack.translatesAutoresizingMaskIntoConstraints = false
@@ -2550,8 +4410,26 @@ class SettingsWindow: NSWindowController {
     
     @objc func addNewRule() {
         let index = cleaningRules.customRules.count
-        cleaningRules.customRules.append(CustomRule(find: "", replace: ""))
+        cleaningRules.customRules.append(CustomRule(find: "", replace: "", enabled: true))
         addCustomRuleRow(find: "", replace: "", index: index)
+    }
+    
+    @objc func toggleCustomRule(_ sender: NSButton) {
+        let index = sender.tag
+        if index < cleaningRules.customRules.count {
+            cleaningRules.customRules[index].enabled = (sender.state == .on)
+            
+            // Save to current profile
+            if let profileId = currentProfileId {
+                ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+            }
+            
+            // Refresh custom rules display in preview
+            refreshCustomRulesInPreview()
+            
+            // Update preview if it's showing
+            updateInteractivePreview()
+        }
     }
     
     @objc func deleteRule(_ sender: NSButton) {
@@ -2567,6 +4445,17 @@ class SettingsWindow: NSWindowController {
             for (idx, rule) in cleaningRules.customRules.enumerated() {
                 addCustomRuleRow(find: rule.find, replace: rule.replace, index: idx)
             }
+            
+            // Save to current profile
+            if let profileId = currentProfileId {
+                ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+            }
+            
+            // Refresh custom rules display in preview
+            refreshCustomRulesInPreview()
+            
+            // Update preview if it's showing
+            updateInteractivePreview()
         }
     }
     
@@ -3528,25 +5417,30 @@ extension SettingsWindow: NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         guard let textField = obj.object as? NSTextField else { return }
         
-        let index = textField.tag % 1000
+        // In the new preview tab: tags are index*2 for find, index*2+1 for replace
+        let isReplaceField = textField.tag % 2 == 1
+        let index = textField.tag / 2
         
-        if index < cleaningRules.customRules.count {
-            let currentRule = cleaningRules.customRules[index]
-            let newRule: CustomRule
-            
-            if textField.tag < 1000 {
-                newRule = CustomRule(find: textField.stringValue, replace: currentRule.replace)
-            } else {
-                newRule = CustomRule(find: currentRule.find, replace: textField.stringValue)
-            }
-            
-            cleaningRules.customRules[index] = newRule
-            
-            // Save to current profile when custom rules change
-            if let profileId = currentProfileId {
-                ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
-            }
+        guard index >= 0 && index < cleaningRules.customRules.count else { return }
+        
+        let currentRule = cleaningRules.customRules[index]
+        let newRule: CustomRule
+        
+        if isReplaceField {
+            newRule = CustomRule(find: currentRule.find, replace: textField.stringValue, enabled: currentRule.enabled)
+        } else {
+            newRule = CustomRule(find: textField.stringValue, replace: currentRule.replace, enabled: currentRule.enabled)
         }
+        
+        cleaningRules.customRules[index] = newRule
+        
+        // Save to current profile when custom rules change
+        if let profileId = currentProfileId {
+            ProfileManager.shared.updateProfile(id: profileId, rules: cleaningRules)
+        }
+        
+        // Update preview if it's showing
+        updateInteractivePreview()
     }
 }
 
@@ -3599,6 +5493,14 @@ extension SettingsWindow: NSWindowDelegate {
 extension SettingsWindow: NSTabViewDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         window?.title = tabViewItem?.label ?? window?.title ?? ""
+        
+        // Initialize preview tab when selected
+        if let identifier = tabViewItem?.identifier as? String, identifier == "preview" {
+            setupPreviewProfileDropdown()
+            loadPreviewRulesFromCurrentProfile()
+            pasteIntoInteractivePreview()  // Load current clipboard content
+        }
+        
         DispatchQueue.main.async { [weak self] in
             self?.scrollCurrentTabToTop()
         }
@@ -4525,6 +6427,22 @@ class HotkeyRecorderButton: NSButton {
             NSEvent.removeMonitor(monitor)
         }
         removeMaterialGlow()
+    }
+}
+
+// MARK: - NSTextViewDelegate for Live Preview
+extension SettingsWindow: NSTextViewDelegate {
+    func textDidChange(_ notification: Notification) {
+        // Only trigger updates for the preview input text view
+        if let textView = notification.object as? NSTextView, textView === previewInputTextView {
+            // Use a debounce to avoid too many updates while typing
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(updateInteractivePreviewDebounced), object: nil)
+            perform(#selector(updateInteractivePreviewDebounced), with: nil, afterDelay: 0.3)
+        }
+    }
+    
+    @objc private func updateInteractivePreviewDebounced() {
+        updateInteractivePreview()
     }
 }
 

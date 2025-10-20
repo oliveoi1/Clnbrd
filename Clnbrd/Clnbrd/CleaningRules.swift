@@ -2,8 +2,9 @@ import Foundation
 
 /// Model for custom find/replace rules
 struct CustomRule: Codable {
-    let find: String
-    let replace: String
+    var find: String
+    var replace: String
+    var enabled: Bool = true
 }
 
 /// Handles all text cleaning operations including AI watermark removal, formatting cleanup, and URL cleaning
@@ -44,19 +45,25 @@ class CleaningRules: Codable {
         // Remove emojis FIRST (if enabled)
         if removeEmojis {
             cleaned = cleaned.unicodeScalars.filter { scalar in
+                // Always keep ASCII printable characters (includes 0-9, A-Z, a-z, punctuation)
+                // This prevents false positives where digits/letters are flagged as emojis
+                if (0x20...0x7E).contains(scalar.value) {
+                    return true  // Keep all ASCII printable chars
+                }
+                
                 // Keep if it's NOT an emoji
-                !(scalar.properties.isEmoji ||
-                  scalar.properties.isEmojiPresentation ||
-                  scalar.properties.isEmojiModifier ||
-                  scalar.properties.isEmojiModifierBase ||
-                  (0x1F300...0x1F9FF).contains(scalar.value) || // Emoji blocks
-                  (0x2600...0x26FF).contains(scalar.value) ||   // Misc symbols
-                  (0x2700...0x27BF).contains(scalar.value))     // Dingbats
+                return !(scalar.properties.isEmoji ||
+                         scalar.properties.isEmojiPresentation ||
+                         scalar.properties.isEmojiModifier ||
+                         scalar.properties.isEmojiModifierBase ||
+                         (0x1F300...0x1F9FF).contains(scalar.value) || // Emoji blocks
+                         (0x2600...0x26FF).contains(scalar.value) ||   // Misc symbols
+                         (0x2700...0x27BF).contains(scalar.value))     // Dingbats
             }.map { String($0) }.joined()
         }
         
-        // Apply custom find/replace rules
-        for rule in customRules where !rule.find.isEmpty {
+        // Apply custom find/replace rules (only if enabled)
+        for rule in customRules where rule.enabled && !rule.find.isEmpty {
             cleaned = cleaned.replacingOccurrences(of: rule.find, with: rule.replace)
         }
         

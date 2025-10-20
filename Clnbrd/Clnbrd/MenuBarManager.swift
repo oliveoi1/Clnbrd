@@ -440,6 +440,13 @@ class MenuBarManager {
         logger.info("Show clipboard history requested from menu")
         SentryManager.shared.trackUserAction("show_history_menu_clicked")
         updateHistoryBadge()  // Update badge before showing
+        
+        // Initialize history window if not already done
+        if historyWindow == nil {
+            logger.info("Initializing history window for the first time")
+            historyWindow = ClipboardHistoryWindow()
+        }
+        
         historyWindow?.show()
     }
     

@@ -141,7 +141,7 @@ void PFMoveToApplicationsFolderIfNecessary(void) {
 
 		if (PFUseSmallAlertSuppressCheckbox) {
 			NSCell *cell = [[alert suppressionButton] cell];
-			[cell setControlSize:NSSmallControlSize];
+			[cell setControlSize:NSControlSizeSmall];
 			[cell setFont:[NSFont systemFontOfSize:[NSFont smallSystemFontSize]]];
 		}
 	}
@@ -205,18 +205,16 @@ void PFMoveToApplicationsFolderIfNecessary(void) {
 		Relaunch(destinationPath);
 
 		// Launched from within a disk image? -- unmount (if no files are open after 5 seconds,
-		// otherwise leave it mounted).
-		if (diskImageDevice && !isNestedApplication) {
+		// the dmg will be ejected).
+		if (diskImageDevice) {
 			NSString *script = [NSString stringWithFormat:@"(/bin/sleep 5 && /usr/bin/hdiutil detach %@) &", ShellQuotedString(diskImageDevice)];
 			[NSTask launchedTaskWithLaunchPath:@"/bin/sh" arguments:[NSArray arrayWithObjects:@"-c", script, nil]];
 		}
-
-		MoveInProgress = NO;
-		exit(0);
 	}
-	// Save the alert suppress preference if checked
-	else if ([[alert suppressionButton] state] == NSOnState) {
-		[[NSUserDefaults standardUserDefaults] setBool:YES forKey:AlertSuppressKey];
+	else {
+		if ([[alert suppressionButton] state] == NSControlStateValueOn) {
+			[[NSUserDefaults standardUserDefaults] setBool:YES forKey:AlertSuppressKey];
+		}
 	}
 
 	MoveInProgress = NO;
@@ -225,29 +223,20 @@ void PFMoveToApplicationsFolderIfNecessary(void) {
 fail:
 	{
 		// Show failure message
-		alert = [[[NSAlert alloc] init] autorelease];
+		NSAlert *alert = [[[NSAlert alloc] init] autorelease];
 		[alert setMessageText:kStrMoveApplicationCouldNotMove];
 		[alert runModal];
-		MoveInProgress = NO;
 	}
-}
 
-BOOL PFMoveIsInProgress() {
-    return MoveInProgress;
+	MoveInProgress = NO;
 }
-
-#pragma mark -
-#pragma mark Helper Functions
 
 static NSString *PreferredInstallLocation(BOOL *isUserDirectory) {
-	// Return the preferred install location.
-	// Assume that if the user has a ~/Applications folder, they'd prefer their
-	// applications to go there.
-
 	NSFileManager *fm = [NSFileManager defaultManager];
 
 	NSArray *userApplicationsDirs = NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES);
 
+	// Check ~/Applications first
 	if ([userApplicationsDirs count] > 0) {
 		NSString *userApplicationsDir = [userApplicationsDirs objectAtIndex:0];
 		BOOL isDirectory;
