@@ -4,7 +4,54 @@
         <title>Clnbrd Updates</title>
         <link>https://raw.githubusercontent.com/oliveoi1/Clnbrd/main/appcast.xml</link>
         <description>Most recent updates to Clnbrd</description>
-        <language>en</language> <!-- Updated Thu Oct 16 2025 -->
+        <language>en</language> <!-- Updated Mon Oct 20 2025 -->
+        
+        <item>
+            <title>⚠️ Version 1.4.0-beta.13 (Build 66) - BETA RELEASE</title>
+            <link>https://github.com/oliveoi1/Clnbrd/releases/tag/v1.4.0-beta.13</link>
+            <sparkle:version>66</sparkle:version>
+            <sparkle:shortVersionString>1.4.0-beta.13</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>⚠️ BETA RELEASE - Preview Tab & Custom Rules</h2>
+                
+                <p><strong style="color: orange;">This is a BETA release with new preview features.</strong></p>
+                
+                <h3>🎨 Build 66 - Preview Tab & Custom Rules</h3>
+                <ul>
+                    <li><strong>Interactive Preview Tab</strong> - Real-time text cleaning visualization</li>
+                    <li><strong>Custom Rules Management</strong> - Beautiful popup for managing find/replace rules</li>
+                    <li><strong>Card-Based UI</strong> - Modern design with hover effects (adapts to light/dark mode)</li>
+                    <li><strong>Clipboard History Navigation</strong> - Arrow overlays to browse history in preview</li>
+                    <li><strong>Live Rule Editing</strong> - Enable/disable rules with instant preview updates</li>
+                    <li><strong>Copy Buttons</strong> - Easy access to original and cleaned text</li>
+                </ul>
+                
+                <h3>✨ All Previous Features Included</h3>
+                <ul>
+                    <li>Complete onboarding system with permission handling</li>
+                    <li>Clipboard History Strip with ⌘⇧V hotkey</li>
+                    <li>Screenshot capture with ⌘⌥C</li>
+                    <li>Modern "liquid glass" UI aesthetic</li>
+                    <li>Light/Dark/Auto appearance modes</li>
+                    <li>Performance optimizations</li>
+                </ul>
+                
+                <h3>Technical Details</h3>
+                <ul>
+                    <li>Fully notarized for macOS Sequoia</li>
+                    <li>Universal binary (Apple Silicon + Intel)</li>
+                    <li>Compatible with macOS 15.5+</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 20 Oct 2025 22:30:00 +0000</pubDate>
+            <enclosure 
+                url="https://github.com/oliveoi1/Clnbrd/releases/download/v1.4.0-beta.13/Clnbrd-v1.4.0-beta.13-Build66-notarized-stapled.zip" 
+                sparkle:version="66" 
+                sparkle:shortVersionString="1.4.0-beta.13" 
+                length="2615507"
+                type="application/octet-stream"
+            />
+        </item>
         
         <item>
             <title>🎉 Version 1.4.0 (Build 65) - STABLE RELEASE</title>
